@@ -1,0 +1,1974 @@
+---
+title: "Trait/Allometry Database Pre-processor"
+author: "Marcos Longo"
+date: '2022-09-27'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introduction.
+
+This script loads data from multiple trait and allometry data bases (including TRY) and organises into a tidy data set, with rows identifying observations, and columns identifying species, traits, and allometric data.
+
+**Important**. This script works only on files that go through the pre-processing script, which will turn files into comma-separated values and remove all diacritical markings and non-basic characters, and split data into files according to the data provider.  This helps to load data more efficiently, but it can take a long time when running the script for the first time.
+
+# Reset session
+
+Use this chunk to fully reset R.
+```{r, label = 'reset-R',message=FALSE, results='hide'}
+# Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) > 0){
+   dummy = sapply(X=paste0("package:",plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) > 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())
+```
+
+# Initial settings
+
+Set paths and file names for input and output.
+
+* **home_path**. The user home path.
+* **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
+* **main_path**. Main working directory
+* **orig_path**. Path where the original TRY files are located.
+* **quote_path**. Path where TRY files will be translated from tab-separated to comma-separated, with fields enclosed by quotes.
+* **author_path**. Path where the author files are stored (it should be consistent with the previous shell chunk).
+* **list_path**. Path where the lists of traits and ancillary data to be loaded are stored.
+* **lookup_path**. Path for writing look-up tables (in CSV format)
+* **plot_path**. The main output path for the simulation plots.
+* **rdata_path**. Output path for R objects (so we can use it for comparisons.)
+
+```{r, label='path-settings'}
+# Set useful paths and file names
+home_path       = path.expand("~")
+util_path       = file.path(home_path,"Util/RUtils")
+main_path       = file.path(home_path,"Data","TRY_DataBase")
+orig_path       = file.path(main_path,"Original")
+quote_path      = file.path(main_path,"Quoted")
+author_path     = file.path(main_path,"ByAuthor")
+list_path       = file.path(main_path,"InputLists")
+lookup_path     = file.path(main_path,"LookUpTables")
+uniq_trait_path = file.path(main_path,"UniqueTrait")
+uniq_ancil_path = file.path(main_path,"UniqueAncil")
+plot_path       = file.path(main_path,"Figures")
+rdata_path      = file.path(main_path,"RData")
+```
+
+Set full path for the file containing the list of ancillary information (`ancil_file`) and list of traits (`trait_file`). Both must be csv files, containing information on which ancillary data and traits to load.
+
+File `ancil_file` must contain the following columns:
+
+* **Name**. Name of the ancillary variable that will be used in this scripts (ideally, no spaces, starting with a letter, no special characters).
+* **TRYName**. Name of the ancillary data _exactly_ as in the TRY data base. 
+* **Desc**. Full description of the ancillary data (may be used in plot annotation).
+* **Type**. Variable type as in the TRY data base. Options are (`character`, `integer`, `numeric`, `date`). NB: Note that date probably requires code development.
+* **UseStdUnit**. Logical variable: should the script use TRY data in standard units? TRY data base often has many more data in the "Original Value" column than the "Standard Value". However, using the original value may require additional corrections as trait values may come with unexpected characters and non-standard units. If unsure, the safest option is to set this to TRUE for numeric traits (often character traits have only original values). If you would like to use original values for numeric traits, you may need to edit function TRY_FixAncil_OrigValue_Str in `file.path(util_path,"TRY_Fix_OrigValue_Str.r")`.  The look-up tables with inventory of units used for each trait, and written by this script in the `lookup_path` folder, are useful resources for adding more cases.
+* **Unit**. Trait unit **after** applying the variable transformation defined by `Add`, `Mult`, and `Power`. Use the list of units available in `file.path(util_path,"unitutils.r")`, and add new units if needed.
+* **Add**. Character string with offset to be added to variables.  Default is "0.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **Mult**. Character string with multiplication factor to variables.  Default is "1.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **Power**. Character string with exponential factor to variables.  Default is "1.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **Supporting**. Character string indicating which variable name (column `Name`) this variable supports.  Most variables do not support other variables, and in this case use `NA` instead.  **Note**. Supporting variables will require changes in this script as they are specific to each variable. If unsure, it is better to set `Supporting=NA` for all variables.
+
+The example below shows how the `ancil_file` should look like:
+```
+Name,TryName,Desc,Type,UseStdUnit,Unit,Add,Mult,Power,Supporting
+lon,Longitude,Longitude,numeric,TRUE,degE,0,1,1,NA
+lat,Latitude,Latitude,numeric,TRUE,degN,0,1,1,NA
+alt,Altitude,Altitude,numeric,TRUE,m,0,1,1,NA
+ymean_prec,Mean sum of annual precipitation (PPT / MAP / TAP),Annual precipitation,numeric,FALSE,mm,0,1,1,NA
+ymean_temp,Mean annual temperature (MAT),Mean annual temperature,numeric,FALSE,degC,0,1,1,NA
+biome,Vegetation type / Biome,Biome,character,FALSE,empty,0,1,1,NA
+biome_aux,Vegetation type / Biome ( 2),Biome,character,FALSE,empty,0,1,1,biome
+sun_shade,Canopy position: sun vers. Shade leaf qualifier; light exposure,Sun/Shade Leaf,character,FALSE,empty,0,1,1,NA
+lon_aux,Longitude (decimal degrees),Longitude,numeric,FALSE,degE,0,1,1,lon
+lat_aux,Latitude (decimal degrees),Latitude,numeric,FALSE,degN,0,1,1,lat
+climate_pft,Climate_PFT_Biome equivalent_Poulter,Climate PFT Biome,character,FALSE,empty,0,1,1,NA
+```
+
+
+File `trait_file` must contain the following columns:
+
+* **Name**. Name of the ancillary variable that will be used in this scripts (ideally, no spaces, starting with a letter, no special characters). If multiple traits are closely related and you would like to merge them (e.g., the multiple SLA definitions, which may be too specific for your needs), set unique names, and use variable **Supporting** (see below) to select a leading trait and supporting traits. **Important**. For photosynthetic variables that may be area-based or mass-based, use either `"a_"` or `"m_"` prefixes (e.g., `"a_vcmax"` for area-based carboxylation rate, or `"m_vcmax"` for mass-based carboxylation rate).
+* **TraitID**. The trait ID as defined by the TRY data base. In case of multiple, closely related traits, enter one line per trait ID and just use the **Supporting** column (see below) to link multiple entries.
+* **Desc**. Full description of the ancillary data (may be used in plot annotation).
+* **Type**. Variable type as in the TRY data base. Options are (`character`, `integer`, `numeric`, `date`). NB: Note that date probably requires code development.
+* **Add**. Character string with offset to be added to variables.  Default is "0.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **Mult**. Character string with multiplication factor to variables.  Default is "1.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **Power**. Character string with exponential factor to variables.  Default is "1.". Constant names (as defined in `file.path(util_path,"rconstants.r")`) work too, and are recommended for all but the trivial transformations.
+* **UseStdUnit**. Logical variable: should the script use TRY data in standard units? TRY data base often has many more data in the "Original Value" column than the "Standard Value". However, using the original value may require additional corrections as trait values may come with unexpected characters and non-standard units. If unsure, the safest option is to set this to TRUE for numeric traits (often character traits have only original values). If you would like to use original values for numeric traits, you may need to edit function TRY_FixTrait_OrigValue_Str in `file.path(util_path,"TRY_Fix_OrigValue_Str.r")`.  The look-up tables with inventory of units used for each trait, and written by this script in the `lookup_path` folder, are useful resources for adding more cases.
+* **Unit**. Trait unit **after** applying the variable transformation defined by `Add`, `Mult`, and `Power`. Use the list of units available in `file.path(util_path,"unitutils.r")`, and add new units if needed.
+* **Debug**. Set value to `TRUE` if you want to stop the script at certain traits (e.g., to make sure their units are what you were expecting). Otherwise, `FALSE` is the default.
+* **LightPlastic**. Does this trait show high light-level plasticity? This information is not used here, but it may be used in trait trade-off relationships to remove traits collected under shaded conditions.
+* **SMA**. Should this trait be used for Standardised Major Axis model fits?
+* **Allom**. Should this trait be used for developing allometric equations?
+* **Photo**. Is this trait directly related to photosynthesis processes (typically only those that relate to Vcmax).
+* **Trans**. Which variable transformation to apply to variable (both SMA and plotting). Accepted transformations include:
+   * _identity_. Do not transform the data ($x_\textrm{Trans} = x$).
+   * _log_. Apply logarithmic transformation ($x_\textrm{Trans} = \ln{\left(x\right)}$). Positive values only ($x>0$).
+   * _neglog_. Apply negative logarithmic transformation on negative value:  ($x_\textrm{Trans} = -\ln{\left(-x\right)}$). Negative values only ($x<0$).
+   * _sqrt_. Apply square root transformation to the data  ($x_\textrm{Trans} = \sqrt{x}$). Non-negative values only ($x\ge0$).
+   * _cbrt_. Apply cube root transformation to the data  ($x_\textrm{Trans} = \sqrt[3]{x}$). Positive, negative values and zero are fine.
+* **Supporting**. Character string indicating which variable name this variable supports.  The name must be either a value in column `Name`, or a list of destination variables in case multiple variables are associated with the same trait (typically the case for xylem vulnerability curve).  Most variables do not support other variables, and in this case use `NA` instead.  **Note**. Supporting variables will require changes in this script as they are specific to each variable. If unsure, it is better to set `Supporting=NA` for all variables.
+
+The example below shows how the `trait_file` should look like:
+```
+Name,TraitID,Desc,Type,Add,Mult,Power,UseStdUnit,Unit,Debug,LightPlastic,SMA,Allom,Photo,Trans,Supporting
+a_jmax,269,Area-based electron transport capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
+a_vcmax,186,Area-based photosynthesis carboxylation capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
+dbh,21,Diameter at breast height,numeric,0,1,1,FALSE,cm,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
+drought_toler,30,Species tolerance to drought,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
+height,3106,Plant height,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
+height_3107,3107,Plant height,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,height
+leaf_c2n,146,Leaf carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,TRUE,TRUE,FALSE,FALSE,identity,NA
+leaf_c2p,151,Leaf carbon:phosphorus ratio,numeric,0,1,1,FALSE,kgcokgp,FALSE,TRUE,TRUE,FALSE,FALSE,identity,NA
+SLA_3086,3086,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
+SLA_3115,3115,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
+SLA_3116,3116,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
+SLA,3117,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
+wood_dens,4,Wood density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
+wood_psixx,719,Xylem hydraulic vulnerability,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,FALSE,FALSE,FALSE,neglog,NA
+```
+
+**Tip**. If you are not sure on some of the settings, set both file names to `NA_character_`. This will make the script run up to the generation of the look-up tables for traits and ancillary variables and stop. The look-up tables will have information about the variable names and ID, as well as the units and partition between standard values versus original values.
+
+```{r, label='ancil-trait-files'}
+ancil_file = file.path(list_path,"TRY_AncillaryList.csv") # List of ancillary variable settings
+trait_file = file.path(list_path,"TRY_TraitList.csv"    ) # List of TRY trait settings
+```
+
+
+Users may have additional data sets with trait information that are not part of the TRY data base. These can be added through the variable `extra_files`, and multiple files can be provided. **Important**. The script will not carry out variable transformation or standardisation for these data sets, and columns must have the same name as one of the entries of column `Name` in file `trait_file` or file `ancil_file`, with an additional name containing the accepted species name (preferrably consistent with the values in file `taxon_file`, see below) in column ScientificName, and author name (first name and last name) in column **Author**.  It is highly recommended to include the reference and the doi to keep track of contributors.
+
+```{r, label='ancil-trait-extra'}
+# List of files containing additional trait information.
+extra_file_base = c("NGEE-Tropics.csv","LT-Brazil_Extra.csv","FrenchGuiana_Extra.csv"
+                   ,"TalloNeoTropical.csv","SLBrazil_AllometryData.csv")
+extra_file_list = file.path(main_path,"AdditionalData",extra_file_base)
+```
+
+
+
+Optionally, it is possible to load a text file with pre-set taxonomic information through variable `taxon_file`.  If not provided, R will use functions from the `TNRS` and `taxize` packages to standardise taxonomy.  Standard taxonomy is critical for matching traits from different data sets (e.g., group traits by species).  Loading an existing list of taxonomic information is advantageous because the built-in functions can take a long time and require APIs. More importantly, while the automated packages can fix many mistakes, they have a few limitations:
+
+1. They are unable to identify common names (many authors provide common names instead of scientific names). 
+2. Many authors deleted `NA` from their provided data, but without restricting to numeric columns and the automated tools have a hard time spotting these errors.
+3. There are a few cases in which the suggested name is actually incorrect.
+
+If provided, the csv file can be adapted from the output file generated by [TNRS](https://tnrs.biendata.org) and/or [GBIF](https://www.gbif.org). The list of columns below may be used (some are optional and some are required); note that column names are **case sensitive** even though the contents are case insensitive: 
+
+* **TRYName** (**required**). This should be the exact same name in the TRY data base (case insensitive).
+* **AcceptedName** (**required**). This is the standardised scientific name to the best extent possible (genus or species). Sub-species or varieties are fine but they will be excluded. This is equivalent to column `species` (GBIF), or `Accepted_name` (TNRS). If only genus is identified, it is fine to leave this blank but in this case make sure to include the **AcceptedGenus** column (see below)
+* **AcceptedGenus** (**recommended**). This is the standardised genus name. If not provided it will be derived from the scientific name. This is equivalent to column `genus` (GBIF). TNRS does not provide such column.
+* **AcceptedFamily** (**required**).  This is the standardised family name. In case the family is not identified, leave it blank. This is equivalent to column `family` (GBIF) or `Accepted_family` (TNRS).
+* **AcceptedOrder** (**recommended**). This is the standardised order name. This is equivalent to column `order` (GBIF). TNRS does not provide this name, but the R script will fill in using built-in functions from package `taxize`.
+* **AcceptedClass** (**recommended**). This is the standardised class name. This is equivalent to column `class` (GBIF). TNRS does not provide this name, but the R script will fill in using built-in functions from package `taxize`.
+* **AcceptedPhylum** (**recommended**). This is the standardised class name. This is equivalent to column `phylum` (GBIF). TNRS does not provide this name, but the R script will fill in using built-in functions from package `taxize`.
+* **GrowthForm** (**optional**). In case the observation is not identified but the TRY name describes the growth form, this column can be used for filling in. Acceptable growth forms are "Epiphyte", "Grass-Herb", "Liana", "Parasite", "Shrub", "Tree", and "Vine". The code will use the family information to automatically fill in some life forms (e.g., family Arecaceae for palms, family Poaceae for grasses), no need to inform these manually.
+
+Additional columns are fine, but they will not be used. If providing notes (highly recommended) make sure to not use commas in the text.
+
+The example below shows how the `taxon_file` could look like:
+```
+TRYName,AcceptedName,AcceptedGenus,AcceptedFamily,AcceptedOrder,AcceptedClass,AcceptedPhylum,GrowthForm,Notes
+Araucaria angustifolia,Araucaria angustifolia,Araucaria,Araucariaceae,Pinales,Pinopsida,Tracheophyta,,
+Bertolletia excelsa,Bertholletia excelsa,Bertholletia,Lecythidaceae,Ericales,Magnoliopsida,Tracheophyta,,
+Calliandra dysantha,Calliandra dysantha,Calliandra,Fabaceae,Fabales,Magnoliopsida,Tracheophyta,,Epithet misspelt; replaced with similar epithet and checked for occurrence in the sampled region
+Drypetes medium,Drypetes,Drypetes,Putranjivaceae,Malpighiales,Magnoliopsida,Tracheophyta,,Epithet misspelt; kept the genus as it is common at the sampling location
+Uchi liso,Endopleura uchi,Endopleura,Humiriaceae,Malpighiales,Magnoliopsida,Tracheophyta,,Common name provided; used literature and location to assign species
+Fabaceae,,,Fabaceae,Fabales,Magnoliopsida,Tracheophyta,,Too generic description; inferred family
+Geonoma stricta subsp. arundinacea,Geonoma stricta,Geonoma,Arecaceae,Arecales,Liliopsida,Tracheophyta,,Excluded subspecies information (subsp. arundinacea)
+Heterotrichum cymosum,Miconia eggersii,Miconia,Melastomataceae,Myrtales,Magnoliopsida,Tracheophyta,,Name is accepted in WFO; considered synonym in GBIF
+Leaves random species,,,,,,,,Too generic description
+Siparudecipiens,Siparuna decipiens,Siparuna,Siparunaceae,Laurales,Magnoliopsida,Tracheophyta,,Some sources manually removed NA from data sources; affecting the scientific names
+```
+
+In addition, it is possible to define  a file name containing a comprehensive list of species belonging to the region of interest, that should always be included in model fitting. If none is available, it is fine to set `taxon_include=NA_character_`. The structure of this file should be similar to `taxon_file`, except that the only column used is the **AcceptedName** one.
+
+```{r, label='ancil-taxon-files'}
+# List of TRY taxonomic information, set it to NA_character_ if no file exists.
+taxon_file = file.path(list_path,"TRY_TaxonomyList.csv"    ) 
+
+# List of species to be always included in the 
+taxon_include = file.path(main_path,"NeoTropical_Species.csv")
+```
+
+For "categorical traits" (like photosynthetic path, or growth form), it is possible to provide some ancillary data for specific traits that will be applied to existing observations --- but mind that they must be pre-processed to be consistent with the standardised categories (i.e., the same categories as the output of functions listed in file `TRY_Fix_OrigValue_Str` in path `util_path`.  The ancillary file should contain a column **AcceptedName** with the names pre-standardised to accepted names and checked for misspellings, and columns with the TRY trait ID that this is supposed to provide additional information (e.g., for photosynthetic pathway, TRY trait number 22, the column must be named `TraitID_22`). Other columns may be present but will be ignored. If any value needs to be missing values, set them to `NA`. If no file with additional information for categorical traits is available, set `addinfo_categ=NA_character_`.
+
+```{r, label='ancil-categ-traits'}
+# File with additional information for categorical data.
+addinfo_categ = file.path(main_path,"AdditionalData","CategoricalExtra.csv")
+```
+
+
+In addition, the code can extract climate information from a raster file (`beck_koppen_raster`).  The default is the high-resolution Köppen-Geiger climate classification map by [Beck et al. 2018](https://dx.doi.org/10.1038/sdata.2018.214) for the present, but other maps can be used as well. This will be used to overwrite the climate classification for all trait data with coordinates, because the information from TRY is not standardised and subject to errors. Variable `koppen_class` should be a named vector that links Köppen-Geiger classes to the indices used in the original data set.
+```{r, label='koppen-raster'}
+# Location of raster file with Koppen classification.
+koppen_raster = file.path(main_path,"AdditionalData","Beck_KG_V1_present_0p0083.tif")
+
+# Look-up list of indices and climates.
+koppen_class  = c( Af  =  1L, Am  =  2L, Aw  =  3L
+                 , BWh =  4L, BWk =  5L, BSh =  6L, BSk =  7L
+                 , Csa =  8L, Csb =  9L, Csc = 10L
+                 , Cwa = 11L, Cwb = 12L, Cwc = 13L
+                 , Cfa = 14L, Cfb = 15L, Cfc = 16L
+                 , Dsa = 17L, Dsb = 18L, Dsc = 19L, Dsd = 20L
+                 , Dwa = 21L, Dwb = 22L, Dwc = 23L, Dwd = 24L
+                 , Dfa = 25L, Dfb = 26L, Dfc = 27L, Dfd = 28L
+                 , ET  = 29L, EF  = 30L
+                 )#end c
+```
+
+
+Settings for reloading or rerunning multiple steps of this script. These are all logical variables.
+* **owrite_quote**. Should the script rewrite the quoted files?
+* **owrite_author**. Should the script rewrite the files by author?
+* **reload_lookup**. Reload the look-up table?
+* **reload_TidyTRY**. Reload the tidy data base for TRY? 
+```{r, label='set-reload'}
+owrite_quote   = c(FALSE,TRUE)[1]
+owrite_author  = c(FALSE,TRUE)[1]
+reload_lookup  = c(FALSE,TRUE)[2]
+reload_TidyTRY = c(FALSE,TRUE)[2]
+```
+
+
+Settings for generating look-up tables for categorical traits and ancillary variables.
+```{r,label='set-unique'}
+# Generate unique label table for categorical traits and ancillary variables?
+gen_unique_trait = c(FALSE,TRUE)[2]
+gen_unique_ancil = c(FALSE,TRUE)[2]
+```
+
+The following block defines some settings for the standardised major axis for most traits and photosynthesis traits:
+
+* **use_lifeclass**. Which life-form/phylogenetic level to retain from the original data set. Options are:
+   * `"FlowerTrees"`. Trees, Magnoliophyta (flowering plants).
+   * `"Shrubs"`. Shrubs, Magnoliophyta
+   * `"Grasses"`. Grasses/Herbs, Magnoliophyta
+   * `"Magnoliopsida"`. All life forms, Magnoliophyta
+   * `"Pinophyta"`. All life forms, Pinophyta (conifers)
+   * `"SeedPlants"`. All seed plants (Magnoliopsida, Pinopsida, Cycadopsida, Gnetopsida, Ginkgopsida)
+   * `"Plantae"`. All plants, everywhere
+* **use_realm**. Which realm to retain from the original data set. Current options are:
+   * `"NeoTropical"`. South and Central America
+   * `"PanTropical"`. All continents.
+```{r, label='set-sma-options'}
+# Life-form/phylogenetic level to use for SMA and allometry analyses.
+use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
+
+# Realm to use for SMA and allometry analyses.
+use_realm  = c("NeoTropical","PanTropical")[1]
+```
+
+The following block defines variables useful for harmonising traits:
+
+* **photo_a2m_factor**. Is there any multiplication factor to go from area-based to mass-based photosynthesis, other than multiplying it by SLA? This is useful in case area-based and mass-based units are not consistent with SLA units. For example, if (after the transformations provided in `trait_file`) the area-based traits are in $\mathrm{kgC\,m^{-2}\,s^{-1}}$, mass-based traits are provided in $\mathrm{kgC\,kg^{-1}\,s^{-1}}$, but SLA is in $\mathrm{cm^2\,g^{-1}}$, then set `photo_a2m_factor = 0.1`.
+* **leaf_thick2dens_factor**. Is there any multiplication factor to go from leaf thickness to leaf density due to units mismatches? For example, if (after the transformations provided in `trait_file`) leaf thickness is in $\mathrm{mm}$, SLA is in $\mathrm{cm^2\,g^{-1}}$ and leaf density is in $\mathrm{mg\,mm^{-3}}$, then set `leaf_thick2dens_factor=10.`.
+* **leaf_c2n_factor**. Is there any multiplication factor to go from leaf carbon and leaf nitrogen to carbon:nitrogen ratio due to unit mismatches? For example, if (after the transformations provided in `trait_file`) leaf carbon is in $\mathrm{kgC\,kg^{-1}}$ and leaf nitrogen is in $\mathrm{gN\,kg^{-1}}$, then set `leaf_c2n_factor=0.001`.
+* **leaf_c2p_factor**. Is there any multiplication factor to go from leaf carbon and leaf phosphorus to carbon:phosphorus ratio due to unit mismatches? For example, if (after the transformations provided in `trait_file`) leaf carbon is in $\mathrm{kgC\,kg^{-1}}$ and leaf phosphorus is in $\mathrm{gP\,kg^{-1}}$, then set `leaf_c2p_factor=0.001`.
+```{r,label='set-harm-utils'}
+photo_a2m_factor       = 1.  # Additional correction factor for area to mass-based photosynthesis.
+leaf_thick2dens_factor = 1.  # Additional correction factor for thickness-density conversion.
+leaf_c2n_factor        = 1.  # Additional correction factor for C:N stoichiometry
+leaf_c2p_factor        = 1.  # Additional correction factor for C:P stoichiometry.
+```
+
+
+
+
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!--                                                                                     -->
+<!--               CHANGES BEYOND THIS POINT ARE ONLY FOR CODE DEVELOPMENT               -->
+<!--                                                                                     -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+
+
+# Main script
+
+__Note:__ Code changes beyond this point are only needed if you are developing the notebook.
+
+## Initial settings.
+
+First, we load the list of host land model variables that we may consider for the comparison.
+```{r, label='load-everything'}
+source(file.path(util_path,"load.everything.r"),chdir=TRUE)
+```
+
+
+
+Set some environment variables to define paths for shell script chunk.
+```{r,label='set-environment-vars'}
+# Define environment variables
+dummy = Sys.setenv("MAIN_PATH"=main_path)
+dummy = Sys.setenv("ORIG_PATH"=orig_path)
+dummy = Sys.setenv("QUOTE_PATH"=quote_path)
+dummy = Sys.setenv("AUTHOR_PATH"=author_path)
+dummy = Sys.setenv("OWRITE_QUOTE"=tolower(as.character(owrite_quote)))
+dummy = Sys.setenv("OWRITE_AUTHOR"=tolower(as.character(owrite_author)))
+```
+
+
+
+
+
+
+The pre-processor kit uses a Fortran program `SplitAuthor.f90`.  The Fortran file is compiled by the script itself, just make sure that SplitAuthor.f90 is located in base_path.
+```{bash, engine.opts="-l",label = 'make-try-nospaces',message=FALSE, results='hide'}
+
+# Load user settings
+if [[ -s "${HOME}/.bashrc"       ]]; then . ${HOME}/.bashrc      ; fi
+if [[ -s "${HOME}/.profile"      ]]; then . ${HOME}/.profile     ; fi
+if [[ -s "${HOME}/.bash_profile" ]]; then . ${HOME}/.bash_profile; fi
+
+# Set Fortran compiler (feel free to add compilation options
+export FC="$(which gfortran) -O3"
+
+# Set language that will allow non-standard characters.
+export LANG=C
+export LC_ALL=C
+
+# Create output path for quoted csv files
+mkdir -p ${QUOTE_PATH}
+
+# Compile executable
+${FC} -o ${MAIN_PATH}/SplitAuthor.x ${MAIN_PATH}/SplitAuthor.f90
+
+
+
+# List all files in the path with original files.
+base_list=$(/bin/ls -1 ${ORIG_PATH} | grep -i ".txt$")
+
+
+# Loop through every file to make the quoted CSV.
+for base_txt in ${base_list}
+do
+   # Set input and output files based on the base name.
+   base_out=$(echo ${base_txt} | sed s@".txt$"@"_quoted.csv"@g)
+   file_txt="${ORIG_PATH}/${base_txt}"
+   file_out="${QUOTE_PATH}/${base_out}"
+
+
+   # Turn file into a quoted comma-separated value file, in case they don't exist or
+   # the user does not want them to be overwritten.
+   if [[ ! -s ${file_out} ]] || ${OWRITE_QUOTE}
+   then
+      echo " + Convert ${base_txt} to ${base_out}:"
+      /bin/rm -f ${file_out} "${file_out}.bck"
+      /bin/cp -f ${file_txt} ${file_out}
+      echo "   - Replace commas with semi-colons... "
+      sed -i".bck" s@","@";"@g  ${file_out}
+      echo "   - Replace double quotes with single quotes... "
+      sed -i".bck" s@"\""@"\'"@g  ${file_out}
+      echo "   - Remove DOS carriage return..."
+      sed -i".bck" s@"\r$"@""@g ${file_out}
+      echo "   - Replace tabs at the end of the line with quote... "
+      sed -i".bck" s@"\t$"@"\""@g ${file_out}
+      echo "   - Replace tabs with commas, and add quotes... "
+      sed -i".bck" s@"\t"@"\",\""@g ${file_out}
+      echo "   - Append quotes to the beginning of the line... "
+      sed -i".bck" s@"^"@"\""@g ${file_out}
+      echo "   - Done!"
+      /bin/rm -f "${file_out}.bck"
+   else
+      echo " + Skip conversion for ${base_txt}; file ${base_out} already exists."
+   fi
+done
+
+
+# The script cannot check files by author one by one. If owrite_author is true, it will delete
+# the existing path and re-create it.
+if [[ ! -d ${AUTHOR_PATH} ]] || ${OWRITE_AUTHOR}
+then
+   # Remove current directory and create a new one.
+   /bin/rm -fr ${AUTHOR_PATH}
+   mkdir -p ${AUTHOR_PATH}
+
+   # Find all files to process
+   quote_list=$(/bin/ls -1 ${QUOTE_PATH} | grep -i "_quoted.csv$")
+   for quote_base in ${quote_list}
+   do
+      quote_file="${QUOTE_PATH}/${quote_base}"
+      echo " + Split file ${quote_base} by author."
+      (cd ${AUTHOR_PATH}; ${MAIN_PATH}/SplitAuthor.x ${quote_file})
+   done
+else
+   # Skip creating files by author as they already exist.
+   echo " + Skip splitting files by author.  They already exist."
+fi
+```
+
+
+
+
+Make some system-specific configurations.
+```{r, label='system-settings'}
+
+if (Sys.info()["sysname"] %in% "Darwin"){
+   # Mac OS, set UTF8 to Mac-specific
+   UTF8_System = "UTF-8-MAC"
+}else{
+   # Linux or Windows, set UTF8 to generic
+   UTF8_System = "UTF-8"
+}#end if (Sys.info()["sysname"] %in% "Darwin")
+```
+
+
+
+Define files and paths for input and output.  We also create the output paths.
+```{r, label='path-define'}
+
+# Build suffix for model fittings.
+use_suffix   = paste(use_realm,use_lifeclass,sep="_")
+
+# Build RData object file names for the trait and ancillary data, 
+# SMA (trait and photosynthesis), and allometry models.  
+Rdata_LookUp       = file.path(rdata_path,paste0("LookUp_"      , use_suffix  ,".RData"))
+Rdata_RawTRY       = file.path(rdata_path,paste0("RawTRY_"      , use_suffix  ,".RData"))
+Rdata_ExtraTRY     = file.path(rdata_path,paste0("ExtraTRY_"    , use_suffix  ,".RData"))
+Rdata_GeoTaxonTRY  = file.path(rdata_path,paste0("GeoTaxonTRY_" , use_suffix  ,".RData"))
+Rdata_TidyTRY      = file.path(rdata_path,paste0("TidyTRY_"     , use_suffix  ,".RData")) 
+
+# Make sure directories are set.
+dummy = dir.create(path=lookup_path    ,showWarnings=FALSE,recursive=TRUE)
+dummy = dir.create(path=rdata_path     ,showWarnings=FALSE,recursive=TRUE)
+dummy = dir.create(path=uniq_trait_path,showWarnings=FALSE,recursive=TRUE)
+dummy = dir.create(path=uniq_ancil_path,showWarnings=FALSE,recursive=TRUE)
+
+# Set flags for the steps when loading the TRY data base. It helps to split the tasks into 
+# smaller steps.
+load_ancil        = TRUE
+load_extra        = TRUE
+harmonise_geotaxa = TRUE
+harmonise_traits  = TRUE
+```
+
+
+The following chunk reads the lists with ancillary and trait settings, and makes sure that the initial settings are acceptable. Specifically, it checks whether the variables selected to be in the _x_ axis are listed in `try_trait`, and that all traits to be part of allometry or SMA analyses are numeric.
+```{r, label='load-trait-ancil-list'}
+# Check whether or not this is a `dry run` (just to produce look-up tables).
+is_dry_run = is.na(ancil_file) || is.na(trait_file)
+
+if (is_dry_run){
+   cat0(" + Dry run, this script will only produce look-up tables for traits and ancillary data.")
+}else{
+   # Read in the list of traits (and save number of traits)
+   cat0(" + Read list of traits (",basename(trait_file),").")
+   try_trait   = read_csv(file=trait_file,col_types="ciccccclclllllc")   
+   n_try_trait = nrow(try_trait)
+   o           = order(try_trait$Name)
+   try_trait   = try_trait[o,,drop=FALSE]
+   o           = c(which(is.na(try_trait$Supporting)),which(! is.na(try_trait$Supporting)))
+   try_trait   = try_trait[o,,drop=FALSE]
+   
+   # Read in the list of ancillary variables (and save number of ancillary variables)
+   # Make sure supporting variables are loaded after the main variables.
+   cat0(" + Read list of ancillary variables (",basename(ancil_file),").")
+   try_ancil   = read_csv(file=ancil_file,col_types="cccclccccc")
+   o           = order(try_ancil$Name)
+   try_ancil   = try_ancil[o,,drop=FALSE]
+   o           = c(which(is.na(try_ancil$Supporting)),which(! is.na(try_ancil$Supporting)))
+   try_ancil   = try_ancil[o,,drop=FALSE]
+   n_try_ancil = nrow(try_ancil)
+
+   sma_problem   = try_trait$SMA   & (! ( try_trait$Type %in% "numeric") )
+   allom_problem = try_trait$Allom & (! ( try_trait$Type %in% "numeric") )
+   photo_problem = try_trait$Photo & (! ( try_trait$Type %in% "numeric") )
+   if (any(sma_problem) || any(allom_problem) || any(photo_problem)){
+      cat0(" The following traits are inconsistent. Options \"sma\", \"allom\" and \"photo\" are restricted to numeric traits.")
+      problem_trait = try_trait %>% 
+         mutate( Problem = ifelse( test = sma_problem
+                                 , yes  = "SMA"
+                                 , no   = ifelse( test = allom_problem
+                                                , yes  = "Allometry"
+                                                , no   = ifelse( test = photo_problem
+                                                               , yes  = "Photosynthesis"
+                                                               , no   = NA_character_   ) ) ) ) %>%
+         filter(! is.na(Problem)) %>%
+         select(Name,TraitID,Desc,Type,SMA,Allom,Problem)
+      cat(problem_trait)
+      cat0(" Fix settings in file ",trait_file,".")
+      stop(" Inconsistent trait settings.")
+   }#end if (any(sma_problem) || any(allom_problem))
+
+}#end if (is_dry_run)
+
+```
+
+
+The following chunk loads the list of genera to be always included in the analysis. If no list exists, the script will strictly follow the geographic information from the TRY data base.
+```{r, label='load-genera'}
+if ( is.na(taxon_include) ){
+   cat0(" + List of required genera not provided. Use default settings.")
+}else if ( file.exists(taxon_include) ){
+   cat0(" + Load list of genera to be included whenever possible.")
+   TaxonRef = read_csv(file=taxon_include,show_col_types=FALSE)
+}else{
+   stop(" + The reference list of species (",taxon_include,") was not found!")
+}
+
+```
+
+Either retrieve or load look-up table with units and additional information on the TRY data base. Normally this needs to be done only once, unless a new version of data request is being used.
+```{r,label='make-lookup',results='hide',message=FALSE}
+if (reload_lookup && file.exists(Rdata_LookUp)){
+   # Load data.
+   cat0(" + Reload look-up table from ",basename(Rdata_LookUp),".")
+   dummy = load(Rdata_LookUp)
+}else{
+   # Find the list of all files to read. 
+   try_file_list   = list.files(author_path,pattern="\\.csv$")
+
+   # Initialise the list of traits and ancillary variables.
+   cat0(" + Initialise look-up table of traits and ancillary variables.")
+   AncilAll = tibble( Name       = character(0L)
+                    , OrigValid  = numeric  (0L)
+                    , OrigUnits  = character(0L)
+                    , StdValid   = numeric  (0L)
+                    , StdUnits   = character(0L)
+                    )#end tibble
+   TraitAll = tibble( TraitID    = integer  (0L)
+                    , Name       = character(0L)
+                    , OrigValid  = numeric  (0L)
+                    , OrigUnits  = character(0L)
+                    , StdValid   = numeric  (0L)
+                    , StdUnits   = character(0L)
+                    )#end tibble
+
+   # Go through every file, and retrieve information.
+   for ( f in seq_along(try_file_list)){
+      try_base = try_file_list[f]
+      try_file = file.path(author_path,try_base)
+
+      # Load author file.
+      cat0("   - Read file ",try_base,".")
+      TRYdbNow = read_csv( file      = try_file
+                         , col_types = paste(rep("c",times=27),collapse="")
+                         )#end read_csv
+
+      # Identify which lines contain traits.
+      is_trait = ! is.na(TRYdbNow$TraitID)
+
+      # Summarise traits.
+      TraitNow = TRYdbNow                                         %>%
+         filter(! is.na(TraitID))                                 %>%
+         mutate( TraitID = as.integer(TraitID)
+               , Name    = TraitName
+               , OrigValid = is.valid(OrigValueStr,qq.rm=TRUE)
+               , OrigUnits = OrigUnitStr
+               , StdValid  = is.valid(StdValue    ,qq.rm=TRUE)
+               , StdUnits  = UnitName                          )  %>%
+         select(c(TraitID,Name,OrigValid,OrigUnits,StdValid,StdUnits))
+      TraitAll = rbind(TraitAll,TraitNow)
+
+      # Summarise ancillary data.
+      AncilNow = TRYdbNow                                        %>%
+         filter(is.na(TraitID))                                  %>%
+         mutate( Name       = DataName
+               , OrigValid  = is.valid(OrigValueStr,qq.rm=TRUE)
+               , OrigUnits  = OrigUnitStr
+               , StdValid   = is.valid(StdValue    ,qq.rm=TRUE)
+               , StdUnits   = UnitName                          ) %>%
+         select(c(Name,OrigValid,OrigUnits,StdValid,StdUnits))
+      AncilAll = rbind(AncilAll,AncilNow)
+   }#end for ( f in seq_along(try_file_list))
+
+   
+   
+   # Summarise look-up table for traits, using the ID.
+   cat0("   - Summarise trait look-up table.")
+   TraitLUT = TraitAll                                           %>%
+      group_by(TraitID)                                          %>%
+      summarise( CntUniqName  = length.unique(Name)
+               , CntName      = length(Name)
+               , CntOrigUnits = length.unique(OrigUnits)
+               , CntStdUnits  = length.unique(StdUnits)
+               , Name         = commonest(Name,na.rm=TRUE)
+               , OrigValid    = sum(OrigValid,na.rm=TRUE)
+               , OrigUnits    = commonest(OrigUnits,na.rm=TRUE)
+               , StdValid     = sum(StdValid,na.rm=TRUE)
+               , StdUnits     = commonest(StdUnits,na.rm=TRUE) ) %>%
+      ungroup() %>%
+      select(c(TraitID,Name,CntUniqName,CntName,OrigValid,OrigUnits,CntOrigUnits,StdValid,StdUnits,CntStdUnits))
+   
+   # Summarise ancillary data
+   cat0("   - Summarise ancillary look-up table.")
+   AncilLUT = AncilAll                                           %>%
+      mutate( AncilID = match(Name,sort(unique(Name))))          %>%
+      group_by(AncilID)                                          %>%
+      summarise( CntUniqName  = length.unique(Name)
+               , CntName      = length(Name)
+               , CntOrigUnits = length.unique(OrigUnits)
+               , CntStdUnits  = length.unique(StdUnits)
+               , Name         = commonest(Name,na.rm=TRUE)
+               , OrigValid    = sum(OrigValid,na.rm=TRUE)
+               , OrigUnits    = commonest(OrigUnits,na.rm=TRUE)
+               , StdValid     = sum(StdValid,na.rm=TRUE)
+               , StdUnits     = commonest(StdUnits,na.rm=TRUE)  ) %>%
+      ungroup()                                                   %>%
+      arrange(desc(CntName))                                      %>%
+      select(c(Name,CntUniqName,CntName,OrigValid,OrigUnits,CntOrigUnits,StdValid,StdUnits,CntStdUnits))
+
+   # Create list with all original units and standard units.
+   TraitOrigUnits = TraitAll                                                                 %>%
+      group_by(TraitID)                                                                      %>%
+      summarise( Name         = commonest(Name,na.rm=TRUE)
+               , CntOrigUnits = tabulate(factor(OrigUnits,levels=sort(unique(OrigUnits))))
+               , OrigUnits    = sort(unique(OrigUnits))                                    ) %>%
+      ungroup()                                                                              %>%
+      select(TraitID,Name,OrigUnits,CntOrigUnits)
+   TraitStdUnits = TraitAll                                                                  %>%
+      group_by(TraitID)                                                                      %>%
+      summarise( Name         = commonest(Name,na.rm=TRUE)
+               , CntStdUnits  = tabulate(factor(StdUnits,levels=sort(unique(StdUnits))))
+               , StdUnits     = sort(unique(StdUnits))                                     ) %>%
+      ungroup()                                                                              %>%
+      select(TraitID,Name,StdUnits,CntStdUnits)
+  AncilOrigUnits = AncilAll                                                                  %>%
+      mutate( AncilID = match(Name,sort(unique(Name))))                                      %>%
+      group_by(AncilID)                                                                      %>%
+      summarise( Name         = commonest(Name,na.rm=TRUE)
+               , CntOrigUnits = tabulate(factor(OrigUnits,levels=sort(unique(OrigUnits))))
+               , OrigUnits    = sort(unique(OrigUnits))                                    ) %>%
+      ungroup()                                                                              %>%
+      select(AncilID,Name,OrigUnits,CntOrigUnits)
+   AncilStdUnits = AncilAll                                                                  %>%
+      mutate( AncilID = match(Name,sort(unique(Name))))                                      %>%
+      group_by(AncilID)                                                                      %>%
+      summarise( Name         = commonest(Name,na.rm=TRUE)
+               , CntStdUnits  = tabulate(factor(StdUnits,levels=sort(unique(StdUnits))))
+               , StdUnits     = sort(unique(StdUnits))                                     ) %>%
+      ungroup()                                                                              %>%
+      select(AncilID,Name,StdUnits,CntStdUnits)
+
+   # Write CSV files
+   cat0("   - Write CSV files to ",lookup_path,".")
+   dummy = write_csv(x=TraitLUT      ,file=file.path(lookup_path,paste0("Trait_LUT_"      ,use_suffix,".csv")))
+   dummy = write_csv(x=TraitOrigUnits,file=file.path(lookup_path,paste0("Trait_OrigUnits_",use_suffix,".csv")))
+   dummy = write_csv(x=TraitStdUnits ,file=file.path(lookup_path,paste0("Trait_StdUnits_" ,use_suffix,".csv")))
+   dummy = write_csv(x=AncilLUT      ,file=file.path(lookup_path,paste0("Ancil_LUT_"      ,use_suffix,".csv")))
+   dummy = write_csv(x=AncilOrigUnits,file=file.path(lookup_path,paste0("Ancil_OrigUnits_",use_suffix,".csv")))
+   dummy = write_csv(x=AncilStdUnits ,file=file.path(lookup_path,paste0("Ancil_StdUnits_" ,use_suffix,".csv")))
+   
+   
+   # Save look-up tables
+   cat0("   - Save look-up tables to ",basename(Rdata_LookUp),".")
+   dummy = save( list              = c( "TraitLUT"      , "AncilLUT"
+                                      , "TraitOrigUnits", "TraitStdUnits"
+                                      , "AncilOrigUnits", "AncilStdUnits"
+                                      )#end c
+               , file              = Rdata_LookUp
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}#end if (reload_lookup && file.exists(Rdata_LookUp))
+```
+
+We now read in the TRY data base, and incorporate traits data to a tibble object, with one row for each observation.
+
+```{r,label='load-trydata',results='hide',message=FALSE}
+if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
+   # Load data.
+   cat0(" + Reload tidy TRY object from ",basename(Rdata_RawTRY),".")
+   dummy = load(Rdata_RawTRY)
+}else{
+   # Reload TRY_Fix_OrigValue_Str.r as this is often developed as variables are loaded (and crash).
+   source(file.path(util_path,"TRY_Fix_OrigValue_Str.r"),chdir=TRUE)
+   source(file.path(util_path,"rconstants.r"           ),chdir=TRUE)
+   source(file.path(util_path,"unitlist.r"             ),chdir=TRUE)
+
+   # Reset all unique files in case we should rewrite them
+   cat0(" + Reset unique trait inventory:")
+   uniq_trait_list = list.files(path=uniq_trait_path,full.names=TRUE)
+   for (uniq_trait_file in uniq_trait_list){
+      uniq_trait_base = basename(uniq_trait_file)
+      cat0("   - Delete file: ",uniq_trait_base,".")
+      dummy = file.remove(uniq_trait_file)
+   }#end for (uniq_trait_file in uniq_trait_list)
+   
+   # Find the list of all files to read. 
+   try_file_list   = list.files(author_path,pattern="\\.csv$")
+   n_try_file_list = length(try_file_list)
+   loop_list       = seq(from=1L,to=n_try_file_list,by=1)
+
+   # Initialise the tidy TRY object.
+   cat0(" + Initialise the tidy TRY object containing traits and ancillary variables.")
+   TidyTRY = tibble( ObservationID  = integer(0L)
+                   , ScientificName = character(0L)
+                   , Genus          = character(0L)
+                   , Family         = character(0L)
+                   , Order          = character(0L)
+                   , Class          = character(0L)
+                   , Phylum         = character(0L)
+                   )#end tibble
+   # Add ancillary variables
+   for (a in sequence(n_try_ancil)){
+      a_name            = try_ancil$Name      [a]
+      a_type            = try_ancil$Type      [a]
+      a_supporting      = try_ancil$Supporting[a]
+
+      # Only variables that are not supporting are added.
+      if (is.na(a_supporting)){
+         TidyTRY[[a_name]] = switch( EXPR      = a_type
+                                   , integer   = integer(0L)
+                                   , numeric   = numeric(0L)
+                                   , character = character(0L)
+                                   , logical   = logical(0L)
+                                   , date      = as_date(character(0L))
+                                   , character(0L)
+                                   )#end switch
+      }#end if (is.na(a_supporting))
+   }#end for (a in sequence(n_try_ancil))
+   # Add traits
+   for (z in sequence(n_try_trait)){
+      z_name            = try_trait$Name      [z]
+      z_type            = try_trait$Type      [z]
+      z_supporting      = try_trait$Supporting[z]
+
+      # Check whether to add variable (i.e., not a supporting variable)
+      if (is.na(z_supporting)){
+         z_add_list = z_name
+      }else{
+         z_add_list = strsplit(x=z_supporting,split=";")[[1]]
+      }#end if (is.na(z_supporting))
+
+      # Only variables that are not supporting are added.
+      for (z_add in z_add_list){
+         TidyTRY[[z_add]] = switch( EXPR      = z_type
+                                  , integer   = integer(0L)
+                                  , numeric   = numeric(0L)
+                                  , character = character(0L)
+                                  , logical   = logical(0L)
+                                  , date      = as_date(character(0L))
+                                  , character(0L)
+                                  )#end switch
+      }#end for (z_add in z_addtrait)
+   }#end for (a in sequence(n_try_ancil))
+
+   # Append notes and author
+   TidyTRY$Notes  = character(0L)
+   TidyTRY$Author = character(0L)
+   
+   # Copy the empty tibble to a Template
+   CntTidyTRY = nrow(TidyTRY)
+
+   # Go through every file, and retrieve information.
+  cat0(" + Read the trait data base.")
+  for ( f in loop_list){
+      try_base = try_file_list[f]
+      try_file = file.path(author_path,try_base)
+
+      # Load author file.
+      cat0("   - ",sprintf("%4.4i of %4.4i",f,n_try_file_list),": Read file ",try_base,".")
+      trydb_now = read_csv( file      = try_file
+                          , col_types = paste(rep("c",times=27),collapse="")
+                          )#end read_csv
+
+      # Remove invalid characters
+      trydb_now = trydb_now %>%
+         mutate_all(~ iconv(.x,to=UTF8_System,sub="byte"))
+      
+      # Find every observation that will be entered.
+      ObsUnique = sort(unique(trydb_now$ObservationID))
+      ObsAppend = ObsUnique[! (ObsUnique %in% TidyTRY$ObservationID)]
+      CntObsAppend = length(ObsAppend)
+      if (CntObsAppend > 0){
+         # Update number of lines in TidyTRY
+         OldCntTidyTRY = CntTidyTRY
+         CntTidyTRY    = OldCntTidyTRY + CntObsAppend
+         NewTidyLines  = seq(from=OldCntTidyTRY+1,to=CntTidyTRY)
+         
+         # Append as many rows as needed for the new observations
+         TidyTRY = TidyTRY %>%
+            add_row( !! names(.)[1] := rep(NA,times=CntObsAppend)
+                   , .after          = nrow(TidyTRY) )
+
+         # Assign the observation names for the new lines, and make Notes blank by default.
+         TidyTRY$ObservationID[NewTidyLines] = as.integer(ObsAppend)
+         TidyTRY$Notes        [NewTidyLines] = ""
+      }#end if (CntObsAppend > 0)
+
+      
+      # Find out which lines have traits and which lines have ancillary information
+      IsTrait       = trydb_now$TraitID %in% try_trait$TraitID
+      WhichTrait    = unique(trydb_now$TraitID[IsTrait])
+      CntWhichTrait = length(WhichTrait)
+
+      # Append trait variables in case they are not in the data base.
+      for (w in sequence(CntWhichTrait)){
+         TraitIDNow = WhichTrait[w]
+         z          = match(TraitIDNow,try_trait$TraitID)
+
+         # This should not happen...
+         if (! is.finite(z)) stop(paste0(" Unrecognised Trait ID: ",TraitIDNow,"."))
+
+         # Handy aliases
+         NameNow       = try_trait$Name      [z]
+         DescNow       = try_trait$Desc      [z]
+         UseStdUnitNow = try_trait$UseStdUnit[z]
+         TypeNow       = try_trait$Type      [z]
+         AddNow        = eval(parse(text=try_trait$Add  [z]))
+         MultNow       = eval(parse(text=try_trait$Mult [z]))
+         PowerNow      = eval(parse(text=try_trait$Power[z]))
+         UnitNow       = try_trait$Unit      [z]
+         SupportingNow = try_trait$Supporting[z]
+         XylemNow      = as.integer(TraitIDNow) %in% c(719L)
+         #cat0("     ~ Add trait: ",DescNow," (",NameNow,").")
+
+         # Check whether to generate list of unique traits
+         if (gen_unique_trait){
+            uniq_trait_file = file.path( uniq_trait_path
+                                       , paste0(sprintf("%4.4i",as.integer(TraitIDNow)),"_"
+                                               ,NameNow,"_UniqueValues_",use_suffix,".csv"
+                                               )#end paste0
+                                       )#end file.path
+         }else{
+            uniq_trait_file = NULL
+         }#end if (gen_unique_trait)
+
+         
+         # Append values and units
+         sel = trydb_now$TraitID %in% TraitIDNow
+         idx = match(trydb_now$ObservationID[sel],TidyTRY$ObservationID)
+
+         # Separate the names of supporting variables
+         if (is.na(SupportingNow)){
+            OutputName = NameNow
+         }else{
+            OutputName = strsplit(x=SupportingNow,split=";")[[1]]
+         }#end if (is.na(SupportingNow))
+         
+
+         # Decide which column to use for this trait (Standard or Original)
+         if (UseStdUnitNow){
+            # Use standard value, and change type.
+            TraitOrig  = trydb_now$StdValue [sel]
+            UnitOrig   = trydb_now$UnitName [sel]
+            NameOrig   = trydb_now$OriglName[sel]
+            AuthorName = paste(trydb_now$FirstName[sel],trydb_now$LastName[sel])
+            TraitValue = TraitOrig
+            TraitValid = ! is.na(TraitValue)
+            TraitVName = ifelse(test=TraitValid,yes=OutputName,no=NA_character_)
+         }else{
+            # Use original value, and change type.
+            TraitOrig  = trydb_now$OrigValueStr[sel]
+            UnitOrig   = trydb_now$OrigUnitStr [sel]
+            NameOrig   = trydb_now$OriglName   [sel]
+            AuthorName = paste(trydb_now$FirstName[sel],trydb_now$LastName[sel])
+
+            # Apply some edits to ensure as much data as possible can be retrieved
+            TraitFixed = TRY_FixTrait_OrigValue_Str( TraitID    = as.integer(TraitIDNow)
+                                                   , Type       = TypeNow
+                                                   , TraitOrig  = TraitOrig
+                                                   , UnitOrig   = UnitOrig
+                                                   , NameOrig   = NameOrig
+                                                   , AuthorName = AuthorName
+                                                   , UniqOutput = uniq_trait_file
+                                                   , OutputName = OutputName 
+                                                   )#end TRY_FixTrait_OrigValue_Str
+
+            # The function retrieves both the value and the expected validity. Keep both
+            TraitValue = TraitFixed$Value
+            TraitValid = TraitFixed$Valid
+            TraitVName = TraitFixed$VName
+         }#end if (UseStdUnitNow)
+
+         # Change variable type. In case the variable is numeric, apply variable transformation too.
+         if (TypeNow %in% "date"){
+            TraitValue = as_date(TraitValue)
+         }else if (TypeNow %in% "numeric"){
+            TraitValue = AddNow + MultNow * as(TraitValue,TypeNow) ^ PowerNow
+         }else{
+            TraitValue = as(TraitValue,TypeNow)
+         }#end if (TypeNow %in% "date")
+
+
+         # Sanity check: stop and report any unexpected behaviour.
+         TraitMess   = is.na(TraitValue) & (TraitValid)
+         MessMessage = paste0("(TID = ",trydb_now$TraitID[sel],"; OrigValue = ",TraitOrig,")")
+
+         # Append trait values unless some unexpected exception occurred.
+         if (any(TraitMess)){
+            cat0(" ")
+            cat0("--------------")
+            cat0(" FATAL ERROR! ")
+            cat0("--------------")
+            cat0(" Trait: ",DescNow,".")
+            cat0(" Variable name: ",NameNow,".")
+            cat0(" TraitID: ",TraitIDNow,".")
+            cat0(" Unexpected exception occurred. Type \"print(Trouble)\" for error.")
+            Trouble = tibble( Line       = which(sel)[TraitMess]
+                            , TraitOrig  = TraitOrig [TraitMess]
+                            , UnitOrig   = UnitOrig  [TraitMess]
+                            , NameOrig   = NameOrig  [TraitMess]
+                            , TraitValue = TraitValue[TraitMess]
+                            , StdValue   = (trydb_now$StdValue[sel])[TraitMess]
+                            )#end tibble
+            stop("Error loading trait data!")
+         }else{
+            # Trait data are fine.  We update the variable only if the trait variable
+            # is still NA, and if the filling variable has information (we do this to
+            # because many lines of the code may be associated with the same trait ID
+            # and observation ID, but often only one has meaningful information).
+            for (OutputNameNow in OutputName){
+               fill = is.na(TidyTRY[[OutputNameNow]][idx]) & (TraitVName %in% OutputNameNow)
+               idx_fill                           = idx[fill]
+               TidyTRY[[OutputNameNow]][idx_fill] = TraitValue[fill]
+               
+            }#end for (OutputNameNow in OutputName)
+         }#end if (any(TraitMess))
+
+
+         
+         # Append scientific name and author (in case the information hasn't been already added).
+         TidyTRY$ScientificName[idx] = ifelse( test = is.na(TidyTRY$ScientificName[idx])
+                                                    & (! is.na(trydb_now$AccSpeciesName[sel]))
+                                             , yes  = trydb_now$AccSpeciesName[sel]
+                                             , no   = TidyTRY$ScientificName[idx]
+                                             )#end ifelse
+ 
+         TidyTRY$Author        [idx] = ifelse( test = is.na(TidyTRY$Author[idx]) & (! is.na(AuthorName))
+                                             , yes  = AuthorName
+                                             , no   = TidyTRY$Author[idx]
+                                             )#end ifelse
+      }#end for (z in sequence(CntWhichTrait))
+   }#end for ( f in seq_along(try_file_list))
+
+   # Save look-up tables
+   cat0("   - Save raw TRY trait data base to ",basename(Rdata_RawTRY))
+   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                      , "harmonise_geotaxa","harmonise_traits")
+               , file              = Rdata_RawTRY
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}# if (reload_TidyTRY && file.exists(rdata_TidyTRY))
+```
+
+
+In this block we incorporate ancillary data to the data base.
+
+```{r,label='load-ancilata',results='hide',message=FALSE}
+if (load_ancil){
+   # Reload TRY_Fix_OrigValue_Str.r as this is often developed as variables are loaded (and crash).
+   source(file.path(util_path,"TRY_Fix_OrigValue_Str.r"),chdir=TRUE)
+   source(file.path(util_path,"rconstants.r"           ),chdir=TRUE)
+   source(file.path(util_path,"unitlist.r"             ),chdir=TRUE)
+
+   # Reset all unique files in case we should rewrite them
+   cat0(" + Reset unique ancillary inventory:")
+   uniq_ancil_list = list.files(path=uniq_ancil_path,full.names=TRUE)
+   for (uniq_ancil_file in uniq_ancil_list){
+      uniq_ancil_base = basename(uniq_ancil_file)
+      cat0("   - Delete file: ",uniq_ancil_base,".")
+      dummy = file.remove(uniq_ancil_file)
+   }#end for (uniq_trait_file in uniq_trait_list)
+   
+   
+   # Find the list of all files to read. 
+   try_file_list   = list.files(author_path,pattern="\\.csv$")
+   n_try_file_list = length(try_file_list)
+   loop_list       = seq(from=1L,to=n_try_file_list,by=1)
+
+   
+   # Copy the empty tibble to a Template
+   CntTidyTRY = nrow(TidyTRY)
+
+   
+   # Go through every file, and retrieve information.
+  cat0(" + Read the ancillary data base.")
+  for ( f in loop_list){
+      try_base = try_file_list[f]
+      try_file = file.path(author_path,try_base)
+
+      # Load author file.
+      cat0("   - ",sprintf("%4.4i of %4.4i",f,n_try_file_list),": Read file ",try_base,".")
+      trydb_now = read_csv( file      = try_file
+                          , col_types = paste(rep("c",times=27),collapse="")
+                          )#end read_csv
+      # Remove invalid characters
+      trydb_now = trydb_now %>%
+         mutate_all(~ iconv(.x,to=UTF8_System,sub="byte"))
+
+      # Create column with author name, which may be useful for fixing ancillary data.
+      trydb_now$AuthorName = paste(trydb_now$FirstName,trydb_now$LastName)
+      
+      # Find every observation that will be entered.
+      ObsUnique = sort(unique(trydb_now$ObservationID))
+      ObsAppend = ObsUnique[! (ObsUnique %in% TidyTRY$ObservationID)]
+      CntObsAppend = length(ObsAppend)
+      if (CntObsAppend > 0){
+         # Update number of lines in TidyTRY
+         OldCntTidyTRY = CntTidyTRY
+         CntTidyTRY    = OldCntTidyTRY + CntObsAppend
+         NewTidyLines  = seq(from=OldCntTidyTRY+1,to=CntTidyTRY)
+         
+         # Append as many rows as needed for the new observations
+         TidyTRY = TidyTRY %>%
+            add_row( !! names(.)[1] := rep(NA,times=CntObsAppend)
+                   , .after          = nrow(TidyTRY) )
+
+         # Assign the observation names for the new lines, and make Notes and Authors
+         # blank by default.
+         TidyTRY$ObservationID[NewTidyLines] = as.integer(ObsAppend)
+         TidyTRY$Notes        [NewTidyLines] = ""
+         TidyTRY$Author       [NewTidyLines] = ""
+      }#end if (CntObsAppend > 0)
+
+
+      # Find out which lines have traits and which lines have ancillary information
+      IsAncil       = is.na(trydb_now$TraitID) & (trydb_now$DataName %in% try_ancil$TRYName)
+      WhichAncil    = unique(trydb_now$DataName[IsAncil])
+      CntWhichAncil = length(WhichAncil)
+
+      # Append trait variables in case they are not in the data base.
+      for (w in sequence(CntWhichAncil)){
+         AncilNameNow = WhichAncil[w]
+         z            = match(AncilNameNow,try_ancil$TRYName)
+
+
+         # This should not happen...
+         if (! is.finite(z)) stop(paste0(" Unrecognised Ancillary Data Set: ",AncilNameNow,"."))
+
+         # Handy aliases
+         NameNow       = try_ancil$Name      [z]
+         DescNow       = try_ancil$Desc      [z]
+         UseStdUnitNow = try_ancil$UseStdUnit[z]
+         TypeNow       = try_ancil$Type      [z]
+         AddNow        = eval(parse(text=try_ancil$Add  [z]))
+         MultNow       = eval(parse(text=try_ancil$Mult [z]))
+         PowerNow      = eval(parse(text=try_ancil$Power[z]))
+         UnitNow       = try_ancil$Unit      [z]
+         SupportingNow = try_ancil$Supporting[z]
+         # cat0("     ~ Add ancillary data: ",DescNow," (",NameNow,").")
+
+         # Check whether to generate list of unique traits
+         if (gen_unique_trait){
+            uniq_ancil_file = file.path( uniq_ancil_path
+                                       , paste0( sprintf("%4.4i",z),"_"
+                                               , NameNow,"_UniqueValues_",use_suffix,".csv"
+                                               )#end paste0
+                                       )#end file.path
+         }else{
+            uniq_ancil_file = NULL
+         }#end if (gen_unique_trait)
+
+         # Append values and units
+         sel = is.na(trydb_now$TraitID) & (trydb_now$DataName %in% AncilNameNow)
+         idx = match(trydb_now$ObservationID[sel],TidyTRY$ObservationID)
+         
+         # Set the output name
+         if (is.na(SupportingNow)){
+            OutputName = NameNow
+         }else{
+            OutputName = SupportingNow
+         }#end if (is.na(SupportingNow))
+
+         # Decide which column to use for this trait (Standard or Original)
+         if (UseStdUnitNow){
+            # Use standard value, and change type.
+            AncilOrig   = trydb_now$StdValue  [sel]
+            UnitOrig    = trydb_now$UnitName  [sel]
+            NameOrig    = trydb_now$OriglName [sel]
+            AncilAuthor = trydb_now$AuthorName[sel]
+            AncilValue  = AncilOrig
+            AncilValid  = ! is.na(AncilValue)
+            AncilVName  = ifelse(test=AncilValid,yes=OutputName,no=NA_character_)
+         }else{
+            # Use original value, and change type.
+            AncilOrig   = trydb_now$OrigValueStr[sel]
+            UnitOrig    = trydb_now$OrigUnitStr [sel]
+            NameOrig    = trydb_now$OriglName [sel]
+            AncilAuthor = trydb_now$AuthorName  [sel]
+
+            # Apply some edits to ensure as much data as possible can be retrieved
+            AncilFixed = TRY_FixAncil_OrigValue_Str( AncilName  = AncilNameNow
+                                                   , Type       = TypeNow
+                                                   , AncilOrig  = AncilOrig
+                                                   , UnitOrig   = UnitOrig
+                                                   , NameOrig   = NameOrig
+                                                   , AuthorName = AncilAuthor
+                                                   , UniqOutput = uniq_ancil_file
+                                                   , OutputName = OutputName
+                                                   )#end TRY_FixTrait_OrigValue_Str
+
+            # The function retrieves both the value and the expected validity. Keep both
+            AncilValue  = AncilFixed$Value
+            AncilValid  = AncilFixed$Valid
+            AncilVName  = AncilFixed$VName
+         }#end if (UseStdUnitNow)
+
+         # Change variable type. In case the variable is numeric, apply variable transformation too.
+         if (TypeNow %in% "date"){
+            AncilValue = as_date(AncilValue)
+         }else if (TypeNow %in% "numeric"){
+            AncilValue = AddNow + MultNow * as(AncilValue,TypeNow) ^ PowerNow
+         }else{
+            AncilValue = as(AncilValue,TypeNow)
+         }#end if (TypeNow %in% "date")
+
+         
+         # Sanity check: stop and report any unexpected behaviour.
+         AncilMess   = is.na(AncilValue) & (AncilValid)
+         MessMessage = paste0("(Ancillary = ",trydb_now$DataName[sel],"; OrigValue = ",AncilOrig,")")
+
+         # Append trait values unless some unexpected exception occurred.
+         if (any(AncilMess)){
+            cat0(" ")
+            cat0("--------------")
+            cat0(" FATAL ERROR! ")
+            cat0("--------------")
+            cat0(" Ancillary data: ",DescNow     ,".")
+            cat0(" Variable name: " ,NameNow     ,".")
+            cat0(" TRY Name: "      ,AncilNameNow,".")
+            cat0(" Author Name: "   ,unique(AncilAuthor),".")
+            cat0(" Unexpected exception occurred. Type \"print(Trouble)\" for error.")
+            Trouble = tibble( Line       = which(sel)[AncilMess]
+                            , AncilOrig  = AncilOrig [AncilMess]
+                            , UnitOrig   = UnitOrig  [AncilMess]
+                            , NameOrig   = NameOrig  [AncilMess]
+                            , AncilValue = AncilValue[AncilMess]
+                            , StdValue   = (trydb_now$StdValue[sel])[AncilMess]
+                            )#end tibble
+            stop("Error loading trait data!")
+         }else{
+            # Ancillary data are fine.  We update the variable only if the ancillary variable
+            # is still NA, and only if the filling variable has information (we do this to
+            # because many lines of the code may be associated with the same ancillary variable
+            # and observation ID, but often only one has meaningful information).
+            for (OutputNameNow in OutputName){
+               fill     = is.na(TidyTRY[[OutputNameNow]][idx]) & (AncilVName %in% OutputNameNow)
+               idx_fill = idx[fill]
+               TidyTRY[[OutputNameNow]][idx_fill] = AncilValue[fill]
+            }#end for (OutputNameNow in OutputName)
+        }#end if (any(AncilMess))
+
+         
+                  
+
+         # Some ancillary data have information that is useful for filling in traits.
+         # Check for those.
+         AncilTraitID    = AncilFixed$TraitID
+         AncilTrait      = AncilFixed$Trait
+         WhichTrait      = sort(unique(AncilTraitID[AncilTraitID %in% try_trait$TraitID]))
+         CntWhichTrait = length(WhichTrait)
+
+         # Append trait variables in case they are not in the data base.
+         for (w in sequence(CntWhichTrait)){
+            TraitIDNow = WhichTrait[w]
+            z          = match(TraitIDNow,try_trait$TraitID)
+
+            # This should not happen...
+            if (! is.finite(z)) stop(paste0(" Unrecognised Trait ID: ",TraitIDNow,"."))
+
+            # Handy aliases
+            NameNow       = try_trait$Name      [z]
+            DescNow       = try_trait$Desc      [z]
+            UseStdUnitNow = try_trait$UseStdUnit[z]
+            TypeNow       = try_trait$Type      [z]
+            AddNow        = eval(parse(text=try_trait$Add  [z]))
+            MultNow       = eval(parse(text=try_trait$Mult [z]))
+            PowerNow      = eval(parse(text=try_trait$Power[z]))
+            UnitNow       = try_trait$Unit      [z]
+            SupportingNow = try_trait$Supporting[z]
+            cat0("     ~ Update trait: ",DescNow," (",NameNow,").")
+
+            # Check whether to generate list of unique traits
+
+         
+            # Select data that should be updated.
+            TraitValue = ifelse( test = AncilTraitID %in% TraitIDNow
+                               , yes  = AncilTrait
+                               , no   = NA_character_
+                               )#end ifelse
+
+            # Change variable type. In case the variable is numeric, apply variable transformation too.
+            if (TypeNow %in% "date"){
+               TraitValue = as_date(TraitValue)
+            }else if (TypeNow %in% "numeric"){
+               TraitValue = AddNow + MultNow * as(TraitValue,TypeNow) ^ PowerNow
+            }else{
+               TraitValue = as(TraitValue,TypeNow)
+            }#end if (TypeNow %in% "date")
+
+            # Update values that are not missing values.
+            TidyTRY[[NameNow]][idx] = ifelse( test = is.na(TraitValue)
+                                            , yes  = TidyTRY[[NameNow]][idx]
+                                            , no   = TraitValue
+                                            )#end ifelse
+         }#end for (w in sequence(CntWhichTrait)){
+
+         
+         # Append scientific name and author (in case the information hasn't been already added).
+         TidyTRY$ScientificName[idx] = ifelse( test = is.na(TidyTRY$ScientificName[idx])
+                                                    & (! is.na(trydb_now$AccSpeciesName[sel]))
+                                             , yes  = trydb_now$AccSpeciesName[sel]
+                                             , no   = TidyTRY$ScientificName[idx]
+                                             )#end ifelse
+         TidyTRY$Author        [idx] = ifelse( test = is.na(TidyTRY$Author[idx]) & (! is.na(AncilAuthor))
+                                             , yes  = AncilAuthor
+                                             , no   = TidyTRY$Author[idx]
+                                             )#end ifelse
+      }#end for (z in sequence(CntWhichTrait))
+   }#end for ( f in seq_along(try_file_list))
+
+   # Update step so we can skip loading ancillary data again
+   load_ancil = FALSE
+   
+   # Reorder variable names for clarity
+   first_names = c("ObservationID","ScientificName","Genus","Family","Order","Class","Phylum","Author")
+   other_names = names(TidyTRY)[! names(TidyTRY) %in% first_names]
+   order_names = c(first_names,other_names)
+   TidyTRY     = TidyTRY %>% select_at(vars(order_names))
+   # Save look-up tables
+   cat0("   - Save raw TRY data base with ancillary information to ",basename(Rdata_RawTRY))
+   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                      , "harmonise_geotaxa","harmonise_traits")
+               , file              = Rdata_RawTRY
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}else{
+   cat0(" + Ancillary data have been already loaded.")  
+}# if (load_ancil)
+```
+
+
+Here we append trait data from other data sets (but mind that the traits must be standardised beforehand).
+
+
+```{r,label='load-extra-data',results='hide',message=FALSE}
+if (file.exists(Rdata_ExtraTRY)){
+   # Load data.
+   cat0(" + Reload tidy TRY with extra data from ",basename(Rdata_ExtraTRY),".")
+   dummy = load(Rdata_ExtraTRY)
+}else{
+   # Reload TRY_Fix_OrigValue_Str.r as this is often developed as variables are loaded (and crash).
+   source(file.path(util_path,"TRY_Fix_OrigValue_Str.r"),chdir=TRUE)
+   source(file.path(util_path,"rconstants.r"           ),chdir=TRUE)
+   source(file.path(util_path,"unitlist.r"             ),chdir=TRUE)
+
+   # Reset all unique files in case we should rewrite them
+   CntExtra = length(extra_file_list)
+   for (e in sequence(CntExtra)){
+      ExtraFile = extra_file_list[e]
+      cat0(" + Load extra data sets from file ",ExtraFile,".")
+
+      # Ugly temporary solution, to make sure every column is set to character
+      HeadNow   = read_csv(file=ExtraFile, n_max = 1)
+      ColTypes  = paste(rep("c",ncol(HeadNow)),collapse="")
+      ExtraNow  = read_csv(file=ExtraFile,col_types=ColTypes,na=c("","NA"))
+
+      # Extract column names. For now this is hard coded but xylem vulnerability curve
+      # at different conductivity losses is provided as a single trait ID in TRY. Suggestions
+      # on how to make this more generalisable are welcome.
+      ColNames  = names(ExtraNow)
+      SubNames  = gsub(pattern="xylem_p[0-9][0-9]",replacement="xylem_pxx",ColNames)
+
+      # Identify columns that are traits then apply variable transformation if needed
+      IsTrait        = which(SubNames %in% try_trait$Name)
+      WhichColumn    = ColNames[IsTrait]
+      WhichTrait     = SubNames[IsTrait]
+      CntTraitAppend = length(IsTrait)
+      for (w in sequence(CntTraitAppend)){
+         ColumnNow = WhichColumn[w]
+         TraitNow  = WhichTrait [w]
+         z         = match(TraitNow,try_trait$Name)
+
+         # Handy aliases
+         NameNow       = try_trait$Name      [z]
+         DescNow       = try_trait$Desc      [z]
+         TypeNow       = try_trait$Type      [z]
+         # cat0("     ~ Add trait: ",DescNow," (",NameNow,").")
+
+         # Change variable type. In case the variable is numeric, apply variable transformation too.
+         if (TypeNow %in% "date"){
+            ExtraNow[[ColumnNow]] = as_date(ExtraNow[[ColumnNow]])
+         }else{
+            ExtraNow[[ColumnNow]] = as(ExtraNow[[ColumnNow]],TypeNow)
+         }#end if (TypeNow %in% "date")
+      }#end for (it in sequence(CntTraitAppend))
+
+   
+      # Identify columns that are ancillary variables then apply variable transformation if needed
+      IsAncil        = which(SubNames %in% try_ancil$Name)
+      WhichColumn    = ColNames[IsAncil]
+      WhichAncil     = SubNames[IsAncil]
+      CntAncilAppend = length(IsAncil)
+      for (w in sequence(CntAncilAppend)){
+         ColumnNow = WhichColumn[w]
+         AncilNow  = WhichAncil [w]
+         z         = match(AncilNow,try_ancil$Name)
+
+         # Handy aliases
+         NameNow       = try_ancil$Name      [z]
+         DescNow       = try_ancil$Desc      [z]
+         TypeNow       = try_ancil$Type      [z]
+         # cat0("     ~ Add ancillary variable: ",DescNow," (",NameNow,").")
+
+         # Change variable type. In case the variable is numeric, apply variable transformation too.
+         if (TypeNow %in% "date"){
+            ExtraNow[[ColumnNow]] = as_date(ExtraNow[[ColumnNow]])
+         }else{
+            ExtraNow[[ColumnNow]] = as(ExtraNow[[ColumnNow]],TypeNow)
+         }#end if (TypeNow %in% "date")
+      }#end for (it in sequence(CntTraitAppend))
+
+      # Create unique observation ID for the extra file, and bind append it to the main structure.
+      KeepNames = ColNames[ColNames %in% names(TidyTRY)]
+      ExtraNow  = ExtraNow %>% select_at(vars(KeepNames))
+      ExtraNow  = ExtraNow %>%
+         mutate( ObservationID = max(TidyTRY$ObservationID)+sequence(nrow(ExtraNow)))
+      TidyTRY   = bind_rows(TidyTRY,ExtraNow)
+
+   }#end for (e in sequence(CntExtra))
+
+   # Update step so we can skip loading extra data again
+   load_extra = FALSE
+   # Save look-up tables
+   cat0("   - Save tidy TRY data base to ",basename(Rdata_ExtraTRY))
+   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                      , "harmonise_geotaxa","harmonise_traits")
+               , file              = Rdata_ExtraTRY
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}# if (file.exists(Rdata_ExtraTRY))
+```
+
+
+Now we run additional trait harmonisation. Specifically, we standardise scientific names (always use the accepted name), make sure countries/continents are consistent with coordinates, and fix taxonomy to the best extent possible.
+```{r, label='harmonise-geo-taxa',results='hide',message=FALSE}
+if (file.exists(Rdata_GeoTaxonTRY)){
+   # Load data.
+   cat0(" + Reload TRY with harmonised geography and taxonomy from ",basename(Rdata_GeoTaxonTRY),".")
+   dummy = load(Rdata_GeoTaxonTRY)
+}else{
+   cat0(" + Harmonise geographic and taxonomic information.")
+
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,"TRY_Harmonise_Utils.r"),chdir=TRUE)
+   source(file.path(util_path,"rconstants.r"         ),chdir=TRUE)
+   source(file.path(util_path,"unitlist.r"           ),chdir=TRUE)
+   
+   # Harmonise geographic coordinates
+   IsGeoCoord = all(c("Longitude","Latitude") %in% try_ancil$TRYName)
+   if (IsGeoCoord){
+      cat0("   - Harmonise geographic coordinates")
+      Lon            = try_ancil$Name[try_ancil$TRYName %in% "Longitude"]
+      Lat            = try_ancil$Name[try_ancil$TRYName %in% "Latitude" ]
+      TidyTRY[[Lon]] = ifelse(test=TidyTRY[[Lon]] %wr% c(-180.,360.),yes=TidyTRY[[Lon]],no=NA_real_)
+      TidyTRY[[Lat]] = ifelse(test=TidyTRY[[Lat]] %wr% c( -90., 90.),yes=TidyTRY[[Lat]],no=NA_real_)
+      # Make sure longitude is defined between -180 and +180 (not 0-360)
+      TidyTRY[[Lon]] = ((TidyTRY[[Lon]]+180.) %% 360.) - 180.
+   }#end if (all(c("Longitude","Latitude") %in% try_ancil$TRYName))
+
+   
+   # Harmonise countries and continents.
+   IsLocation = all(c("Location Country","Location Continent") %in% try_ancil$TRYName)
+   if (IsGeoCoord & IsLocation){
+      cat0("   - Harmonise country and continent information.")
+
+      # Select variables for coordinates and location.
+      Lon       = try_ancil$Name[try_ancil$TRYName %in% "Longitude"]
+      Lat       = try_ancil$Name[try_ancil$TRYName %in% "Latitude" ]
+      Country   = try_ancil$Name[try_ancil$TRYName %in% "Location Country"        ]
+      Continent = try_ancil$Name[try_ancil$TRYName %in% "Location Continent"      ]
+
+      sel     = is.finite(TidyTRY[[Lon]]) & is.finite(TidyTRY[[Lat]])
+      GeoHarm = TRY_LonLatToGeoInfo( lon = TidyTRY[[Lon]][sel], lat = TidyTRY[[Lat]][sel])
+      TidyTRY[[Country  ]][sel] = GeoHarm$Country
+      TidyTRY[[Continent]][sel] = GeoHarm$Continent
+   }#end if (IsGeoCoord & IsLocation)
+
+   # Harmonise scientific names.
+   cat0("   - Harmonise taxonomy.")
+
+   # Make sure taxize is set to silent.
+   dummy = taxize_options(taxon_state_messages=TRUE,quiet=TRUE)
+
+   # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
+   IsClimate = any(try_trait$TraitID %in% 825L)
+   if (IsGeoCoord & IsClimate){
+      cat0("   - Harmonise climate information.")
+
+      # Select climate variable.
+      Climate = try_trait$Name[try_trait$TraitID %in% 825L]
+      Lon     = try_ancil$Name[try_ancil$TRYName %in% "Longitude"]
+      Lat     = try_ancil$Name[try_ancil$TRYName %in% "Latitude" ]
+      
+      # Read the climate data base
+      KoppenID = raster::raster(koppen_raster)
+      KoppenFun = function(x,koppen_class) ifelse(x %in% koppen_class,x,NA_integer_)
+      KoppenID = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
+
+      # Find observations with geolocation
+      GeoIndex  = is.finite(TidyTRY[[Lon]]) & is.finite(TidyTRY[[Lat]])
+      TRYPoints = TidyTRY %>% select_at(vars(c(Lon,Lat))) %>% filter(GeoIndex)
+      names(TRYPoints) = c("x","y")
+      coordinates(TRYPoints) = ~ x + y
+      proj4string(TRYPoints) = "+init=epsg:4326"
+      TRYPoints = spTransform(TRYPoints,CRSobj = proj4string(KoppenID))
+
+      # Extract data from raster
+      KoppenTRY  = raster::extract(KoppenID,TRYPoints)
+      KoppenTRY  = ifelse( test = KoppenTRY %in% koppen_class
+                         , yes  = names(koppen_class)[KoppenTRY]
+                         , no   = NA_character_
+                         )#end ifelse
+
+      # Update climate classification
+      TidyTRY[[Climate]][GeoIndex] = KoppenTRY
+   }#end if (any(try_trait$TraitID %in% 825L))
+
+
+   # Keep only the tropical measurements before we attempt to harmonise the names.
+   if (use_realm %in% "NeoTropical"){
+      cat0("   - Subset tropical observations in the NeoTropics.")
+      # Create a shorter TRY data base with standard names
+      Lon        = try_ancil$Name[try_ancil$TRYName %in% "Longitude"                           ]
+      Lat        = try_ancil$Name[try_ancil$TRYName %in% "Latitude"                            ]
+      Site       = try_ancil$Name[try_ancil$TRYName %in% "Location / Site Name"                ]
+      Country    = try_ancil$Name[try_ancil$TRYName %in% "Location Country"                    ]
+      Continent  = try_ancil$Name[try_ancil$TRYName %in% "Location Continent"                  ]
+      Climate    = try_trait$Name[try_trait$TraitID %in% 825L                                  ]
+      ClimatePFT = try_ancil$Name[try_ancil$TRYName %in% "Climate_PFT_Biome equivalent_Poulter"]
+      Biome      = try_ancil$Name[try_ancil$TRYName %in% "Vegetation type / Biome"             ]
+      Empty      = rep(NA,times=nrow(TidyTRY))
+
+      SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
+                        , lat         = if(length(Lat       ) == 0L){Empty}else{TidyTRY[[Lat       ]]}
+                        , site        = if(length(Site      ) == 0L){Empty}else{TidyTRY[[Site      ]]}
+                        , country     = if(length(Country   ) == 0L){Empty}else{TidyTRY[[Country   ]]}
+                        , continent   = if(length(Continent ) == 0L){Empty}else{TidyTRY[[Continent ]]}
+                        , climate     = if(length(Climate   ) == 0L){Empty}else{TidyTRY[[Climate   ]]}
+                        , climate_pft = if(length(ClimatePFT) == 0L){Empty}else{TidyTRY[[ClimatePFT]]}
+                        , biome       = if(length(Biome     ) == 0L){Empty}else{TidyTRY[[Biome     ]]}
+                        )#end tibble
+      
+      KeepObs = SelectNeoTropical(SubsetTRY)
+
+      # Filter data to remove sites outside the domain of interest
+      TidyTRY = TidyTRY[KeepObs,,drop=FALSE]
+      
+   }else{
+      stop(" Pantropical filter still needs to be implemented.")
+      # KeepObs = SelectPanTropical(TidyTRY)
+   }#end if (fitrealm %in% "NeoTropical")
+
+   
+   ## Harmonise scientific names
+   cat0("   - Harmonise scientific names.")
+   # Remove "x " from scientific names
+   cat0("     ~ Remove \"x\" from scientific names.")
+   TidyTRY$ScientificName = gsub(pattern="^x ",replacement="",x=TidyTRY$ScientificName)
+
+   # Create unique list of scientific names
+   cat0("     ~ List unique scientific names (as provided in the TRY data base).")
+   UniqScientific = sort(unique(str_to_sentence(TidyTRY$ScientificName)))
+   CntUniqTaxon   = length(UniqScientific)
+   UniqTaxon = tibble( ScientificName = rep(NA_character_,times=length(UniqScientific))
+                     , Genus          = rep(NA_character_,times=length(UniqScientific))
+                     , Family         = rep(NA_character_,times=length(UniqScientific))
+                     , Order          = rep(NA_character_,times=length(UniqScientific))
+                     , Class          = rep(NA_character_,times=length(UniqScientific))
+                     , Phylum         = rep(NA_character_,times=length(UniqScientific))
+                     , GrowthForm     = rep(NA_character_,times=length(UniqScientific))
+                     )#end tibble
+
+   # If a taxonomic table is provided, use it first.
+   if (file.exists(taxon_file)){
+      cat0("     ~ Retrieve taxonomic information from file ",basename(taxon_file),".")
+
+      # Read in taxonomic information.
+      TaxonList = read_csv(file = taxon_file,show_col_types = FALSE)
+      
+      # Standardise caption
+      TaxonList$TRYName        = str_to_sentence(TaxonList$TRYName       )
+      TaxonList$AcceptedName   = str_to_sentence(TaxonList$AcceptedName  )
+      TaxonList$AcceptedFamily = str_to_title   (TaxonList$AcceptedFamily)
+      if ("AcceptedGenus"  %in% names(TaxonList)) TaxonList$AcceptedGenus  = str_to_title(TaxonList$AcceptedGenus )
+      if ("AcceptedOrder"  %in% names(TaxonList)) TaxonList$AcceptedOrder  = str_to_title(TaxonList$AcceptedOrder )
+      if ("AcceptedClass"  %in% names(TaxonList)) TaxonList$AcceptedClass  = str_to_title(TaxonList$AcceptedClass )
+      if ("AcceptedPhylum" %in% names(TaxonList)) TaxonList$AcceptedPhylum = str_to_title(TaxonList$AcceptedPhylum)
+      if ("GrowthForm"     %in% names(TaxonList)) TaxonList$GrowthForm     = str_to_title(TaxonList$GrowthForm    )
+
+      # Search the species in the look-up table.
+      cat0("     ~ Search species in the look-up table.")
+      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+      sel     = (! is.na(IdxUniq))
+      UniqTaxon$ScientificName[sel] = TaxonList$AcceptedName  [IdxUniq[sel]]
+      UniqTaxon$Family        [sel] = TaxonList$AcceptedFamily[IdxUniq[sel]]
+      
+      # Remove variants and sub-species
+      UniqTaxon = UniqTaxon %>%
+         mutate(ScientificName = gsub(pattern="(\\w+\\s+\\w+).*",replacement="\\1",x=ScientificName))
+      
+      # Fill in genus, and populate empty scientific names if column genus is provided.
+      # If column genus is not provided, extract the first word from the scientific name
+      if ("AcceptedGenus" %in% names(TaxonList)){
+         UniqTaxon$Genus[sel] = TaxonList$AcceptedGenus[IdxUniq[sel]]
+         UniqTaxon = UniqTaxon %>%
+            mutate(ScientificName = ifelse(test=is.na(ScientificName),yes=Genus,no=ScientificName))
+      }else{
+         UniqTaxon = UniqTaxon %>%
+            mutate(Genus = gsub(pattern="(\\w+).*",replacement="\\1",x=ScientificName))
+      }#end if ("AcceptedGenus" %in% names(TaxonList))
+      
+      # Fill in higher taxa
+      if ("AcceptedOrder"  %in% names(TaxonList)) UniqTaxon$Order [sel] = TaxonList$AcceptedOrder [IdxUniq[sel]]
+      if ("AcceptedClass"  %in% names(TaxonList)) UniqTaxon$Class [sel] = TaxonList$AcceptedClass [IdxUniq[sel]]
+      if ("AcceptedPhylum" %in% names(TaxonList)) UniqTaxon$Phylum[sel] = TaxonList$AcceptedPhylum[IdxUniq[sel]]
+
+   }else if (! is.na(taxon_file)){
+      cat0("     ~ File ",basename(taxon_file)," not found! Retrieve taxonomic information online.")
+      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+   }else{
+      cat0("     ~ No taxonomic look-up table provided.  Retrieve taxonomic information online.")
+      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+   }#end if (file.exists(taxon_file))
+
+      
+   # Fill in unresolved taxa.
+   UniqMiss = which(is.na(IdxUniq))
+   if (length(UniqMiss) %gt% 0L) stop("Missing species in look-up table.")
+   if (length(UniqMiss) %gt% 0L) cat0("     ~ Search remaining species online.")
+   for (u in UniqMiss){
+      UniqScientificNow = UniqScientific[u]
+      cat ("       > ",sprintf("%4.4i of %4.4i",u,CntUniqTaxon),". Species taxonomy: ",UniqScientificNow,"...")
+      UniqResolve                 = TNRS( UniqScientificNow,sources = "wfo",classification = "wfo")
+      AcceptedName                = UniqResolve$Accepted_name
+      if ( is.na(AcceptedName) | (AcceptedName %in% "") ){
+         cat0(" Name not resolved.")
+      }else{
+         cat0(" Name resolved.")
+         UniqSplit                   = strsplit(x=AcceptedName,split=" ")[[1]]
+         UniqTaxon$ScientificName[u] = paste(UniqSplit[sequence(min(2L,length(UniqSplit)))],collapse=" ")
+         UniqTaxon$Genus         [u] = UniqSplit[1]
+         UniqTaxon$Family        [u] = UniqResolve$Accepted_family
+      }#end if ( (! is.na(AcceptedName)) & (! AcceptedName %in% "") )
+   }#end for (u in sequence(CntUniqTaxon))
+
+   # Find order, class and phylum for each family
+   MissHighTaxa  = ( ( is.na(UniqTaxon$Order) | is.na(UniqTaxon$Class) | is.na(UniqTaxon$Phylum) )
+                   & (! is.na(UniqTaxon$Family) )
+                   )#end MissHighTaxa
+   MissFamily    = sort(unique(UniqTaxon$Family[MissHighTaxa]))
+   CntMissFamily = length(MissFamily)
+   if (CntMissFamily %gt% 0L) cat0("     ~ Search higher taxonomy information online.")
+   for (f in sequence(CntMissFamily)){
+      UniqFamilyNow = MissFamily[f]
+      cat ("       > ",sprintf("%4.4i of %4.4i",f,CntMissFamily),". Family taxonomy: ",UniqFamilyNow,"...")
+      UniqHigher            = classification(UniqFamilyNow,db="ncbi")[[1]]
+      UniqOrder             = UniqHigher$name[UniqHigher$rank %in% "order" ]
+      UniqClass             = UniqHigher$name[UniqHigher$rank %in% "class" ]
+      UniqPhylum            = UniqHigher$name[UniqHigher$rank %in% "phylum"]
+      
+      idx                   = which(UniqTaxon$Family %in% UniqFamilyNow)
+      UniqTaxon$Order [idx] = UniqOrder
+      UniqTaxon$Class [idx] = UniqClass
+      UniqTaxon$Phylum[idx] = UniqPhylum
+      cat0(" Done.")
+   }#end for (f in sequence(CntUniqFamily))
+
+   
+   # Assign growth form in case they are available, then complement with taxa that can be related to growth form
+   # Note that setting Poaceae to grass is not recommended, as we distinguish grasses from bamboos.
+   cat0("     ~ Fill in growth form when they are synonym of a taxonomic group")
+   if ("GrowthForm" %in% names(TaxonList)) UniqTaxon$GrowthForm[sel] = TaxonList$GrowthForm[IdxUniq[sel]]
+   UniqTaxon$GrowthForm[UniqTaxon$Family %in% "Arecaceae"       ] = "Palm"
+   UniqTaxon$GrowthForm[UniqTaxon$Class  %in% "Polypodiopsida"  ] = "Fern"
+
+   # Before we proceed, we fill in missing species information. 
+   # This is needed to make sure we don't make assumptions about growth form for observations not defined at species level
+   UniqTaxon = UniqTaxon %>%
+      mutate( UniqID  = seq_along(ScientificName)
+            , Phylum  = ifelse(test=is.na(Phylum),yes="Ignotophyta",no=Phylum)
+            , Class   = ifelse(test=is.na(Class ),yes="Ignotopsida",no=Class )
+            , Order   = ifelse(test=is.na(Order ),yes="Ignotales"  ,no=Order )
+            , Family  = ifelse(test=is.na(Family),yes="Ignotaceae" ,no=Family)
+            , Genus   = ifelse( test = is.na(Genus )
+                              , yes  = ifelse( test = Family %in% "Ignotaceae"
+                                             , yes  = "Ignotum"
+                                             , no   = paste0("Ignotum_",tolower(Family))
+                                             )#end ifelse
+                              , no   = Genus
+                              )#end ifelse
+            , Epithet = word(string=ScientificName,start=2L,end=2L) 
+            ) %>% #end mutate
+      group_by(Family,Genus) %>%
+      mutate( CntNA   = cumsum(is.na(Epithet))
+            , Epithet = ifelse( test = is.na(Epithet)
+                              , yes  = sprintf("sp%4.4i",CntNA)
+                              , no   = Epithet
+                              )#end ifelse
+            , ScientificName = paste(Genus,Epithet)
+            ) %>% #end mutate
+      ungroup() %>%
+      select(UniqID,ScientificName,Genus,Family,Order,Class,Phylum,GrowthForm)
+      
+
+   # Map resolved names and growth form to the data set
+   idx = match(TidyTRY$ScientificName,UniqScientific)
+   TidyTRY$ScientificName = UniqTaxon$ScientificName[idx]
+   TidyTRY$Genus          = UniqTaxon$Genus         [idx]
+   TidyTRY$Family         = UniqTaxon$Family        [idx]
+   TidyTRY$Order          = UniqTaxon$Order         [idx]
+   TidyTRY$Class          = UniqTaxon$Class         [idx]
+   TidyTRY$Phylum         = UniqTaxon$Phylum        [idx]
+   if (any(try_trait$TraitID %in% 42L)){
+      cat0("   - Update growth form.")
+      # Build a subset of the tibble for testing tree likelihood.
+      GrowthForm  = try_trait$Name[try_trait$TraitID %in%   42L]
+      WoodDens    = try_trait$Name[try_trait$TraitID %in%    4L]
+      BarkDens    = try_trait$Name[try_trait$TraitID %in%  248L]
+      DBH         = try_trait$Name[try_trait$TraitID %in%   21L]
+      Height      = try_trait$Name[try_trait$TraitID %in% 3106L]
+      Raunkiaer   = try_trait$Name[try_trait$TraitID %in%  343L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # User-provided growth form has the last word, but only if there is any information.
+      TidyTRY[[GrowthForm]] = ifelse( test = is.na(UniqTaxon$GrowthForm[idx])
+                                    , yes  = TidyTRY[[GrowthForm]]
+                                    , no   = UniqTaxon$GrowthForm[idx]
+                                    )#end ifelse
+
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , growth_form    = TidyTRY[[GrowthForm]]
+                          , wood_dens      = if(length(WoodDens ) == 0L){EmptyReal}else{TidyTRY[[WoodDens]]}
+                          , bark_dens      = if(length(BarkDens ) == 0L){EmptyReal}else{TidyTRY[[BarkDens]]}
+                          , dbh            = if(length(DBH      ) == 0L){EmptyReal}else{TidyTRY[[DBH     ]]}
+                          , height         = if(length(Height   ) == 0L){EmptyReal}else{TidyTRY[[Height  ]]}
+                          , raunkiaer      = if(length(Raunkiaer) == 0L){EmptyChar}else{TidyTRY[[Raunkiaer]]}
+                          )#end tibble
+
+      # Run an additional data harmonisation for growth form, by expanding knowledge
+      # from additional traits (e.g. availability of wood/bark density, height above 5 m, etc.)
+      SubsetTRY             = TRY_Harmonise_GrowthForm(x=TidyTRY)
+      TidyTRY[[GrowthForm]] = SubsetTRY[[GrowthForm]]
+   }#end if ("growth_form" %in% names(TidyTRY))
+
+
+   # Update step so we can skip loading ancillary data again
+   harmonise_geotaxa = FALSE
+
+      
+   # Save look-up tables
+   cat0("   - Save tidy TRY data base to ",basename(Rdata_GeoTaxonTRY))
+   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                      , "harmonise_geotaxa","harmonise_traits")
+               , file              = Rdata_GeoTaxonTRY
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}#end if (file.exists(Rdata_GeoTaxonTRY))
+```
+
+
+```{r, label='harmonise-traits',results=,results='hide',message=FALSE}
+if (file.exists(Rdata_TidyTRY)){
+   # Load data.
+   cat0(" + Reload TRY with harmonised geography and taxonomy from ",basename(Rdata_TidyTRY),".")
+   dummy = load(Rdata_TidyTRY)
+}else{
+
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,"TRY_Harmonise_Utils.r"),chdir=TRUE)
+   source(file.path(util_path,"rconstants.r"         ),chdir=TRUE)
+   source(file.path(util_path,"unitlist.r"           ),chdir=TRUE)
+
+   # Replace generic vulnerability curve variable with the specific ones used in this site:
+   cat0("   - Harmonise list of traits and ancillary variables.")
+   if ("xylem_pxx" %in% try_trait$Name){
+      try_xylem  = try_trait %>% filter(grepl(pattern="xylem_pxx",x=Name))
+      xylem_vars = strsplit(x=try_xylem$Supporting,split=";")[[1]]
+      xylem_pval = as.integer(gsub(pattern="^xylem_p",replacement="",x=xylem_vars))
+      try_xylem  = 
+         try_xylem[rep(1,times=length(xylem_pval)),,drop=FALSE] %>%
+         mutate( Name = xylem_vars
+               , Desc = mapply(FUN=gsub,replacement=xylem_pval,x=Desc,MoreArgs=list(pattern="xx"))
+               , Supporting = NA_character_
+               )#end mutate
+      try_trait = bind_rows(try_trait,try_xylem) %>%
+         arrange(Name) %>%
+         filter(! (Name %in% "xylem_pxx"))
+   }#end if ("xylem_pxx" %in% names(try_trait))
+
+   # Update the list of traits and ancillary data
+   if ("Supporting" %in% names(try_trait)){
+      try_trait = try_trait %>% filter(is.na(Supporting)) %>% select( ! Supporting)
+      try_ancil = try_ancil %>% filter(is.na(Supporting)) %>% select( ! Supporting)
+   }#end if ("Supporting" %in% names(try_trait)){
+
+   # Harmonise habitats
+   cat0("   - Harmonise biome/habitat information.")
+   if (use_realm %in% "NeoTropical"){
+      # Build a subset of the tibble for testing tree likelihood.
+      Biome     = try_ancil$Name[try_ancil$TRYName %in% "Vegetation type / Biome"  ]
+      Habitat   = try_ancil$Name[try_ancil$TRYName %in% "Habitat / plot description"]
+      EmptyChar = rep(NA_character_,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( biome          = if(length(Biome    ) == 0L){EmptyChar}else{TidyTRY[[Biome  ]]}
+                          , habitat        = if(length(Habitat  ) == 0L){EmptyChar}else{TidyTRY[[Habitat]]}
+                          )#end tibble
+
+      # Harmonise biome classes
+      SubsetTRY        = TRY_Harmonise_NeoTropical_Biome(SubsetTRY)
+      TidyTRY[[Biome]] = SubsetTRY[[Biome]]
+   }#end if (fitrealm %in% "NeoTropical")
+   
+
+   # Load additional info on categorical variables
+   if (! is.na(addinfo_categ)){
+      cat0("   - Load additional information on categorical traits.")
+
+      # Identify the species that actually occur in the current data set.
+      CatExtra = read_csv(file=addinfo_categ,show_col_types = FALSE)
+      keep     = CatExtra$AcceptedName %in% TidyTRY$ScientificName
+
+      #Map data to the table
+      idx      = match(TidyTRY$ScientificName,CatExtra$AcceptedClass)
+      sel      = ! is.na(idx)
+
+      # List all the traits that might be updated.
+      ColExtra = names(CatExtra)
+      ColTrait = which(grepl(pattern="^TraitID_",x=ColExtra))
+
+      # List all the traits that might be updated.
+      for (ic in ColTrait){
+         # Select trait
+         ExtraNow   = ColExtra[ic]
+         TraitIDNow = as.integer(gsub(pattern="^TraitID_",replacement="",x=ExtraNow))
+         it         = match(TraitIDNow,try_trait$TraitID)
+         TraitNow   = try_trait$Name[it]
+
+         # Update the trait for all species
+         TidyTRY[[TraitNow]][sel] = CatExtra[[ExtraNow]][idx[sel]]
+      }#end for (i in seq_along(ColTrait))
+   }#end if (! is.na(addinfo_categ))
+
+
+ 
+   # Harmonise area-based and mass-based photosynthesis traits
+   PhotoID = c(40L,41L,53L,54L,185L,186L,269L,270L)
+   if (any(try_trait$TraitID %in% PhotoID)){
+      cat0("   - Find mass- and area-based photosynthesis traits.")
+
+      # Build a subset of the tibble for testing tree likelihood.
+      SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
+      A_Amax      = try_trait$Name[try_trait$TraitID %in%   53L]
+      A_Jmax      = try_trait$Name[try_trait$TraitID %in%  269L]
+      A_Rdmax     = try_trait$Name[try_trait$TraitID %in%   54L]
+      A_Vcmax     = try_trait$Name[try_trait$TraitID %in%  186L]
+      M_Amax      = try_trait$Name[try_trait$TraitID %in%   40L]
+      M_Jmax      = try_trait$Name[try_trait$TraitID %in%  270L]
+      M_Rdmax     = try_trait$Name[try_trait$TraitID %in%   41L]
+      M_Vcmax     = try_trait$Name[try_trait$TraitID %in%  185L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , SLA            = if(length(SLA    ) == 0L){EmptyReal}else{TidyTRY[[SLA    ]]}
+                          , a_amax         = if(length(A_Amax ) == 0L){EmptyReal}else{TidyTRY[[A_Amax ]]}
+                          , a_jmax         = if(length(A_Jmax ) == 0L){EmptyReal}else{TidyTRY[[A_Jmax ]]}
+                          , a_rdmax        = if(length(A_Rdmax) == 0L){EmptyReal}else{TidyTRY[[A_Rdmax]]}
+                          , a_vcmax        = if(length(A_Vcmax) == 0L){EmptyReal}else{TidyTRY[[A_Vcmax]]}
+                          , m_amax         = if(length(M_Amax ) == 0L){EmptyReal}else{TidyTRY[[M_Amax ]]}
+                          , m_jmax         = if(length(M_Jmax ) == 0L){EmptyReal}else{TidyTRY[[M_Jmax ]]}
+                          , m_rdmax        = if(length(M_Rdmax) == 0L){EmptyReal}else{TidyTRY[[M_Rdmax]]}
+                          , m_vcmax        = if(length(M_Vcmax) == 0L){EmptyReal}else{TidyTRY[[M_Vcmax]]}
+                          )#end tibble
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_Photosynthesis(x=SubsetTRY,am_fac=photo_a2m_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(A_Amax ) != 0L) TidyTRY[[A_Amax ]] = SubsetTRY$a_amax
+      if(length(A_Jmax ) != 0L) TidyTRY[[A_Jmax ]] = SubsetTRY$a_jmax
+      if(length(A_Rdmax) != 0L) TidyTRY[[A_Rdmax]] = SubsetTRY$a_rdmax
+      if(length(A_Vcmax) != 0L) TidyTRY[[A_Vcmax]] = SubsetTRY$a_vcmax
+      if(length(M_Amax ) != 0L) TidyTRY[[M_Amax ]] = SubsetTRY$m_amax
+      if(length(M_Jmax ) != 0L) TidyTRY[[M_Jmax ]] = SubsetTRY$m_jmax
+      if(length(M_Rdmax) != 0L) TidyTRY[[M_Rdmax]] = SubsetTRY$m_rdmax
+      if(length(M_Vcmax) != 0L) TidyTRY[[M_Vcmax]] = SubsetTRY$m_vcmax
+   }#end if (any(try_trait$ID %in% PhotoID))
+
+
+
+   # Harmonise leaf density and leaf thickness.
+   LeafArchID = c(3117L,46L,48L)
+   if (any(try_trait$TraitID %in% LeafArchID)){
+      cat0("   - Fill in leaf density and leaf thickness.")
+      # Build a subset of the tibble for testing tree likelihood.
+      SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
+      LeafDens    = try_trait$Name[try_trait$TraitID %in%   48L]
+      LeafThick   = try_trait$Name[try_trait$TraitID %in%   46L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , SLA            = if(length(SLA      ) == 0L){EmptyReal}else{TidyTRY[[SLA      ]]}
+                          , leaf_dens      = if(length(LeafDens ) == 0L){EmptyReal}else{TidyTRY[[LeafDens ]]}
+                          , leaf_thick     = if(length(LeafThick) == 0L){EmptyReal}else{TidyTRY[[LeafThick]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_LeafArchitecture(x=SubsetTRY,td_fac=leaf_thick2dens_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafDens ) != 0L) TidyTRY[[LeafDens ]] = SubsetTRY$leaf_dens
+      if(length(LeafThick) != 0L) TidyTRY[[LeafThick]] = SubsetTRY$leaf_thick
+   }#end if (any(try_trait$ID %in% LeafArchID))
+
+
+   # Harmonise leaf carbon, nitrogen and phosphorus ratios
+   LeafStoichID = c(13L,14L,15L,146L,151L,56L)
+   if (any(try_trait$TraitID %in% LeafStoichID)){
+      cat0("   - Fill in leaf stoichiometry.")
+      # Build a subset of the tibble for testing tree likelihood.
+      LeafC     = try_trait$Name[try_trait$TraitID %in%   13L]
+      LeafN     = try_trait$Name[try_trait$TraitID %in%   14L]
+      LeafP     = try_trait$Name[try_trait$TraitID %in%   15L]
+      LeafC2N   = try_trait$Name[try_trait$TraitID %in%  146L]
+      LeafC2P   = try_trait$Name[try_trait$TraitID %in%  151L]
+      LeafN2P   = try_trait$Name[try_trait$TraitID %in%   56L]
+      EmptyChar = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , Author         = TidyTRY$Author
+                          , leaf_c         = if(length(LeafC  ) == 0L){EmptyReal}else{TidyTRY[[LeafC    ]]}
+                          , leaf_n         = if(length(LeafN  ) == 0L){EmptyReal}else{TidyTRY[[LeafN    ]]}
+                          , leaf_p         = if(length(LeafP  ) == 0L){EmptyReal}else{TidyTRY[[LeafP    ]]}
+                          , leaf_c2n       = if(length(LeafC2N) == 0L){EmptyReal}else{TidyTRY[[LeafC2N  ]]}
+                          , leaf_c2p       = if(length(LeafC2P) == 0L){EmptyReal}else{TidyTRY[[LeafC2P  ]]}
+                          , leaf_n2p       = if(length(LeafN2P) == 0L){EmptyReal}else{TidyTRY[[LeafN2P  ]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_LeafStoichiometry(x=SubsetTRY,cn_fac=leaf_c2n_factor,cp_fac=leaf_c2p_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafC  ) != 0L) TidyTRY[[LeafC  ]] = SubsetTRY$leaf_c
+      if(length(LeafN  ) != 0L) TidyTRY[[LeafN  ]] = SubsetTRY$leaf_n
+      if(length(LeafP  ) != 0L) TidyTRY[[LeafP  ]] = SubsetTRY$leaf_p
+      if(length(LeafC2N) != 0L) TidyTRY[[LeafC2N]] = SubsetTRY$leaf_c2n
+      if(length(LeafC2P) != 0L) TidyTRY[[LeafC2P]] = SubsetTRY$leaf_c2p
+      if(length(LeafN2P) != 0L) TidyTRY[[LeafN2P]] = SubsetTRY$leaf_n2p
+      
+   }#end if (any(try_trait$ID %in% LeafArchID))
+
+   
+   
+   
+   
+   # Exclude data from life forms that should not be analysed
+   cat0("   - Remove data from life forms that are not part of this analysis.")
+   GrowthForm = try_trait$Name[try_trait$TraitID %in% 42L]
+   if (use_lifeclass %in% "FlowerTrees"){
+      KeepTRY = ( ( TidyTRY$Class %in% c("Liliopsida","Magnoliopsida") )
+                & ( TidyTRY[[GrowthForm]] %in% "Tree" )
+                )#end KeepTRY
+   }else if (use_lifeclass %in% "Shrubs"){
+      KeepTRY = TidyTRY[[GrowthForm]] %in% "Shrub"
+   }else if (use_lifeclass %in% "Grasses"){
+      KeepTRY = TidyTRY[[GrowthForm]] %in% "Grass-Herb"
+   }else if (use_lifeclass %in% "FlowerPlants"){
+      KeepTRY = TidyTRY$Class %in% c("Liliopsida","Magnoliopsida")
+   }else if (use_lifeclass %in% "Pinopsida"){
+      KeepTRY = TidyTRY$Class %in% c("Pinopsida")
+   }else if (use_lifeclass %in% "SeedPlants"){
+      KeepTRY = TidyTRY$Class %in% c("Cycadopsida","Ginkgoopsida","Gnetopsida","Liliopsida","Magnoliopsida","Pinopsida")
+   }else if (use_lifeclass %in% "Plantae"){
+      KeepTRY = rep(TRUE,nrow(TidyTRY))
+   }#end if
+   TidyTRY = TidyTRY[KeepTRY,,drop=FALSE]
+
+   
+
+   # Remove columns that contain no information.
+   cat0("   - Remove columns with no information.")
+   KeepTRY  = unlist(TidyTRY %>% summarise_all( ~ any(! is.na(.x))))
+   EraseTRY = names(KeepTRY)[! KeepTRY]
+   KeepTRY  = names(KeepTRY)[KeepTRY]
+   TidyTRY  = TidyTRY %>% select_at(vars(KeepTRY))
+
+   # Identify rows with trait or ancillary data.
+   cat0("   - Remove rows with no information.")
+   ColNames    = names(TidyTRY)
+   IsData      = which(ColNames %in% c(try_trait$Name,try_ancil$Name))
+   WhichData   = ColNames[IsData]
+   CntData     = length(IsData)
+   AnyData     = rep(FALSE,times=nrow(TidyTRY))
+   for (w in sequence(CntData)){
+      DataNow = ColNames[w]
+      AnyData = AnyData | (! is.na(TidyTRY[[DataNow]]))
+   }#end for (w in sequence(CntData))
+
+   # Remove rows with no data.
+   TidyTRY = TidyTRY[AnyData,,drop=FALSE]
+ 
+   
+   # Exclude traits and ancillary variables that no longer have data
+   try_trait = try_trait %>% filter(Name %in% names(TidyTRY))
+   try_ancil = try_ancil %>% filter(Name %in% names(TidyTRY))
+
+   
+   # Update step so we can skip loading ancillary data again
+   harmonise_traits = FALSE
+
+      
+   # Save look-up tables
+   cat0("   - Save tidy TRY data base to ",basename(Rdata_TidyTRY))
+   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                      , "harmonise_geotaxa","harmonise_traits"
+                                      , "try_trait","try_ancil")
+               , file              = Rdata_TidyTRY
+               , compress          = "xz"
+               , compression_level = 9
+               )#end save
+}#end if (file.exists(Rdata_TidyTRY))
+```
+

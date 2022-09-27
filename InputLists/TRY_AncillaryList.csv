@@ -1,0 +1,62 @@
+Name,TRYName,Desc,Type,UseStdUnit,Unit,Add,Mult,Power,Supporting
+age_disturb,Stand age class,Stand age class,numeric,FALSE,year,0,1,1,NA
+age_disturb_aux,Stand age,Stand age class,numeric,FALSE,year,0,1,1,age_disturb
+age_disturb_aux2,Time since fire,Stand age class,numeric,FALSE,year,0,1,1,age_disturb
+alt,Altitude,Altitude,numeric,TRUE,m,0,1,1,NA
+atm_co2,Atmospheric CO2 concentration during measurement (Ca),Atmospheric CO2 during measurement,numeric,FALSE,umolomol,0,1,1,NA
+atm_prss,Atmospheric pressure,Atmospheric pressure,numeric,FALSE,hpa,0,1,1,NA
+atm_rhv,Relative air humidity during measurement (Relative humidity ),Relative air humidity,numeric,FALSE,pc,0,1,1,NA
+atm_temp,Air temperature during measurement (Tair),Air temperature during measurement,numeric,FALSE,degC,0,1,1,NA
+att_growth_form,Plant growth form attributed,Attributed growth form,character,FALSE,empty,0,1,1,NA
+biome,Vegetation type / Biome,Biome,character,FALSE,empty,0,1,1,NA
+biome_aux,Vegetation type / Biome ( 2),Biome,character,FALSE,empty,0,1,1,biome
+climate_pft,Climate_PFT_Biome equivalent_Poulter,Climate PFT Biome,character,FALSE,empty,0,1,1,NA
+confidence,Confidence in species identification,Species ID confidence,character,FALSE,empty,0,1,1,NA
+continent,Location Continent,Continent,character,FALSE,empty,0,1,1,NA
+country,Location Country,Country,character,FALSE,empty,0,1,1,NA
+doi,Reference DOI (digital object identifier),Reference DOI,character,FALSE,empty,0,1,1,NA
+doi_aux,Dataset DOI (digital object identifier) or url,Reference DOI,character,FALSE,empty,0,1,1,doi
+ecos_root_depth,Ecosystem rooting depth,Ecosystem rooting depth,numeric,FALSE,m,0,1,1,NA
+experiment,Experimental treatment,Experimental treatment,character,FALSE,empty,0,1,1,NA
+experiment_2,Treatment: Name of the experimental treatment,Experimental treatment,character,FALSE,empty,0,1,1,experiment
+exposition,Treatment exposition: indoors / outdoors,Treatment exposition,character,FALSE,empty,0,1,1,NA
+habitat,Habitat / plot description,Habitat,character,FALSE,empty,0,1,1,NA
+lat,Latitude,Latitude,numeric,TRUE,degN,0,1,1,NA
+lat_aux,Latitude (decimal degrees),Latitude,numeric,FALSE,degN,0,1,1,lat
+lat_aux2,Latitude estimated,Latitude,numeric,FALSE,degN,0,1,1,lat
+leaf_temp,Leaf temperature during measurement (Tleaf),Leaf temperature during measurement,numeric,FALSE,degC,0,1,1,NA
+leaf_temp_aux,Leaf temperature for photosynthetic measurements,Leaf temperature during measurement,numeric,FALSE,degC,0,1,1,leaf_temp
+leaf_temp_aux2,Leaf temperature for respiration measurements,Leaf temperature during measurement,numeric,FALSE,degC,0,1,1,leaf_temp
+lon,Longitude,Longitude,numeric,TRUE,degE,0,1,1,NA
+lon_aux,Longitude (decimal degrees),Longitude,numeric,FALSE,degE,0,1,1,lon
+lon_aux2,Longitude estimated,Longitude,numeric,FALSE,degE,0,1,1,lon
+n_replicates,Number of replicates,Replicate count,numeric,FALSE,empty,0,1,1,NA
+n_sample,Sample size,Sample size,numeric,FALSE,empty,0,1,1,NA
+par_in,Light during measurement,PAR during measurement,numeric,FALSE,wom2,0,Ein.2.Watts*umol.2.mol,1,NA
+par_in_aux,Radiation during measurement,PAR during measurement,numeric,FALSE,wom2,0,Ein.2.Watts*umol.2.mol,1,par_in
+plant_age,Plant age at measurement,Plant age,numeric,FALSE,year,0,1,1,NA
+plant_age_aux,Plant developmental status / plant age / maturity / plant life stage,Plant developmental status,numeric,FALSE,year,0,1,1,plant_age
+reference,Reference / source,Reference,character,FALSE,empty,0,1,1,NA
+sample_date,Sampling or measurement date standardized,Sampling date,date,FALSE,empty,0,1,1,NA
+sample_date_aux,Sampling date: year,Sampling date,date,FALSE,empty,0,1,1,sample_date
+sample_date_aux2,Measurement date / sampling date,Sampling date,date,FALSE,empty,0,1,1,sample_date
+sample_date_aux3,Measurement date: year,Sampling date,date,FALSE,empty,0,1,1,sample_date
+sample_method,Measurement method 1: method of sampling and measurement,Sampling method,character,FALSE,empty,0,1,1,NA
+seed_bank_method,Seedbank method,Seed bank method,character,FALSE,empty,0,1,1,NA
+site,Location / Site Name,Site Name,character,FALSE,empty,0,1,1,NA
+site_aux,Location Name,Site Name (alternative),character,FALSE,empty,0,1,1,site
+site_disturb,Site disturbance,Site disturbance,character,FALSE,empty,0,1,1,NA
+site_disturb_aux,Stand management,Site disturbance,character,FALSE,empty,0,1,1,site_disturb
+site_lai,Leaf area index of the site (LAI),Site Leaf Area Index,numeric,FALSE,m2lom2,0,1,1,NA
+soil_depth,Soil depth,Soil depth,numeric,FALSE,m,0,cm.2.m,1,NA
+soil_type,Soil texture,Soil type,character,FALSE,empty,0,1,1,soil_type
+soil_type,Soil type (soil order),Soil type,character,FALSE,empty,0,1,1,NA
+sun_shade,Canopy position: sun vers. Shade leaf qualifier; light exposure,Sun/Shade Leaf,character,FALSE,empty,0,1,1,NA
+sun_shade_aux,Exposition: position of plant in the canopy,Sun/Shade Leaf,character,FALSE,empty,0,1,1,sun_shade
+sun_shade_aux2,Leaf exposition,Sun/Shade Leaf,character,FALSE,empty,0,1,1,sun_shade
+sun_shade_aux3,Exposition light / irradiance,Sun/Shade Leaf,character,FALSE,empty,0,1,1,sun_shade
+try_family,Family,Family (from TRY),character,FALSE,empty,0,1,1,NA
+validity,Validity,Validity,character,FALSE,empty,0,1,1,NA
+ymean_pet,Mean annual sum of potential evapotranspiration (PET),Annual potential evapotranspiration,numeric,FALSE,mm,0,1,1,NA
+ymean_prec,Mean sum of annual precipitation (PPT / MAP / TAP),Annual precipitation,numeric,FALSE,mm,0,1,1,NA
+ymean_temp,Mean annual temperature (MAT),Mean annual temperature,numeric,FALSE,degC,0,1,1,NA
