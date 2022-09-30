@@ -1,0 +1,24 @@
+# please modify if you notice files being exclude by
+# the generic rules at the top
+# ignore output files
+*.x
+
+# specific rules
+ByAuthor
+LookUpTables
+Original
+Quoted
+RData
+UniqueAncil
+UniqueTrait
+docs/AdditionalData/
+docs/ByAuthor/
+docs/InputLists/
+docs/LookUpTables/
+docs/Original/
+docs/Quoted/
+docs/RData/
+docs/RUtils/
+docs/SplitAuthor.f90
+docs/UniqueAncil/
+docs/UniqueTrait/

@@ -1,0 +1,14 @@
+name: "TraitAllom_Workflow"
+output_dir: "docs"
+navbar:
+  title: "Trait and Allometry Workflow"
+  left:
+  - text: "Home"
+    href: index.html
+  - text: "Tidy trait and allometry data base"
+    href: TidyTraitAllomDB.html
+output:
+  html_document:
+    theme: darkly
+    highlight: textmate
+    css: styles.css

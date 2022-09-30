@@ -1,0 +1,17 @@
+---
+title: "Trait and Allometry Data Workflow"
+author: "Marcos Longo"
+date: "2022-09-29"
+output: html_document
+---
+
+These documents and scripts support the processing of trait and allometry data bases. The script is intended to work particularly the TRY data base, but it provides a framework to incorporate data from additional sources.
+
+
+
+* [TidyTraitAllomDB.Rmd](TidyTraitAllomDB.html).  This (mostly) R Markdown script takes data downloaded from the TRY data base (plus additional sources) and apply [tidy data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html) standards. In a tidy data set, each row represents one observation, each column represents a variable, and each cell represents a value. In addition, categorical traits are also harmonised into consistent categories and species taxonomy is standardised to the best extent possible (likely with some user input).
+
+In the future, additional utilities for analysing trait and allometry will be incorporated to this workflow.
+
+**Important**
+1. Make sure to download the directory "RUtils" available on [GitHub](https://github.com/mpaiao/TraitAllom_Workflow), and set variable `util_path` accordingly for scripts that have this variable.

@@ -2,9 +2,6 @@
 title: "Trait/Allometry Database Pre-processor"
 author: "Marcos Longo"
 date: '2022-09-27'
-output:
-  html_document: default
-  pdf_document: default
 ---
 
 <style>
@@ -24,9 +21,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction.
 
-This script loads data from multiple trait and allometry data bases (including TRY) and organises into a tidy data set, with rows identifying observations, and columns identifying species, traits, and allometric data.
+This R Markdown notebook loads data from multiple trait and allometry data bases (including TRY) and organises into a tidy data set, with rows identifying observations, and columns identifying species, traits, and allometric data.
 
-**Important**. This script works only on files that go through the pre-processing script, which will turn files into comma-separated values and remove all diacritical markings and non-basic characters, and split data into files according to the data provider.  This helps to load data more efficiently, but it can take a long time when running the script for the first time.
+**Important**. This notebook is mostly written in R, but it will automatically run a singl pre-processing `bash` chunk that calls a Fortran program ([`SplitAuthor.f90`](https://github.com/mpaiao/TraitAllom_Workflow/SplitAuthor.f90)), which will turn files into comma-separated values and remove all diacritical markings and non-basic characters, and split data into files according to the data provider (henceforth, author).  This helps to load data more efficiently, but it can take a long time when running the script for the first time.
 
 # Reset session
 
@@ -70,8 +67,8 @@ Set paths and file names for input and output.
 ```{r, label='path-settings'}
 # Set useful paths and file names
 home_path       = path.expand("~")
-util_path       = file.path(home_path,"Util/RUtils")
-main_path       = file.path(home_path,"Data","TRY_DataBase")
+main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+util_path       = file.path(main_path,"RUtils")
 orig_path       = file.path(main_path,"Original")
 quote_path      = file.path(main_path,"Quoted")
 author_path     = file.path(main_path,"ByAuthor")
@@ -211,14 +208,9 @@ Leaves random species,,,,,,,,Too generic description
 Siparudecipiens,Siparuna decipiens,Siparuna,Siparunaceae,Laurales,Magnoliopsida,Tracheophyta,,Some sources manually removed NA from data sources; affecting the scientific names
 ```
 
-In addition, it is possible to define  a file name containing a comprehensive list of species belonging to the region of interest, that should always be included in model fitting. If none is available, it is fine to set `taxon_include=NA_character_`. The structure of this file should be similar to `taxon_file`, except that the only column used is the **AcceptedName** one.
-
 ```{r, label='ancil-taxon-files'}
 # List of TRY taxonomic information, set it to NA_character_ if no file exists.
 taxon_file = file.path(list_path,"TRY_TaxonomyList.csv"    ) 
-
-# List of species to be always included in the 
-taxon_include = file.path(main_path,"NeoTropical_Species.csv")
 ```
 
 For "categorical traits" (like photosynthetic path, or growth form), it is possible to provide some ancillary data for specific traits that will be applied to existing observations --- but mind that they must be pre-processed to be consistent with the standardised categories (i.e., the same categories as the output of functions listed in file `TRY_Fix_OrigValue_Str` in path `util_path`.  The ancillary file should contain a column **AcceptedName** with the names pre-standardised to accepted names and checked for misspellings, and columns with the TRY trait ID that this is supposed to provide additional information (e.g., for photosynthetic pathway, TRY trait number 22, the column must be named `TraitID_22`). Other columns may be present but will be ignored. If any value needs to be missing values, set them to `NA`. If no file with additional information for categorical traits is available, set `addinfo_categ=NA_character_`.
@@ -531,19 +523,6 @@ if (is_dry_run){
 
 ```
 
-
-The following chunk loads the list of genera to be always included in the analysis. If no list exists, the script will strictly follow the geographic information from the TRY data base.
-```{r, label='load-genera'}
-if ( is.na(taxon_include) ){
-   cat0(" + List of required genera not provided. Use default settings.")
-}else if ( file.exists(taxon_include) ){
-   cat0(" + Load list of genera to be included whenever possible.")
-   TaxonRef = read_csv(file=taxon_include,show_col_types=FALSE)
-}else{
-   stop(" + The reference list of species (",taxon_include,") was not found!")
-}
-
-```
 
 Either retrieve or load look-up table with units and additional information on the TRY data base. Normally this needs to be done only once, unless a new version of data request is being used.
 ```{r,label='make-lookup',results='hide',message=FALSE}
