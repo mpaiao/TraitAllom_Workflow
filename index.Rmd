@@ -5,7 +5,7 @@ date: "2022-09-29"
 output: html_document
 ---
 
-These documents and scripts support the processing of trait and allometry data bases. The script is intended to work particularly the TRY data base, but it provides a framework to incorporate data from additional sources.
+These documents and scripts support the processing of trait and allometry data bases. The script is intended to work particularly the [TRY data base](https://www.try-db.org/TryWeb/Home.php), but it provides a framework to incorporate data from additional sources.
 
 
 

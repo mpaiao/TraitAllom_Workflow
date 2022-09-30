@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introduction.
 
-This R Markdown notebook loads data from multiple trait and allometry data bases (including TRY) and organises into a tidy data set, with rows identifying observations, and columns identifying species, traits, and allometric data.
+This R Markdown notebook loads data from multiple trait and allometry data bases (including [TRY](https://www.try-db.org/TryWeb/Home.php)) and organises into a tidy data set, with rows identifying observations, and columns identifying species, traits, and allometric data.
 
 **Important**. This notebook is mostly written in R, but it will automatically run a singl pre-processing `bash` chunk that calls a Fortran program ([`SplitAuthor.f90`](https://github.com/mpaiao/TraitAllom_Workflow/SplitAuthor.f90)), which will turn files into comma-separated values and remove all diacritical markings and non-basic characters, and split data into files according to the data provider (henceforth, author).  This helps to load data more efficiently, but it can take a long time when running the script for the first time.
 
