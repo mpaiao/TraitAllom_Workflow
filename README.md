@@ -2,6 +2,7 @@
 
 Scripts to tidy trait and allometry data bases. These scripts are intended to work particularly the [TRY data base](https://www.try-db.org/TryWeb/Home.php), but it provides a framework to incorporate data from additional sources.
 
+For additional details on these scripts (the "knitted" R Markdown), check the [documentation here](https://mpaiao.github.io/TraitAllom_Workflow/index.html).
 
 1. [**TidyTraitAllomDB.Rmd**](TidyTraitAllomDB.Rmd) – This This (mostly) R Markdown script takes data downloaded from the TRY data base (plus additional sources) and apply [tidy data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html) standards. In a tidy data set, each row represents one observation, each column represents a variable,  and each cell represents a value. In addition, categorical traits are also harmonised into consistent categories and species taxonomy is standardised to the best extent possible (likely with some user input).
   * Make sure to download the Fortran code [**SplitAuthor.f90**](SplitAuthor.f90) to the main working directory. Also, make sure to download the directory [RUtils](RUtils) containing multiple ancillary functions.
