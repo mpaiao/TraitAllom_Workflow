@@ -18,7 +18,7 @@
 <script src="site_libs/header-attrs-2.16/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -32,7 +32,7 @@
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
-<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
 <style type="text/css">
@@ -60,7 +60,6 @@ if (window.hljs) {
 
 
 
-<link rel="stylesheet" href="styles.css" type="text/css" />
 
 
 
@@ -289,9 +288,10 @@ pre code {
 <div id="introduction." class="section level1">
 <h1>Introduction.</h1>
 <p>This R Markdown notebook loads data from multiple trait and allometry
-data bases (including TRY) and organises into a tidy data set, with rows
-identifying observations, and columns identifying species, traits, and
-allometric data.</p>
+data bases (including <a
+href="https://www.try-db.org/TryWeb/Home.php">TRY</a>) and organises
+into a tidy data set, with rows identifying observations, and columns
+identifying species, traits, and allometric data.</p>
 <p><strong>Important</strong>. This notebook is mostly written in R, but
 it will automatically run a singl pre-processing <code>bash</code> chunk
 that calls a Fortran program (<a
@@ -370,8 +370,10 @@ information on which ancillary data and traits to load.</p>
 <li><strong>Name</strong>. Name of the ancillary variable that will be
 used in this scripts (ideally, no spaces, starting with a letter, no
 special characters).</li>
-<li><strong>TRYName</strong>. Name of the ancillary data
-<em>exactly</em> as in the TRY data base.</li>
+<li><strong>DataID</strong>. The ancillary data ID as defined by the TRY
+data base. In case of multiple, closely related traits, enter one line
+per data ID and just use the <strong>Supporting</strong> column (see
+below) to link multiple entries.</li>
 <li><strong>Desc</strong>. Full description of the ancillary data (may
 be used in plot annotation).</li>
 <li><strong>Type</strong>. Variable type as in the TRY data base.
@@ -418,18 +420,18 @@ all variables.</li>
 </ul>
 <p>The example below shows how the <code>ancil_file</code> should look
 like:</p>
-<pre><code>Name,TryName,Desc,Type,UseStdUnit,Unit,Add,Mult,Power,Supporting
-lon,Longitude,Longitude,numeric,TRUE,degE,0,1,1,NA
-lat,Latitude,Latitude,numeric,TRUE,degN,0,1,1,NA
-alt,Altitude,Altitude,numeric,TRUE,m,0,1,1,NA
-ymean_prec,Mean sum of annual precipitation (PPT / MAP / TAP),Annual precipitation,numeric,FALSE,mm,0,1,1,NA
-ymean_temp,Mean annual temperature (MAT),Mean annual temperature,numeric,FALSE,degC,0,1,1,NA
-biome,Vegetation type / Biome,Biome,character,FALSE,empty,0,1,1,NA
-biome_aux,Vegetation type / Biome ( 2),Biome,character,FALSE,empty,0,1,1,biome
-sun_shade,Canopy position: sun vers. Shade leaf qualifier; light exposure,Sun/Shade Leaf,character,FALSE,empty,0,1,1,NA
-lon_aux,Longitude (decimal degrees),Longitude,numeric,FALSE,degE,0,1,1,lon
-lat_aux,Latitude (decimal degrees),Latitude,numeric,FALSE,degN,0,1,1,lat
-climate_pft,Climate_PFT_Biome equivalent_Poulter,Climate PFT Biome,character,FALSE,empty,0,1,1,NA</code></pre>
+<pre><code>Name,DataID,Desc,Type,UseStdUnit,Unit,Add,Mult,Power,Supporting
+lon,60,Longitude,numeric,TRUE,degE,0,1,1,NA
+lat,59,Latitude,numeric,TRUE,degN,0,1,1,NA
+alt,61,Altitude,numeric,TRUE,m,0,1,1,NA
+ymean_prec,80,Annual precipitation,numeric,FALSE,mm,0,1,1,NA
+ymean_temp,62,Mean annual temperature,numeric,FALSE,degC,0,1,1,NA
+biome,193,character,FALSE,empty,0,1,1,NA
+biome_aux,202,Biome,character,FALSE,empty,0,1,1,biome
+sun_shade,443,character,FALSE,empty,0,1,1,NA
+lon_aux,4705,Longitude,numeric,FALSE,degE,0,1,1,lon
+lat_aux,4704,Latitude,numeric,FALSE,degN,0,1,1,lat
+climate_pft,4736,Climate PFT Biome,character,FALSE,empty,0,1,1,NA</code></pre>
 <p>File <code>trait_file</code> must contain the following columns:</p>
 <ul>
 <li><strong>Name</strong>. Name of the ancillary variable that will be
@@ -982,7 +984,7 @@ if (is_dry_run){
 <p>Either retrieve or load look-up table with units and additional
 information on the TRY data base. Normally this needs to be done only
 once, unless a new version of data request is being used.</p>
-<pre class="r"><code>if (reload_lookup &amp;&amp; file.exists(Rdata_LookUp)){
+<pre class="r"><code>if (reload_lookup &amp;&amp; file.exists(Rdata_LookUp) &amp;&amp; (! is_dry_run )){
    # Load data.
    cat0(&quot; + Reload look-up table from &quot;,basename(Rdata_LookUp),&quot;.&quot;)
    dummy = load(Rdata_LookUp)
@@ -992,7 +994,8 @@ once, unless a new version of data request is being used.</p>
 
    # Initialise the list of traits and ancillary variables.
    cat0(&quot; + Initialise look-up table of traits and ancillary variables.&quot;)
-   AncilAll = tibble( Name       = character(0L)
+   AncilAll = tibble( DataID     = integer  (0L)
+                    , Name       = character(0L)
                     , OrigValid  = numeric  (0L)
                     , OrigUnits  = character(0L)
                     , StdValid   = numeric  (0L)
@@ -1035,12 +1038,13 @@ once, unless a new version of data request is being used.</p>
       # Summarise ancillary data.
       AncilNow = TRYdbNow                                        %&gt;%
          filter(is.na(TraitID))                                  %&gt;%
-         mutate( Name       = DataName
+         mutate( DataID     = as.integer(DataID) 
+               , Name       = DataName
                , OrigValid  = is.valid(OrigValueStr,qq.rm=TRUE)
                , OrigUnits  = OrigUnitStr
                , StdValid   = is.valid(StdValue    ,qq.rm=TRUE)
                , StdUnits   = UnitName                          ) %&gt;%
-         select(c(Name,OrigValid,OrigUnits,StdValid,StdUnits))
+         select(c(DataID,Name,OrigValid,OrigUnits,StdValid,StdUnits))
       AncilAll = rbind(AncilAll,AncilNow)
    }#end for ( f in seq_along(try_file_list))
 
@@ -1065,8 +1069,7 @@ once, unless a new version of data request is being used.</p>
    # Summarise ancillary data
    cat0(&quot;   - Summarise ancillary look-up table.&quot;)
    AncilLUT = AncilAll                                           %&gt;%
-      mutate( AncilID = match(Name,sort(unique(Name))))          %&gt;%
-      group_by(AncilID)                                          %&gt;%
+      group_by(DataID)                                           %&gt;%
       summarise( CntUniqName  = length.unique(Name)
                , CntName      = length(Name)
                , CntOrigUnits = length.unique(OrigUnits)
@@ -1078,7 +1081,7 @@ once, unless a new version of data request is being used.</p>
                , StdUnits     = commonest(StdUnits,na.rm=TRUE)  ) %&gt;%
       ungroup()                                                   %&gt;%
       arrange(desc(CntName))                                      %&gt;%
-      select(c(Name,CntUniqName,CntName,OrigValid,OrigUnits,CntOrigUnits,StdValid,StdUnits,CntStdUnits))
+      select(c(DataID,Name,CntUniqName,CntName,OrigValid,OrigUnits,CntOrigUnits,StdValid,StdUnits,CntStdUnits))
 
    # Create list with all original units and standard units.
    TraitOrigUnits = TraitAll                                                                 %&gt;%
@@ -1096,21 +1099,19 @@ once, unless a new version of data request is being used.</p>
       ungroup()                                                                              %&gt;%
       select(TraitID,Name,StdUnits,CntStdUnits)
   AncilOrigUnits = AncilAll                                                                  %&gt;%
-      mutate( AncilID = match(Name,sort(unique(Name))))                                      %&gt;%
-      group_by(AncilID)                                                                      %&gt;%
+      group_by(DataID)                                                                       %&gt;%
       summarise( Name         = commonest(Name,na.rm=TRUE)
                , CntOrigUnits = tabulate(factor(OrigUnits,levels=sort(unique(OrigUnits))))
                , OrigUnits    = sort(unique(OrigUnits))                                    ) %&gt;%
       ungroup()                                                                              %&gt;%
-      select(AncilID,Name,OrigUnits,CntOrigUnits)
+      select(DataID,Name,OrigUnits,CntOrigUnits)
    AncilStdUnits = AncilAll                                                                  %&gt;%
-      mutate( AncilID = match(Name,sort(unique(Name))))                                      %&gt;%
-      group_by(AncilID)                                                                      %&gt;%
+      group_by(DataID)                                                                       %&gt;%
       summarise( Name         = commonest(Name,na.rm=TRUE)
                , CntStdUnits  = tabulate(factor(StdUnits,levels=sort(unique(StdUnits))))
                , StdUnits     = sort(unique(StdUnits))                                     ) %&gt;%
       ungroup()                                                                              %&gt;%
-      select(AncilID,Name,StdUnits,CntStdUnits)
+      select(DataID,Name,StdUnits,CntStdUnits)
 
    # Write CSV files
    cat0(&quot;   - Write CSV files to &quot;,lookup_path,&quot;.&quot;)
@@ -1132,7 +1133,14 @@ once, unless a new version of data request is being used.</p>
                , compress          = &quot;xz&quot;
                , compression_level = 9
                )#end save
-}#end if (reload_lookup &amp;&amp; file.exists(Rdata_LookUp))</code></pre>
+}#end if (reload_lookup &amp;&amp; file.exists(Rdata_LookUp))
+
+# Exit script in case this is a dry run
+if (is_dry_run){
+   cat0(&quot; Look-up tables were successfully generated. Make sure to select traits and ancillary data,&quot;)
+   cat0(&quot;    then set variables \&quot;ancil_file\&quot; and \&quot;trait_file\&quot; with your selections. &quot;)
+   stop(&quot; Dry run: only look up tables were generated.&quot;)
+}#end if (is_dry_run)</code></pre>
 <p>We now read in the TRY data base, and incorporate traits data to a
 tibble object, with one row for each observation.</p>
 <pre class="r"><code>if (reload_TidyTRY &amp;&amp; file.exists(Rdata_RawTRY)){
@@ -1424,8 +1432,7 @@ tibble object, with one row for each observation.</p>
       cat0(&quot;   - Delete file: &quot;,uniq_ancil_base,&quot;.&quot;)
       dummy = file.remove(uniq_ancil_file)
    }#end for (uniq_trait_file in uniq_trait_list)
-   
-   
+
    # Find the list of all files to read. 
    try_file_list   = list.files(author_path,pattern=&quot;\\.csv$&quot;)
    n_try_file_list = length(try_file_list)
@@ -1477,17 +1484,17 @@ tibble object, with one row for each observation.</p>
       }#end if (CntObsAppend &gt; 0)
 
       # Find out which lines have traits and which lines have ancillary information
-      IsAncil       = is.na(trydb_now$TraitID) &amp; (trydb_now$DataName %in% try_ancil$TRYName)
-      WhichAncil    = unique(trydb_now$DataName[IsAncil])
+      IsAncil       = is.na(trydb_now$TraitID) &amp; (trydb_now$DataID %in% try_ancil$DataID)
+      WhichAncil    = unique(trydb_now$DataID[IsAncil])
       CntWhichAncil = length(WhichAncil)
 
       # Append trait variables in case they are not in the data base.
       for (w in sequence(CntWhichAncil)){
-         AncilNameNow = WhichAncil[w]
-         z            = match(AncilNameNow,try_ancil$TRYName)
+         DataIDNow  = WhichAncil[w]
+         z          = match(DataIDNow,try_ancil$DataID)
 
          # This should not happen...
-         if (! is.finite(z)) stop(paste0(&quot; Unrecognised Ancillary Data Set: &quot;,AncilNameNow,&quot;.&quot;))
+         if (! is.finite(z)) stop(paste0(&quot; Unrecognised Ancillary Data Set ID: &quot;,DataIDNow,&quot;.&quot;))
 
          # Handy aliases
          NameNow       = try_ancil$Name      [z]
@@ -1502,18 +1509,18 @@ tibble object, with one row for each observation.</p>
          # cat0(&quot;     ~ Add ancillary data: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;).&quot;)
 
          # Check whether to generate list of unique traits
-         if (gen_unique_trait){
+         if (gen_unique_ancil){
             uniq_ancil_file = file.path( uniq_ancil_path
-                                       , paste0( sprintf(&quot;%4.4i&quot;,z),&quot;_&quot;
+                                       , paste0( sprintf(&quot;%4.4i&quot;,as.integer(DataIDNow)),&quot;_&quot;
                                                , NameNow,&quot;_UniqueValues_&quot;,use_suffix,&quot;.csv&quot;
                                                )#end paste0
                                        )#end file.path
          }else{
             uniq_ancil_file = NULL
-         }#end if (gen_unique_trait)
+         }#end if (gen_unique_ancil)
 
          # Append values and units
-         sel = is.na(trydb_now$TraitID) &amp; (trydb_now$DataName %in% AncilNameNow)
+         sel = is.na(trydb_now$TraitID) &amp; (trydb_now$DataID %in% DataIDNow)
          idx = match(trydb_now$ObservationID[sel],TidyTRY$ObservationID)
          
          # Set the output name
@@ -1537,11 +1544,11 @@ tibble object, with one row for each observation.</p>
             # Use original value, and change type.
             AncilOrig   = trydb_now$OrigValueStr[sel]
             UnitOrig    = trydb_now$OrigUnitStr [sel]
-            NameOrig    = trydb_now$OriglName [sel]
+            NameOrig    = trydb_now$OriglName   [sel]
             AncilAuthor = trydb_now$AuthorName  [sel]
 
             # Apply some edits to ensure as much data as possible can be retrieved
-            AncilFixed = TRY_FixAncil_OrigValue_Str( AncilName  = AncilNameNow
+            AncilFixed = TRY_FixAncil_OrigValue_Str( DataID     = DataIDNow
                                                    , Type       = TypeNow
                                                    , AncilOrig  = AncilOrig
                                                    , UnitOrig   = UnitOrig
@@ -1579,7 +1586,7 @@ tibble object, with one row for each observation.</p>
             cat0(&quot;--------------&quot;)
             cat0(&quot; Ancillary data: &quot;,DescNow     ,&quot;.&quot;)
             cat0(&quot; Variable name: &quot; ,NameNow     ,&quot;.&quot;)
-            cat0(&quot; TRY Name: &quot;      ,AncilNameNow,&quot;.&quot;)
+            cat0(&quot; Data ID: &quot;       ,DataIDNow   ,&quot;.&quot;)
             cat0(&quot; Author Name: &quot;   ,unique(AncilAuthor),&quot;.&quot;)
             cat0(&quot; Unexpected exception occurred. Type \&quot;print(Trouble)\&quot; for error.&quot;)
             Trouble = tibble( Line       = which(sel)[AncilMess]
@@ -1805,28 +1812,28 @@ to the best extent possible.</p>
    source(file.path(util_path,&quot;unitlist.r&quot;           ),chdir=TRUE)
    
    # Harmonise geographic coordinates
-   IsGeoCoord = all(c(&quot;Longitude&quot;,&quot;Latitude&quot;) %in% try_ancil$TRYName)
+   IsGeoCoord = all(c(59L,60L) %in% try_ancil$DataID)
    if (IsGeoCoord){
       cat0(&quot;   - Harmonise geographic coordinates&quot;)
-      Lon            = try_ancil$Name[try_ancil$TRYName %in% &quot;Longitude&quot;]
-      Lat            = try_ancil$Name[try_ancil$TRYName %in% &quot;Latitude&quot; ]
+      Lon            = try_ancil$Name[try_ancil$DataID %in% 60L]
+      Lat            = try_ancil$Name[try_ancil$DataID %in% 59L]
       TidyTRY[[Lon]] = ifelse(test=TidyTRY[[Lon]] %wr% c(-180.,360.),yes=TidyTRY[[Lon]],no=NA_real_)
       TidyTRY[[Lat]] = ifelse(test=TidyTRY[[Lat]] %wr% c( -90., 90.),yes=TidyTRY[[Lat]],no=NA_real_)
       # Make sure longitude is defined between -180 and +180 (not 0-360)
       TidyTRY[[Lon]] = ((TidyTRY[[Lon]]+180.) %% 360.) - 180.
-   }#end if (all(c(&quot;Longitude&quot;,&quot;Latitude&quot;) %in% try_ancil$TRYName))
+   }#end if (IsGeoCoord)
 
    
    # Harmonise countries and continents.
-   IsLocation = all(c(&quot;Location Country&quot;,&quot;Location Continent&quot;) %in% try_ancil$TRYName)
+   IsLocation = all(c(1412L,1413L) %in% try_ancil$DataID)
    if (IsGeoCoord &amp; IsLocation){
       cat0(&quot;   - Harmonise country and continent information.&quot;)
 
       # Select variables for coordinates and location.
-      Lon       = try_ancil$Name[try_ancil$TRYName %in% &quot;Longitude&quot;]
-      Lat       = try_ancil$Name[try_ancil$TRYName %in% &quot;Latitude&quot; ]
-      Country   = try_ancil$Name[try_ancil$TRYName %in% &quot;Location Country&quot;        ]
-      Continent = try_ancil$Name[try_ancil$TRYName %in% &quot;Location Continent&quot;      ]
+      Lon       = try_ancil$Name[try_ancil$DataID %in% 60L  ]
+      Lat       = try_ancil$Name[try_ancil$DataID %in% 59L  ]
+      Country   = try_ancil$Name[try_ancil$DataID %in% 1412L]
+      Continent = try_ancil$Name[try_ancil$DataID %in% 1413L]
 
       sel     = is.finite(TidyTRY[[Lon]]) &amp; is.finite(TidyTRY[[Lat]])
       GeoHarm = TRY_LonLatToGeoInfo( lon = TidyTRY[[Lon]][sel], lat = TidyTRY[[Lat]][sel])
@@ -1837,9 +1844,6 @@ to the best extent possible.</p>
    # Harmonise scientific names.
    cat0(&quot;   - Harmonise taxonomy.&quot;)
 
-   # Make sure taxize is set to silent.
-   dummy = taxize_options(taxon_state_messages=TRUE,quiet=TRUE)
-
    # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
    IsClimate = any(try_trait$TraitID %in% 825L)
    if (IsGeoCoord &amp; IsClimate){
@@ -1847,13 +1851,13 @@ to the best extent possible.</p>
 
       # Select climate variable.
       Climate = try_trait$Name[try_trait$TraitID %in% 825L]
-      Lon     = try_ancil$Name[try_ancil$TRYName %in% &quot;Longitude&quot;]
-      Lat     = try_ancil$Name[try_ancil$TRYName %in% &quot;Latitude&quot; ]
+      Lon     = try_ancil$Name[try_ancil$DataID  %in% 60L ]
+      Lat     = try_ancil$Name[try_ancil$DataID  %in% 59L ]
       
       # Read the climate data base
-      KoppenID = raster::raster(koppen_raster)
+      KoppenID  = raster::raster(koppen_raster)
       KoppenFun = function(x,koppen_class) ifelse(x %in% koppen_class,x,NA_integer_)
-      KoppenID = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
+      KoppenID  = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
 
       # Find observations with geolocation
       GeoIndex  = is.finite(TidyTRY[[Lon]]) &amp; is.finite(TidyTRY[[Lat]])
@@ -1879,14 +1883,14 @@ to the best extent possible.</p>
    if (use_realm %in% &quot;NeoTropical&quot;){
       cat0(&quot;   - Subset tropical observations in the NeoTropics.&quot;)
       # Create a shorter TRY data base with standard names
-      Lon        = try_ancil$Name[try_ancil$TRYName %in% &quot;Longitude&quot;                           ]
-      Lat        = try_ancil$Name[try_ancil$TRYName %in% &quot;Latitude&quot;                            ]
-      Site       = try_ancil$Name[try_ancil$TRYName %in% &quot;Location / Site Name&quot;                ]
-      Country    = try_ancil$Name[try_ancil$TRYName %in% &quot;Location Country&quot;                    ]
-      Continent  = try_ancil$Name[try_ancil$TRYName %in% &quot;Location Continent&quot;                  ]
-      Climate    = try_trait$Name[try_trait$TraitID %in% 825L                                  ]
-      ClimatePFT = try_ancil$Name[try_ancil$TRYName %in% &quot;Climate_PFT_Biome equivalent_Poulter&quot;]
-      Biome      = try_ancil$Name[try_ancil$TRYName %in% &quot;Vegetation type / Biome&quot;             ]
+      Lon        = try_ancil$Name[try_ancil$DataID  %in% 60L  ]
+      Lat        = try_ancil$Name[try_ancil$DataID  %in% 59L  ]
+      Site       = try_ancil$Name[try_ancil$DataID  %in% 114L ]
+      Country    = try_ancil$Name[try_ancil$DataID  %in% 1412L]
+      Continent  = try_ancil$Name[try_ancil$DataID  %in% 1413L]
+      Climate    = try_trait$Name[try_trait$TraitID %in% 825L ]
+      ClimatePFT = try_ancil$Name[try_ancil$DataID  %in% 4736L]
+      Biome      = try_ancil$Name[try_ancil$DataID  %in% 193L ]
       Empty      = rep(NA,times=nrow(TidyTRY))
 
       SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
@@ -1920,14 +1924,14 @@ to the best extent possible.</p>
    cat0(&quot;     ~ List unique scientific names (as provided in the TRY data base).&quot;)
    UniqScientific = sort(unique(str_to_sentence(TidyTRY$ScientificName)))
    CntUniqTaxon   = length(UniqScientific)
-   UniqTaxon = tibble( ScientificName = rep(NA_character_,times=length(UniqScientific))
-                     , Genus          = rep(NA_character_,times=length(UniqScientific))
-                     , Family         = rep(NA_character_,times=length(UniqScientific))
-                     , Order          = rep(NA_character_,times=length(UniqScientific))
-                     , Class          = rep(NA_character_,times=length(UniqScientific))
-                     , Phylum         = rep(NA_character_,times=length(UniqScientific))
-                     , GrowthForm     = rep(NA_character_,times=length(UniqScientific))
-                     )#end tibble
+   UniqTaxon      = tibble( ScientificName = rep(NA_character_,times=length(UniqScientific))
+                          , Genus          = rep(NA_character_,times=length(UniqScientific))
+                          , Family         = rep(NA_character_,times=length(UniqScientific))
+                          , Order          = rep(NA_character_,times=length(UniqScientific))
+                          , Class          = rep(NA_character_,times=length(UniqScientific))
+                          , Phylum         = rep(NA_character_,times=length(UniqScientific))
+                          , GrowthForm     = rep(NA_character_,times=length(UniqScientific))
+                          )#end tibble
 
    # If a taxonomic table is provided, use it first.
    if (file.exists(taxon_file)){
@@ -1984,45 +1988,48 @@ to the best extent possible.</p>
       
    # Fill in unresolved taxa.
    UniqMiss = which(is.na(IdxUniq))
-   if (length(UniqMiss) %gt% 0L) stop(&quot;Missing species in look-up table.&quot;)
-   if (length(UniqMiss) %gt% 0L) cat0(&quot;     ~ Search remaining species online.&quot;)
-   for (u in UniqMiss){
-      UniqScientificNow = UniqScientific[u]
-      cat (&quot;       &gt; &quot;,sprintf(&quot;%4.4i of %4.4i&quot;,u,CntUniqTaxon),&quot;. Species taxonomy: &quot;,UniqScientificNow,&quot;...&quot;)
-      UniqResolve                 = TNRS( UniqScientificNow,sources = &quot;wfo&quot;,classification = &quot;wfo&quot;)
-      AcceptedName                = UniqResolve$Accepted_name
-      if ( is.na(AcceptedName) | (AcceptedName %in% &quot;&quot;) ){
-         cat0(&quot; Name not resolved.&quot;)
-      }else{
-         cat0(&quot; Name resolved.&quot;)
-         UniqSplit                   = strsplit(x=AcceptedName,split=&quot; &quot;)[[1]]
-         UniqTaxon$ScientificName[u] = paste(UniqSplit[sequence(min(2L,length(UniqSplit)))],collapse=&quot; &quot;)
-         UniqTaxon$Genus         [u] = UniqSplit[1]
-         UniqTaxon$Family        [u] = UniqResolve$Accepted_family
-      }#end if ( (! is.na(AcceptedName)) &amp; (! AcceptedName %in% &quot;&quot;) )
-   }#end for (u in sequence(CntUniqTaxon))
+   if (length(UniqMiss) %gt% 0L){
+      cat0(&quot;     ~ Search remaining species online.&quot;)
+      UniqCheck = tibble( name    = UniqScientific[UniqMiss]
+                        , kingdom = &quot;Plantae&quot;
+                        )#end tibble
+      UniqResolve = name_backbone_checklist(name_data = UniqCheck)
+      MissLevel   = c(&quot;species&quot;,&quot;genus&quot;,&quot;family&quot;,&quot;order&quot;,&quot;class&quot;,&quot;phylum&quot;)
+      MissLevel   = MissLevel[! MissLevel %in% names(UniqResolve)]
+      UniqResolve = UniqResolve                         %&gt;% 
+         mutate( across(c(MissLevel), ~ NA_character_)) %&gt;%
+         mutate( acceptedName = ifelse(test=is.na(species),yes=genus,no=species) )
+      
+      UniqTaxon$ScientificName[UniqMiss] = UniqResolve$acceptedName
+      UniqTaxon$Genus         [UniqMiss] = UniqResolve$genus
+      UniqTaxon$Family        [UniqMiss] = UniqResolve$family
+      UniqTaxon$Order         [UniqMiss] = UniqResolve$order
+      UniqTaxon$Class         [UniqMiss] = UniqResolve$class
+      UniqTaxon$Phylum        [UniqMiss] = UniqResolve$phylum
+   }#end if (length(UniqMiss) %gt% 0L)
+
 
    # Find order, class and phylum for each family
    MissHighTaxa  = ( ( is.na(UniqTaxon$Order) | is.na(UniqTaxon$Class) | is.na(UniqTaxon$Phylum) )
                    &amp; (! is.na(UniqTaxon$Family) )
                    )#end MissHighTaxa
-   MissFamily    = sort(unique(UniqTaxon$Family[MissHighTaxa]))
-   CntMissFamily = length(MissFamily)
-   if (CntMissFamily %gt% 0L) cat0(&quot;     ~ Search higher taxonomy information online.&quot;)
-   for (f in sequence(CntMissFamily)){
-      UniqFamilyNow = MissFamily[f]
-      cat (&quot;       &gt; &quot;,sprintf(&quot;%4.4i of %4.4i&quot;,f,CntMissFamily),&quot;. Family taxonomy: &quot;,UniqFamilyNow,&quot;...&quot;)
-      UniqHigher            = classification(UniqFamilyNow,db=&quot;ncbi&quot;)[[1]]
-      UniqOrder             = UniqHigher$name[UniqHigher$rank %in% &quot;order&quot; ]
-      UniqClass             = UniqHigher$name[UniqHigher$rank %in% &quot;class&quot; ]
-      UniqPhylum            = UniqHigher$name[UniqHigher$rank %in% &quot;phylum&quot;]
-      
-      idx                   = which(UniqTaxon$Family %in% UniqFamilyNow)
-      UniqTaxon$Order [idx] = UniqOrder
-      UniqTaxon$Class [idx] = UniqClass
-      UniqTaxon$Phylum[idx] = UniqPhylum
-      cat0(&quot; Done.&quot;)
-   }#end for (f in sequence(CntUniqFamily))
+   UniqFamily    = sort(unique(UniqTaxon$Family[MissHighTaxa]))
+   if (length(UniqFamily) %gt% 0L){
+      cat0(&quot;     ~ Search higher taxonomy information online.&quot;)
+      UniqIndex     = match(UniqTaxon$Family,UniqFamily)
+      UniqSel       = is.finite(UniqIndex)
+
+      UniqCheck   = tibble( name    = UniqFamily, kingdom = &quot;Plantae&quot;)
+      UniqResolve = name_backbone_checklist(name_data = UniqCheck)
+      MissLevel   = c(&quot;family&quot;,&quot;order&quot;,&quot;class&quot;,&quot;phylum&quot;)
+      MissLevel   = MissLevel[! MissLevel %in% names(UniqResolve)]
+      UniqResolve = UniqResolve                         %&gt;% 
+         mutate( across(c(MissLevel), ~ NA_character_))
+      UniqTaxon$Family[UniqSel] = UniqResolve$family[UniqIndex[UniqSel]]
+      UniqTaxon$Order [UniqSel] = UniqResolve$order [UniqIndex[UniqSel]]
+      UniqTaxon$Class [UniqSel] = UniqResolve$class [UniqIndex[UniqSel]]
+      UniqTaxon$Phylum[UniqSel] = UniqResolve$phylum[UniqIndex[UniqSel]]
+   }#end if (length(UniqFamily) %gt% 0L)
 
    
    # Assign growth form in case they are available, then complement with taxa that can be related to growth form
@@ -2155,8 +2162,8 @@ to the best extent possible.</p>
    cat0(&quot;   - Harmonise biome/habitat information.&quot;)
    if (use_realm %in% &quot;NeoTropical&quot;){
       # Build a subset of the tibble for testing tree likelihood.
-      Biome     = try_ancil$Name[try_ancil$TRYName %in% &quot;Vegetation type / Biome&quot;  ]
-      Habitat   = try_ancil$Name[try_ancil$TRYName %in% &quot;Habitat / plot description&quot;]
+      Biome     = try_ancil$Name[try_ancil$DataID %in%  193L]
+      Habitat   = try_ancil$Name[try_ancil$DataID %in% 1863L]
       EmptyChar = rep(NA_character_,times=nrow(TidyTRY))
 
       # Create a subset of the data set for finding the tree score.

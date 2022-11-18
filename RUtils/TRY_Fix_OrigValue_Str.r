@@ -3710,9 +3710,8 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 #   This function fixes ancillary data when loading the original string value.  Four 
 # inputs are needed.
 #
-# - AncilName  -- Description for this ancillary data set given by the TRY data base. 
-#                 This must be a scalar and the description string must match EXACTLY the
-#                 name given in the TRY data base.
+# - DataID     -- Data ID given for this ancillary data set given  by the TRY data base.
+#                 This must be a scalar.
 # - Type       -- Variable type ("numeric","integer","character","logical"). This must
 #                 be a scalar too.
 # - AncilOrig  -- Original string values for this ancillary data. 
@@ -3728,50 +3727,39 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 #                 it could be relevant if multiple quantities are linked to the same input
 #                 ancillary name.
 #---~---
-TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOrig
+TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                        ,AuthorName,UniqOutput=NULL,OutputName=NULL){
 
    #---~---
    #   Make sure dimensions of input values make sense.
    #---~---
-   CntAncilName = length(AncilName)
+   CntDataID    = length(DataID   )
    CntType      = length(Type     )
    CntAncilOrig = length(AncilOrig)
    CntUnitOrig  = length(UnitOrig )
-   if ( (CntAncilName != 1L) || (CntType != 1L) || (CntAncilOrig != CntUnitOrig) ){
+   if ( (CntDataID != 1L) || (CntType != 1L) || (CntAncilOrig != CntUnitOrig) ){
       cat0(" ")
       cat0("------------------")
       cat0("   FATAL ERROR!   ")
       cat0("------------------")
-      cat0(" - Length of variable \"AncilName\":  ",CntAncilName,".")
+      cat0(" - Length of variable \"DataID\":     ",CntDataID   ,".")
       cat0(" - Length of variable \"Type\":       ",CntType     ,".")
       cat0(" - Length of variable \"AncilOrig\":  ",CntAncilOrig,".")
       cat0(" - Length of variable \"UnitOrig\":   ",CntUnitOrig ,".")
       cat0(" ")
-      cat0(" Variables \"AncilName\" and \"Type\" must be scalars.")
+      cat0(" Variables \"DataID\" and \"Type\" must be scalars.")
       cat0(" Dimensions of variables  \"AncilOrig\" and \"UnitOrig\" must match.")
       cat0("------------------")
       stop(" Inconsistent settings.")
-   }#end if ( (CntAncilName != 1L) || (CntType != 1L) || (CntAncilOrig != CntUnitOrig) )
+   }#end if ( (CntDataID != 1L) || (CntType != 1L) || (CntAncilOrig != CntUnitOrig) )
    #---~---
 
 
 
    #---~---
-   #   Output Name: by default this is the Ancillary Name without spaces or special 
-   # characters.
+   #   Output Name: by default this is based on the DataID.
    #---~---
-   if (is.null(OutputName)){
-      OutputName = tolower(AncilName)
-      OutputName = gsub(pattern="\\(",replacement="_",x=OutputName)
-      OutputName = gsub(pattern="\\)$",replacement="",x=OutputName)
-      OutputName = gsub(pattern="\\)",replacement="_",x=OutputName)
-      OutputName = gsub(pattern="\\/",replacement="" ,x=OutputName)
-      OutputName = gsub(pattern="\\;",replacement="_",x=OutputName)
-      OutputName = gsub(pattern="\\:",replacement="_",x=OutputName)
-      OutputName = gsub(pattern="\\ ",replacement="_",x=OutputName)
-      OutputName = tolower(OutputName)
-   }#end if (is.null(OutputName))
+   if (is.null(OutputName)) OutputName = sprintf("ancil_id_%4.4i",DataID)
    #---~---
 
 
@@ -3873,7 +3861,7 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
       # instead of replaced.
       #---~---
       IsAuthor       = ( AuthorName %in% "Tamir Klein" )
-      IsVariable     = AncilName %in% "Mean annual sum of potential evapotranspiration (PET)"
+      IsVariable     = DataID %in% 92L
       del_sep        = ( IsAuthor
                        & IsVariable 
                        & grepl(pattern=";"  ,x=Value)
@@ -4406,74 +4394,39 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
    #   Group data sets based on their main units.
    #---~---
    #   Coordinates
-   AncilCoord      = AncilName %in% c( "Latitude (decimal degrees)"
-                                     , "Latitude estimated"
-                                     , "Longitude (decimal degrees)"
-                                     , "Longitude estimated"
-                                     )#end c
+   AncilCoord      = DataID %in% c(59L,60L,4704L,4705L,4706L,4707L)
    #   Temperature
-   AncilTemp       = AncilName %in% c( "Air temperature during measurement (Tair)"
-                                     , "Leaf temperature during measurement (Tleaf)"
-                                     , "Leaf temperature for photosynthetic measurements"
-                                     , "Leaf temperature for respiration measurements"
-                                     , "Mean annual temperature (MAT)"
-                                     )#end c
+   AncilTemp       = DataID %in% c(62L,1665L,1666L,6932L,6936L,6692L,6693L)
    #   Water flux (precipitation, PET, etc).
-   AncilWater      = AncilName %in% c( "Mean annual sum of potential evapotranspiration (PET)"
-                                     , "Mean sum of annual precipitation (PPT / MAP / TAP)"
-                                     )#end c
+   AncilWater      = DataID %in% c(80L,92L)
    #   CO2 variables.
-   AncilCO2        = AncilName %in% c( "Atmospheric CO2 concentration during measurement (Ca)"
-                                     )#end c
+   AncilCO2        = DataID %in% c(323L)
    #   Pressure
-   AncilPres       = AncilName %in% c( "Atmospheric pressure"
-                                     )#end c
+   AncilPres       = DataID %in% c(3801L)
    #   Length
-   AncilLength     = AncilName %in% c( "Ecosystem rooting depth"
-                                     , "Soil depth"
-                                     )#end c
+   AncilLength     = DataID %in% c(274L,7042L)
    #   Area indices
-   AncilXAI        = AncilName %in% c( "Leaf area index of the site (LAI)"
-                                     )#end c
+   AncilXAI        = DataID %in% c(201L)
    #   Date (calendar dates)
-   AncilDate       = AncilName %in% c( "Measurement date / sampling date"
-                                     , "Measurement date: year"
-                                     , "Sampling or measurement date standardized"
-                                     , "Sampling date"
-                                     , "Sampling date: year"
-                                     )#end c
+   AncilDate       = DataID %in% c(212L,241L,595L,696L,6601L)
    #   Time (elapsed time)
-   AncilTime       = AncilName %in% c( "Plant age at measurement"
-                                     , "Plant developmental status / plant age / maturity / plant life stage"
-                                     , "Stand age class"
-                                     , "Stand age"
-                                     , "Time since fire"
-                                     )#end c
+   AncilTime       = DataID %in% c(413L,1414L,1832L,3031L,3885L,4696L)
    #   Raditation
-   AncilRad        = AncilName %in% c( "Light during measurement"
-                                     , "Radiation during measurement"
-                                     )#end c
+   AncilRad        = DataID %in% c( 321L,340L)
    #   Relative humidity
-   AncilHumid      = AncilName %in% c( "Relative air humidity during measurement (Relative humidity )"
-                                     )#end c
+   AncilHumid      = DataID %in% c(326L)
    #   Country
-   AncilCountry    = AncilName %in% c( "Location Country")
+   AncilCountry    = DataID %in% c(1412L)
    #   Continent
-   AncilContinent  = AncilName %in% c( "Location Continent")
+   AncilContinent  = DataID %in% c(1413L)
    #   Disturbance 
-   AncilDisturb    = AncilName %in% c( "Site disturbance" )
+   AncilDisturb    = DataID %in% c(496L)
    #   Sun/shade flag
-   AncilSunShade   = AncilName %in% c( "Canopy position: sun vers. Shade leaf qualifier; light exposure"
-                                     , "Exposition light / irradiance"
-                                     , "Exposition: position of plant in the canopy"
-                                     , "Leaf exposition"
-                                     )#end c
+   AncilSunShade   = DataID %in% c(210L,443L,766L,2111L)
    #   Biome
-   AncilBiome      = AncilName %in% c( "Vegetation type / Biome"
-                                     , "Vegetation type / Biome ( 2)"
-                                     )#end c
+   AncilBiome      = DataID %in% c(193L,202L)
    #   Attributed growth form
-   AncilGrowth     = AncilName %in% c( "Plant growth form attributed" )
+   AncilGrowth     = DataID %in% c(6551L)
    #---~---
 
 
@@ -4564,8 +4517,8 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
 
 
       #---- Useful logical tests for variable specific actions.
-      IsPET = AncilName %in% "Mean annual sum of potential evapotranspiration (PET)"
-      IsMAP = AncilName %in% "Mean sum of annual precipitation (PPT / MAP / TAP)"
+      IsPET = DataID %in% 92L
+      IsMAP = DataID %in% 80L
       #---~---
 
 
@@ -4824,8 +4777,7 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
       bad_sel        = ( ( AuthorName %in% c( "Pedro Higuchi" 
                                             , "Adam Martin" 
                                             , "Marina Scalon"  ) )
-                       & ( AncilName  %in% c("Measurement date / sampling date" 
-                                            , "Sampling or measurement date standardized" ) )
+                       & ( DataID     %in% c(241L,6601L) )
                        )#end bad_sel
       Value[bad_sel] = NA_character_
       Valid[bad_sel] = FALSE
@@ -5285,7 +5237,7 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
       #---~---
       #   Concatenate date in standard format (yyyy-mm-dd)
       #---~---
-      # if (any(IsAuthor) & (AncilName %in% "Sampling or measurement date standardized")) browser()
+      # if (any(IsAuthor) & (DataID %in% 6601L)) browser()
       Value = ifelse( test = is.finite(ValueDay  ) & is.finite(ValueMonth)
                            & is.finite(ValueYear )
                     , yes  = sprintf("%4.4i-%2.2i-%2.2i",ValueYear,ValueMonth,ValueDay)
@@ -5313,11 +5265,11 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
       #   Some age data have values but no units. They are likely years so we assume years.
       #---~---
       IsUnitMiss = is.na(UnitOrig)
-      IsPlantAge = AncilName %in% "Plant age at measurement"
-      IsPlantDev = AncilName %in% "Plant developmental status / plant age / maturity / plant life stage"
-      IsStandCls = AncilName %in% "Stand age class"
-      IsStandAge = AncilName %in% "Stand age"
-      IsTimeFire = AncilName %in% "Time since fire"
+      IsPlantAge = DataID %in% c(1414L,1832L)
+      IsPlantDev = DataID %in% c(413L)
+      IsStandCls = DataID %in% c(3031L)
+      IsStandAge = DataID %in% c(4696L)
+      IsTimeFire = DataID %in% c(3885L)
       AssumeYear = ( IsUnitMiss
                    & ( ( IsTimeFire & (AuthorName %in% "Isabelle Aubin"  ) )
                      | ( IsPlantDev & (AuthorName %in% "Maxime Cailleret") )
@@ -5956,10 +5908,10 @@ TRY_FixAncil_OrigValue_Str <<- function(AncilName,Type,AncilOrig,UnitOrig,NameOr
       #---~---
       #   Logical flags to identify which ancillary variable we are loading.
       #---~---
-      IsCanopyPos = AncilName %in% "Canopy position: sun vers. Shade leaf qualifier; light exposure"
-      IsExpoLight = AncilName %in% "Exposition light / irradiance"
-      IsExpoPos   = AncilName %in% "Exposition: position of plant in the canopy"
-      IsExpoLeaf  = AncilName %in% "Leaf exposition"
+      IsCanopyPos = DataID %in%  443L
+      IsExpoLight = DataID %in% 2111L
+      IsExpoPos   = DataID %in%  766L
+      IsExpoLeaf  = DataID %in%  210L
       #---~---
 
 
