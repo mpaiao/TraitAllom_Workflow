@@ -2,9 +2,7 @@
 title: "Trait/Allometry Database Pre-processor"
 author: "Marcos Longo"
 date: '2022-09-27'
-output:
-  html_document: default
-  pdf_document: default
+output: html_document
 ---
 
 <style>
@@ -225,7 +223,8 @@ addinfo_categ = file.path(main_path,"AdditionalData","CategoricalExtra.csv")
 
 
 In addition, the code can extract climate information from a raster file (`beck_koppen_raster`).  The default is the high-resolution Köppen-Geiger climate classification map by [Beck et al. 2018](https://dx.doi.org/10.1038/sdata.2018.214) for the present, but other maps can be used as well. This will be used to overwrite the climate classification for all trait data with coordinates, because the information from TRY is not standardised and subject to errors. Variable `koppen_class` should be a named vector that links Köppen-Geiger classes to the indices used in the original data set.
-```{r, label='koppen-raster'}
+
+```{r, label='climate-raster'}
 # Location of raster file with Koppen classification.
 koppen_raster = file.path(main_path,"AdditionalData","Beck_KG_V1_present_0p0083.tif")
 
@@ -241,6 +240,7 @@ koppen_class  = c( Af  =  1L, Am  =  2L, Aw  =  3L
                  , ET  = 29L, EF  = 30L
                  )#end c
 ```
+
 
 
 Settings for reloading or rerunning multiple steps of this script. These are all logical variables.
@@ -290,11 +290,13 @@ The following block defines variables useful for harmonising traits:
 * **leaf_thick2dens_factor**. Is there any multiplication factor to go from leaf thickness to leaf density due to units mismatches? For example, if (after the transformations provided in `trait_file`) leaf thickness is in $\mathrm{mm}$, SLA is in $\mathrm{cm^2\,g^{-1}}$ and leaf density is in $\mathrm{mg\,mm^{-3}}$, then set `leaf_thick2dens_factor=10.`.
 * **leaf_c2n_factor**. Is there any multiplication factor to go from leaf carbon and leaf nitrogen to carbon:nitrogen ratio due to unit mismatches? For example, if (after the transformations provided in `trait_file`) leaf carbon is in $\mathrm{kgC\,kg^{-1}}$ and leaf nitrogen is in $\mathrm{gN\,kg^{-1}}$, then set `leaf_c2n_factor=0.001`.
 * **leaf_c2p_factor**. Is there any multiplication factor to go from leaf carbon and leaf phosphorus to carbon:phosphorus ratio due to unit mismatches? For example, if (after the transformations provided in `trait_file`) leaf carbon is in $\mathrm{kgC\,kg^{-1}}$ and leaf phosphorus is in $\mathrm{gP\,kg^{-1}}$, then set `leaf_c2p_factor=0.001`.
+* **leaf_area2mass_factor**. Is there any multiplication factor to go from leaf area to leaf oven-dry mass due to unit mismatches? For example, if (after the transformations provided in `trait_file`) leaf area is in $\mathrm{cm^2}$, SLA is in $\mathrm{m^{2}\,kg^{-1}}$ and leaf oven-dry mass is in $\mathrm{kg}$, then set `leaf_c2p_factor=0.0001`.
 ```{r,label='set-harm-utils'}
 photo_a2m_factor       = 1.  # Additional correction factor for area to mass-based photosynthesis.
 leaf_thick2dens_factor = 1.  # Additional correction factor for thickness-density conversion.
 leaf_c2n_factor        = 1.  # Additional correction factor for C:N stoichiometry
 leaf_c2p_factor        = 1.  # Additional correction factor for C:P stoichiometry.
+leaf_area2mass_factor  = 1.  # Additional correction factor for area to mass-based leaf abundance.
 ```
 
 
@@ -990,7 +992,13 @@ if (load_ancil){
    # Find the list of all files to read. 
    try_file_list   = list.files(author_path,pattern="\\.csv$")
    n_try_file_list = length(try_file_list)
-   loop_list       = seq(from=1L,to=n_try_file_list,by=1)
+
+   # Create the loop for files. Typically file_first should be 1 and file_last the number of files.
+   # However, when debugging, it may be more efficient to skip the first files. We set a separate
+   # variable to prevent saving the R object unless we are reading every file.
+   file_first      = 1L
+   file_last       = n_try_file_list
+   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
 
    
    # Copy the empty tibble to a Template
@@ -1089,13 +1097,15 @@ if (load_ancil){
          # Decide which column to use for this trait (Standard or Original)
          if (UseStdUnitNow){
             # Use standard value, and change type.
-            AncilOrig   = trydb_now$StdValue  [sel]
-            UnitOrig    = trydb_now$UnitName  [sel]
-            NameOrig    = trydb_now$OriglName [sel]
-            AncilAuthor = trydb_now$AuthorName[sel]
-            AncilValue  = AncilOrig
-            AncilValid  = ! is.na(AncilValue)
-            AncilVName  = ifelse(test=AncilValid,yes=OutputName,no=NA_character_)
+            AncilOrig    = trydb_now$StdValue  [sel]
+            UnitOrig     = trydb_now$UnitName  [sel]
+            NameOrig     = trydb_now$OriglName [sel]
+            AncilAuthor  = trydb_now$AuthorName[sel]
+            AncilValue   = AncilOrig
+            AncilValid   = ! is.na(AncilValue)
+            AncilVName   = ifelse(test=AncilValid,yes=OutputName,no=NA_character_)
+            AncilTraitID = NA_integer_
+            AncilTrait   = NA_character_
          }else{
             # Use original value, and change type.
             AncilOrig   = trydb_now$OrigValueStr[sel]
@@ -1115,9 +1125,11 @@ if (load_ancil){
                                                    )#end TRY_FixTrait_OrigValue_Str
 
             # The function retrieves both the value and the expected validity. Keep both
-            AncilValue  = AncilFixed$Value
-            AncilValid  = AncilFixed$Valid
-            AncilVName  = AncilFixed$VName
+            AncilValue   = AncilFixed$Value
+            AncilValid   = AncilFixed$Valid
+            AncilVName   = AncilFixed$VName
+            AncilTraitID = AncilFixed$TraitID
+            AncilTrait   = AncilFixed$Trait
          }#end if (UseStdUnitNow)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
@@ -1170,8 +1182,6 @@ if (load_ancil){
 
          # Some ancillary data have information that is useful for filling in traits.
          # Check for those.
-         AncilTraitID    = AncilFixed$TraitID
-         AncilTrait      = AncilFixed$Trait
          WhichTrait      = sort(unique(AncilTraitID[AncilTraitID %in% try_trait$TraitID]))
          CntWhichTrait = length(WhichTrait)
 
@@ -1242,14 +1252,22 @@ if (load_ancil){
    other_names = names(TidyTRY)[! names(TidyTRY) %in% first_names]
    order_names = c(first_names,other_names)
    TidyTRY     = TidyTRY %>% select_at(vars(order_names))
+
    # Save look-up tables
-   cat0("   - Save raw TRY data base with ancillary information to ",basename(Rdata_RawTRY))
-   dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
-                                      , "harmonise_geotaxa","harmonise_traits")
-               , file              = Rdata_RawTRY
-               , compress          = "xz"
-               , compression_level = 9
-               )#end save
+   save_file = (file_first == 1L) && (file_last == n_try_file_list)
+   if (save_file){
+      cat0("   - Save raw TRY data base with ancillary information to ",basename(Rdata_RawTRY))
+      dummy = save( list              = c( "TidyTRY","load_ancil","load_extra"
+                                         , "harmonise_geotaxa","harmonise_traits")
+                  , file              = Rdata_RawTRY
+                  , compress          = "xz"
+                  , compression_level = 9
+                  )#end save
+   }else{
+      cat0("   - Ancillary files were only partially read (due to debugging).")
+      cat0("     Check that \"file_first\" is set to 1 and \"file_last\" is set to \"n_try_file_list\".")
+      stop(" Ended the debugging of ancillary file load. Re-run script with complete file loop settings.")
+   }#end if (save_file)
 }else{
    cat0(" + Ancillary data have been already loaded.")  
 }# if (load_ancil)
@@ -1359,7 +1377,7 @@ if (file.exists(Rdata_ExtraTRY)){
 ```
 
 
-Now we run additional trait harmonisation. Specifically, we standardise scientific names (always use the accepted name), make sure countries/continents are consistent with coordinates, and fix taxonomy to the best extent possible.
+Now we run additional trait harmonisation. Specifically, we standardise scientific names (always use theU accepted name), make sure countries/continents are consistent with coordinates, and fix taxonomy to the best extent possible.
 ```{r, label='harmonise-geo-taxa',results='hide',message=FALSE}
 if (file.exists(Rdata_GeoTaxonTRY)){
    # Load data.
@@ -1550,6 +1568,7 @@ if (file.exists(Rdata_GeoTaxonTRY)){
       
    # Fill in unresolved taxa.
    UniqMiss = which(is.na(IdxUniq))
+   if (length(UniqMiss) %gt% 0L) stop("Check for missing species!")
    if (length(UniqMiss) %gt% 0L){
       cat0("     ~ Search remaining species online.")
       UniqCheck = tibble( name    = UniqScientific[UniqMiss]
@@ -1846,6 +1865,34 @@ if (file.exists(Rdata_TidyTRY)){
       if(length(LeafDens ) != 0L) TidyTRY[[LeafDens ]] = SubsetTRY$leaf_dens
       if(length(LeafThick) != 0L) TidyTRY[[LeafThick]] = SubsetTRY$leaf_thick
    }#end if (any(try_trait$ID %in% LeafArchID))
+
+
+
+   # Harmonise leaf biomass and leaf area.
+   LeafBioAreaID = c(3117L,129L,410L)
+   if (any(try_trait$TraitID %in% LeafBioAreaID)){
+      cat0("   - Fill in leaf area and leaf oven-dry mass")
+      # Build a subset of the tibble for testing tree likelihood.
+      SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
+      LeafMass    = try_trait$Name[try_trait$TraitID %in%  129L]
+      LeafArea    = try_trait$Name[try_trait$TraitID %in%  410L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , SLA            = if(length(SLA     ) == 0L){EmptyReal}else{TidyTRY[[SLA     ]]}
+                          , bleaf          = if(length(LeafMass) == 0L){EmptyReal}else{TidyTRY[[LeafMass]]}
+                          , leaf_area      = if(length(LeafArea) == 0L){EmptyReal}else{TidyTRY[[LeafArea]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_LeafBioArea(x=SubsetTRY,am_fac=leaf_area2mass_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafMass) != 0L) TidyTRY[[LeafMass]] = SubsetTRY$bleaf
+      if(length(LeafArea) != 0L) TidyTRY[[LeafArea]] = SubsetTRY$leaf_area
+   }#end if (any(try_trait$ID %in% LeafBioAreaID))
 
 
    # Harmonise leaf carbon, nitrogen and phosphorus ratios

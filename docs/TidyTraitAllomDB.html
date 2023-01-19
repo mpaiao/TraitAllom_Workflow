@@ -18,7 +18,7 @@
 <script src="site_libs/header-attrs-2.16/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -32,7 +32,7 @@
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
-<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
 <style type="text/css">
@@ -60,6 +60,7 @@ if (window.hljs) {
 
 
 
+<link rel="stylesheet" href="styles.css" type="text/css" />
 
 
 
@@ -256,6 +257,9 @@ $(document).ready(function () {
 </li>
 <li>
   <a href="TidyTraitAllomDB.html">Tidy trait and allometry data base</a>
+</li>
+<li>
+  <a href="TraitTradeOffs.html">Trait trade-off analyses</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -773,11 +777,20 @@ provided in <code>trait_file</code>) leaf carbon is in <span
 class="math inline">\(\mathrm{kgC\,kg^{-1}}\)</span> and leaf phosphorus
 is in <span class="math inline">\(\mathrm{gP\,kg^{-1}}\)</span>, then
 set <code>leaf_c2p_factor=0.001</code>.</li>
+<li><strong>leaf_area2mass_factor</strong>. Is there any multiplication
+factor to go from leaf area to leaf oven-dry mass due to unit
+mismatches? For example, if (after the transformations provided in
+<code>trait_file</code>) leaf area is in <span
+class="math inline">\(\mathrm{cm^2}\)</span>, SLA is in <span
+class="math inline">\(\mathrm{m^{2}\,kg^{-1}}\)</span> and leaf oven-dry
+mass is in <span class="math inline">\(\mathrm{kg}\)</span>, then set
+<code>leaf_c2p_factor=0.0001</code>.</li>
 </ul>
 <pre class="r"><code>photo_a2m_factor       = 1.  # Additional correction factor for area to mass-based photosynthesis.
 leaf_thick2dens_factor = 1.  # Additional correction factor for thickness-density conversion.
 leaf_c2n_factor        = 1.  # Additional correction factor for C:N stoichiometry
-leaf_c2p_factor        = 1.  # Additional correction factor for C:P stoichiometry.</code></pre>
+leaf_c2p_factor        = 1.  # Additional correction factor for C:P stoichiometry.
+leaf_area2mass_factor  = 1.  # Additional correction factor for area to mass-based leaf abundance.</code></pre>
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
@@ -1436,7 +1449,13 @@ tibble object, with one row for each observation.</p>
    # Find the list of all files to read. 
    try_file_list   = list.files(author_path,pattern=&quot;\\.csv$&quot;)
    n_try_file_list = length(try_file_list)
-   loop_list       = seq(from=1L,to=n_try_file_list,by=1)
+
+   # Create the loop for files. Typically file_first should be 1 and file_last the number of files.
+   # However, when debugging, it may be more efficient to skip the first files. We set a separate
+   # variable to prevent saving the R object unless we are reading every file.
+   file_first      = 1L
+   file_last       = n_try_file_list
+   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
 
    
    # Copy the empty tibble to a Template
@@ -1533,13 +1552,15 @@ tibble object, with one row for each observation.</p>
          # Decide which column to use for this trait (Standard or Original)
          if (UseStdUnitNow){
             # Use standard value, and change type.
-            AncilOrig   = trydb_now$StdValue  [sel]
-            UnitOrig    = trydb_now$UnitName  [sel]
-            NameOrig    = trydb_now$OriglName [sel]
-            AncilAuthor = trydb_now$AuthorName[sel]
-            AncilValue  = AncilOrig
-            AncilValid  = ! is.na(AncilValue)
-            AncilVName  = ifelse(test=AncilValid,yes=OutputName,no=NA_character_)
+            AncilOrig    = trydb_now$StdValue  [sel]
+            UnitOrig     = trydb_now$UnitName  [sel]
+            NameOrig     = trydb_now$OriglName [sel]
+            AncilAuthor  = trydb_now$AuthorName[sel]
+            AncilValue   = AncilOrig
+            AncilValid   = ! is.na(AncilValue)
+            AncilVName   = ifelse(test=AncilValid,yes=OutputName,no=NA_character_)
+            AncilTraitID = NA_integer_
+            AncilTrait   = NA_character_
          }else{
             # Use original value, and change type.
             AncilOrig   = trydb_now$OrigValueStr[sel]
@@ -1559,9 +1580,11 @@ tibble object, with one row for each observation.</p>
                                                    )#end TRY_FixTrait_OrigValue_Str
 
             # The function retrieves both the value and the expected validity. Keep both
-            AncilValue  = AncilFixed$Value
-            AncilValid  = AncilFixed$Valid
-            AncilVName  = AncilFixed$VName
+            AncilValue   = AncilFixed$Value
+            AncilValid   = AncilFixed$Valid
+            AncilVName   = AncilFixed$VName
+            AncilTraitID = AncilFixed$TraitID
+            AncilTrait   = AncilFixed$Trait
          }#end if (UseStdUnitNow)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
@@ -1614,8 +1637,6 @@ tibble object, with one row for each observation.</p>
 
          # Some ancillary data have information that is useful for filling in traits.
          # Check for those.
-         AncilTraitID    = AncilFixed$TraitID
-         AncilTrait      = AncilFixed$Trait
          WhichTrait      = sort(unique(AncilTraitID[AncilTraitID %in% try_trait$TraitID]))
          CntWhichTrait = length(WhichTrait)
 
@@ -1686,14 +1707,22 @@ tibble object, with one row for each observation.</p>
    other_names = names(TidyTRY)[! names(TidyTRY) %in% first_names]
    order_names = c(first_names,other_names)
    TidyTRY     = TidyTRY %&gt;% select_at(vars(order_names))
+
    # Save look-up tables
-   cat0(&quot;   - Save raw TRY data base with ancillary information to &quot;,basename(Rdata_RawTRY))
-   dummy = save( list              = c( &quot;TidyTRY&quot;,&quot;load_ancil&quot;,&quot;load_extra&quot;
-                                      , &quot;harmonise_geotaxa&quot;,&quot;harmonise_traits&quot;)
-               , file              = Rdata_RawTRY
-               , compress          = &quot;xz&quot;
-               , compression_level = 9
-               )#end save
+   save_file = (file_first == 1L) &amp;&amp; (file_last == n_try_file_list)
+   if (save_file){
+      cat0(&quot;   - Save raw TRY data base with ancillary information to &quot;,basename(Rdata_RawTRY))
+      dummy = save( list              = c( &quot;TidyTRY&quot;,&quot;load_ancil&quot;,&quot;load_extra&quot;
+                                         , &quot;harmonise_geotaxa&quot;,&quot;harmonise_traits&quot;)
+                  , file              = Rdata_RawTRY
+                  , compress          = &quot;xz&quot;
+                  , compression_level = 9
+                  )#end save
+   }else{
+      cat0(&quot;   - Ancillary files were only partially read (due to debugging).&quot;)
+      cat0(&quot;     Check that \&quot;file_first\&quot; is set to 1 and \&quot;file_last\&quot; is set to \&quot;n_try_file_list\&quot;.&quot;)
+      stop(&quot; Ended the debugging of ancillary file load. Re-run script with complete file loop settings.&quot;)
+   }#end if (save_file)
 }else{
    cat0(&quot; + Ancillary data have been already loaded.&quot;)  
 }# if (load_ancil)</code></pre>
@@ -1796,7 +1825,7 @@ traits must be standardised beforehand).</p>
                )#end save
 }# if (file.exists(Rdata_ExtraTRY))</code></pre>
 <p>Now we run additional trait harmonisation. Specifically, we
-standardise scientific names (always use the accepted name), make sure
+standardise scientific names (always use theU accepted name), make sure
 countries/continents are consistent with coordinates, and fix taxonomy
 to the best extent possible.</p>
 <pre class="r"><code>if (file.exists(Rdata_GeoTaxonTRY)){
@@ -1988,6 +2017,7 @@ to the best extent possible.</p>
       
    # Fill in unresolved taxa.
    UniqMiss = which(is.na(IdxUniq))
+   if (length(UniqMiss) %gt% 0L) stop(&quot;Check for missing species!&quot;)
    if (length(UniqMiss) %gt% 0L){
       cat0(&quot;     ~ Search remaining species online.&quot;)
       UniqCheck = tibble( name    = UniqScientific[UniqMiss]
@@ -2279,6 +2309,34 @@ to the best extent possible.</p>
       if(length(LeafDens ) != 0L) TidyTRY[[LeafDens ]] = SubsetTRY$leaf_dens
       if(length(LeafThick) != 0L) TidyTRY[[LeafThick]] = SubsetTRY$leaf_thick
    }#end if (any(try_trait$ID %in% LeafArchID))
+
+
+
+   # Harmonise leaf biomass and leaf area.
+   LeafBioAreaID = c(3117L,129L,410L)
+   if (any(try_trait$TraitID %in% LeafBioAreaID)){
+      cat0(&quot;   - Fill in leaf area and leaf oven-dry mass&quot;)
+      # Build a subset of the tibble for testing tree likelihood.
+      SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
+      LeafMass    = try_trait$Name[try_trait$TraitID %in%  129L]
+      LeafArea    = try_trait$Name[try_trait$TraitID %in%  410L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , SLA            = if(length(SLA     ) == 0L){EmptyReal}else{TidyTRY[[SLA     ]]}
+                          , bleaf          = if(length(LeafMass) == 0L){EmptyReal}else{TidyTRY[[LeafMass]]}
+                          , leaf_area      = if(length(LeafArea) == 0L){EmptyReal}else{TidyTRY[[LeafArea]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_LeafBioArea(x=SubsetTRY,am_fac=leaf_area2mass_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafMass) != 0L) TidyTRY[[LeafMass]] = SubsetTRY$bleaf
+      if(length(LeafArea) != 0L) TidyTRY[[LeafArea]] = SubsetTRY$leaf_area
+   }#end if (any(try_trait$ID %in% LeafBioAreaID))
 
 
    # Harmonise leaf carbon, nitrogen and phosphorus ratios

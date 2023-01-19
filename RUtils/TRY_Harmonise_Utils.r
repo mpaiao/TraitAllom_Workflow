@@ -833,3 +833,25 @@ TRY_Harmonise_LeafStoichiometry <<- function(x,cn_fac=1.,cp_fac=1.){
    return(Answer)
 }#end function TRY_Harmonise_LeafStoichiometry
 #---~---
+
+
+
+
+
+#---~---
+#     This function fills in leaf area and leaf biomass when SLA and
+# one of the bases are provided. This will respect the input data, even if they are
+# not consistent.
+#
+# Input variables:
+# x      - tibble object with traits with standard names.
+# td_fac - additional conversion factor (in case units are inconsistent)
+#---~---
+TRY_Harmonise_LeafBioArea <<- function(x,am_fac=1.){
+   Answer = x %>%
+      mutate( bleaf     = ifelse(test=is.finite(bleaf    ),yes=bleaf    ,no=am_fac*leaf_area/SLA)
+            , leaf_area = ifelse(test=is.finite(leaf_area),yes=leaf_area,no=bleaf*SLA/am_fac    )
+            )#end mutate
+   return(Answer)
+}#end function TRY_Harmonise_LeafBioArea
+#---~---

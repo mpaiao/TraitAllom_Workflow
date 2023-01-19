@@ -4128,6 +4128,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                , "2013-07-16" , "May to August of 2012; May to September of 2013"
                                , "2013-06-10" , "2/06/2013-18/06/2013"
                                , "2014-11-02" , "02/112014"
+                               , "2015-12-16" , "November 2015- January 2016"
                                , "2016-07-21" , "June-July 2016"
                                , "2099-07-22" , "19-25 July"
                                , "2099-09-28" , "Sept - Oct."
@@ -5135,6 +5136,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsAuthor              = AuthorName %in% c( "Mehdi Abedi"
                                                , "Michael Belluau"
                                                , "Chaeho Byun"
+                                               , "Fatih Fazlioglu"
                                                , "Jane Catford"
                                                , "Gregoire Freschet"
                                                , "Andres Gonzalez-Melo"
@@ -5286,6 +5288,18 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
       #   Some data have too little information to unambiguously identify units.
       #---~---
+      IsAuthor       = AuthorName %in% c( "Julie Messier")
+      bad_sel        = IsAuthor & IsPlantDev
+      Value[bad_sel] = NA_character_
+      Valid[bad_sel] = FALSE
+      VName[bad_sel] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Some authors provided reproductive stage as opposed to age.
+      #---~---
       IsAuthor       = AuthorName %in% c( "Tamir Klein"
                                         , "Michael Scherer-Lorenzen"
                                         )#end c
@@ -5375,10 +5389,10 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
 
       #--- Make sure all data have the same units (year). Discard percent data
-      year_sel         = has_yr  | ( UnitOrig %in% c("a","y","year","years","yr","Years") )
+      year_sel         = has_yr  | ( UnitOrig %in% c("a","y","year","years","yr","Year","Years") )
       month_sel        = has_mon | ( UnitOrig %in% c("month","months") )
       week_sel         = has_wk  | ( UnitOrig %in% c("weeks") )
-      day_sel          = has_day | ( UnitOrig %in% c("d") )
+      day_sel          = has_day | ( UnitOrig %in% c("d","day","days") )
       Value[month_sel] = as.character( 1. / yr.mon  * (as.numeric(Value[month_sel])) )
       Value[week_sel ] = as.character( 1. / yr.week * (as.numeric(Value[week_sel ])) )
       Value[day_sel  ] = as.character( 1. / yr.day  * (as.numeric(Value[day_sel  ])) )

@@ -5,20 +5,27 @@
 
 # specific rules
 ByAuthor
+ClusterRData
+Figures
 LookUpTables
 Original
 Quoted
 RData
+TaxonSummary
 UniqueAncil
 UniqueTrait
-docs/AdditionalData/
-docs/ByAuthor/
-docs/InputLists/
-docs/LookUpTables/
-docs/Original/
-docs/Quoted/
-docs/RData/
-docs/RUtils/
+docs/AdditionalData
+docs/BrazilianStatesMap
+docs/ByAuthor
+docs/ClusterRData
+docs/Figures
+docs/InputLists
+docs/LookUpTables
+docs/Original
+docs/Quoted
+docs/RData
+docs/RUtils
 docs/SplitAuthor.f90
-docs/UniqueAncil/
-docs/UniqueTrait/
+docs/TaxonSummary
+docs/UniqueAncil
+docs/UniqueTrait

@@ -9,7 +9,7 @@
 # x      -- A numeric vector containing at least 'xmin' finite values.
 # nx_min -- Minimum number of valid points to consider fitting any distribution.
 #------------------------------------------------------------------------------------------#
-FindBestDistr <<- function(x, nx_min = 10L, verbose = FALSE){
+FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
    #---~---
    #   Remove non-finite points 
    #---~---
@@ -34,6 +34,11 @@ FindBestDistr <<- function(x, nx_min = 10L, verbose = FALSE){
                    , Third           = NA_real_
                    , SE_Third        = NA_real_
                    , LogLik          = NA_real_
+                   , Mean            = NA_real_
+                   , StdDev          = NA_real_
+                   , Skewness        = NA_real_
+                   , Kurtosis        = NA_real_
+                   , Median          = NA_real_
                    , BIC             = +Inf
                    , stringAsFactors = FALSE
                    )#end data.frame
@@ -327,6 +332,42 @@ FindBestDistr <<- function(x, nx_min = 10L, verbose = FALSE){
    }else if (verbose){
       cat0("     * Skip fitting Gamma. Negative data present")
    }#end if (positive)
+   #---~---
+
+
+
+   #---~---
+   #   Find the summary statistics
+   #---~---
+   if (ans$Distr %in% "uniform"){
+      xsample = runif(n=n_rand,min=ans$First,max=ans$Second)
+   }else if (ans$Distr %in% "normal"){
+      xsample = rnorm(n=n_rand,mean=ans$First,sd=ans$Second)
+   }else if (ans$Distr %in% "logistic"){
+      xsample = rlogis(n=n_rand,location=ans$First,scale=ans$Second)
+   }else if (ans$Distr %in% "skew-normal"){
+      xsample = sn::rsn(n=n_rand,xi=ans$First,omega=ans$Second,alpha=ans$Third)
+   }else if (ans$Distr %in% "log-normal"){
+      xsample = rlnorm(n=n_rand,meanlog=ans$First,sdlog=ans$Second)
+   }else if (ans$Distr %in% "neglog-normal"){
+      xsample = rnlnorm(n=n_rand,meannlog=ans$First,sdnlog=ans$Second)
+   }else if (ans$Distr %in% "weibull"){
+      xsample = rweibull(n=n_rand,shape=ans$First,scale=ans$Second)
+   }else if (ans$Distr %in% "gamma"){
+      xsample = rgamma(n=n_rand,shape=ans$First,rate=ans$Second)
+   }#end if 
+   #---~---
+
+
+
+   #---~---
+   #   Find the summary statistics
+   #---~---
+   ans$Mean     = mean  (x=xsample,na.rm=TRUE)
+   ans$StdDev   = sd    (x=xsample,na.rm=TRUE)
+   ans$Skewness = skew  (x=xsample,na.rm=TRUE)
+   ans$Kurtosis = kurt  (x=xsample,na.rm=TRUE)
+   ans$Median   = median(x=xsample,na.rm=TRUE)
    #---~---
 
 
