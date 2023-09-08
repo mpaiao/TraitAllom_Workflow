@@ -15,10 +15,10 @@
 
 <title>Trait/Allometry Database Pre-processor</title>
 
-<script src="site_libs/header-attrs-2.16/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -32,7 +32,7 @@
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
-<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
 <style type="text/css">
@@ -60,7 +60,6 @@ if (window.hljs) {
 
 
 
-<link rel="stylesheet" href="styles.css" type="text/css" />
 
 
 
@@ -181,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -190,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -259,7 +251,10 @@ $(document).ready(function () {
   <a href="TidyTraitAllomDB.html">Tidy trait and allometry data base</a>
 </li>
 <li>
-  <a href="TraitTradeOffs.html">Trait trade-off analyses</a>
+  <a href="TraitTradeOffs.html">Trait trade-off analysis</a>
+</li>
+<li>
+  <a href="AllomModelFit.html">Allometric model fitting</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -333,9 +328,9 @@ invisible(gc())</code></pre>
 <p>Set paths and file names for input and output.</p>
 <ul>
 <li><strong>home_path</strong>. The user home path.</li>
+<li><strong>main_path</strong>. Main working directory</li>
 <li><strong>util_path</strong>. The path with the additional utility
 scripts (the full path of <code>RUtils</code>).</li>
-<li><strong>main_path</strong>. Main working directory</li>
 <li><strong>orig_path</strong>. Path where the original TRY files are
 located.</li>
 <li><strong>quote_path</strong>. Path where TRY files will be translated
@@ -541,8 +536,7 @@ a_jmax,269,Area-based electron transport capacity,numeric,0,1,1,TRUE,umolom2os,F
 a_vcmax,186,Area-based photosynthesis carboxylation capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
 dbh,21,Diameter at breast height,numeric,0,1,1,FALSE,cm,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
 drought_toler,30,Species tolerance to drought,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-height,3106,Plant height,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-height_3107,3107,Plant height,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,height
+height,18,Plant height,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
 leaf_c2n,146,Leaf carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,TRUE,TRUE,FALSE,FALSE,identity,NA
 leaf_c2p,151,Leaf carbon:phosphorus ratio,numeric,0,1,1,FALSE,kgcokgp,FALSE,TRUE,TRUE,FALSE,FALSE,identity,NA
 SLA_3086,3086,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
@@ -550,15 +544,15 @@ SLA_3115,3115,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRU
 SLA_3116,3116,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
 SLA,3117,Specific leaf area,numeric,0,mm2.2.m2*g2mg,1,TRUE,m2lokg,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
 wood_dens,4,Wood density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-wood_psixx,719,Xylem hydraulic vulnerability,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,FALSE,FALSE,FALSE,neglog,NA</code></pre>
+xylem_psixx,719,Xylem hydraulic vulnerability,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,FALSE,FALSE,FALSE,neglog,NA</code></pre>
 <p><strong>Tip</strong>. If you are not sure on some of the settings,
 set both file names to <code>NA_character_</code>. This will make the
 script run up to the generation of the look-up tables for traits and
 ancillary variables and stop. The look-up tables will have information
 about the variable names and ID, as well as the units and partition
 between standard values versus original values.</p>
-<pre class="r"><code>ancil_file = file.path(list_path,&quot;TRY_AncillaryList.csv&quot;) # List of ancillary variable settings
-trait_file = file.path(list_path,&quot;TRY_TraitList.csv&quot;    ) # List of TRY trait settings</code></pre>
+<pre class="r"><code>ancil_file = c(NA_character_,file.path(list_path,&quot;TRY_AncillaryList.csv&quot;))[2L] # List of ancillary variable settings
+trait_file = c(NA_character_,file.path(list_path,&quot;TRY_TraitList.csv&quot;    ))[2L] # List of TRY trait settings</code></pre>
 <p>Users may have additional data sets with trait information that are
 not part of the TRY data base. These can be added through the variable
 <code>extra_files</code>, and multiple files can be provided.
@@ -573,7 +567,7 @@ column <strong>Author</strong>. It is highly recommended to include the
 reference and the doi to keep track of contributors.</p>
 <pre class="r"><code># List of files containing additional trait information.
 extra_file_base = c(&quot;NGEE-Tropics.csv&quot;,&quot;LT-Brazil_Extra.csv&quot;,&quot;FrenchGuiana_Extra.csv&quot;
-                   ,&quot;TalloNeoTropical.csv&quot;,&quot;SLBrazil_AllometryData.csv&quot;)
+                   ,&quot;PuertoRico_Extra.csv&quot;,&quot;TalloNeoTropical.csv&quot;,&quot;SLBrazil_AllometryData.csv&quot;)
 extra_file_list = file.path(main_path,&quot;AdditionalData&quot;,extra_file_base)</code></pre>
 <p>Optionally, it is possible to load a text file with pre-set taxonomic
 information through variable <code>taxon_file</code>. If not provided, R
@@ -763,6 +757,25 @@ class="math inline">\(\mathrm{mm}\)</span>, SLA is in <span
 class="math inline">\(\mathrm{cm^2\,g^{-1}}\)</span> and leaf density is
 in <span class="math inline">\(\mathrm{mg\,mm^{-3}}\)</span>, then set
 <code>leaf_thick2dens_factor=10.</code>.</li>
+<li><strong>leaf_thick2text_factor</strong>. Is there any multiplication
+factor to go from leaf thickness to leaf texture (leaf toughness) due to
+units mismatches? For example, if (after the transformations provided in
+<code>trait_file</code>) leaf thickness is in <span
+class="math inline">\(\mathrm{\mu{}m}\)</span>, leaf force to tear is in
+<span class="math inline">\(\mathrm{kN\,m^{-1}}\)</span> and leaf
+pressure to tear is in <span
+class="math inline">\(\mathrm{MN\,m^{-2}}\)</span>, then set
+<code>leaf_thick2text_factor=0.001</code>.</li>
+<li><strong>leaf_acnp2mcnp_factor</strong>. Is there any multiplication
+factor to go from area-based concentration to mass-based concentration
+of leaf components (C, N, P, and also chlorophyll and carotenoids) due
+to unit mismatches? For example, if (after the transformations provided
+in <code>trait_file</code>) area-based concentration is in <span
+class="math inline">\(\mathrm{g\,cm^{-2}}\)</span>, SLA is in <span
+class="math inline">\(\mathrm{m^{2}\,kg^{-1}}\)</span> and mass-based
+concentration is in <span
+class="math inline">\(\mathrm{g\,kg^{-1}}\)</span>, then set
+<code>leaf_acnp2mcnp_factor=0.0001</code>.</li>
 <li><strong>leaf_c2n_factor</strong>. Is there any multiplication factor
 to go from leaf carbon and leaf nitrogen to carbon:nitrogen ratio due to
 unit mismatches? For example, if (after the transformations provided in
@@ -785,12 +798,22 @@ class="math inline">\(\mathrm{cm^2}\)</span>, SLA is in <span
 class="math inline">\(\mathrm{m^{2}\,kg^{-1}}\)</span> and leaf oven-dry
 mass is in <span class="math inline">\(\mathrm{kg}\)</span>, then set
 <code>leaf_c2p_factor=0.0001</code>.</li>
+<li><strong>crown_diam2area_factor</strong>. Is there any multiplication
+factor to go from crown diameter to crown area due to unit mismatches?
+For example, if (after the transformations provided in
+<code>trait_file</code>) crown diameter is in <span
+class="math inline">\(\mathrm{cm}\)</span> and crown area is in <span
+class="math inline">\(\mathrm{m^2}\)</span>, then set
+<code>crown_diam2area_factor=0.0001</code>.</li>
 </ul>
 <pre class="r"><code>photo_a2m_factor       = 1.  # Additional correction factor for area to mass-based photosynthesis.
 leaf_thick2dens_factor = 1.  # Additional correction factor for thickness-density conversion.
+leaf_thick2text_factor = 1.  # Additional correction factor for thickness-texture conversion.
+leaf_acnp2mcnp_factor  = 1.  # Additional correction factor for area-mass based concentration conversion.
 leaf_c2n_factor        = 1.  # Additional correction factor for C:N stoichiometry
 leaf_c2p_factor        = 1.  # Additional correction factor for C:P stoichiometry.
-leaf_area2mass_factor  = 1.  # Additional correction factor for area to mass-based leaf abundance.</code></pre>
+leaf_area2mass_factor  = 1.  # Additional correction factor for area to mass-based leaf abundance.
+crown_diam2area_factor = 1.  # Additional correction factor for crown diameter to crown area.</code></pre>
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
@@ -954,7 +977,7 @@ if (is_dry_run){
 }else{
    # Read in the list of traits (and save number of traits)
    cat0(&quot; + Read list of traits (&quot;,basename(trait_file),&quot;).&quot;)
-   try_trait   = read_csv(file=trait_file,col_types=&quot;ciccccclclllllc&quot;)   
+   try_trait   = read_csv(file=trait_file,col_types=&quot;ciccccclclllllllcc&quot;)   
    n_try_trait = nrow(try_trait)
    o           = order(try_trait$Name)
    try_trait   = try_trait[o,,drop=FALSE]
@@ -992,8 +1015,12 @@ if (is_dry_run){
    }#end if (any(sma_problem) || any(allom_problem))
 
 }#end if (is_dry_run)</code></pre>
-<pre><code>##  + Read list of traits (TRY_TraitList.csv).
-##  + Read list of ancillary variables (TRY_AncillaryList.csv).</code></pre>
+<pre><code>##  + Read list of traits (TRY_TraitList.csv).</code></pre>
+<pre><code>## Warning: One or more parsing issues, call `problems()` on your data frame for details,
+## e.g.:
+##   dat &lt;- vroom(...)
+##   problems(dat)</code></pre>
+<pre><code>##  + Read list of ancillary variables (TRY_AncillaryList.csv).</code></pre>
 <p>Either retrieve or load look-up table with units and additional
 information on the TRY data base. Normally this needs to be done only
 once, unless a new version of data request is being used.</p>
@@ -1178,7 +1205,9 @@ tibble object, with one row for each observation.</p>
    # Find the list of all files to read. 
    try_file_list   = list.files(author_path,pattern=&quot;\\.csv$&quot;)
    n_try_file_list = length(try_file_list)
-   loop_list       = seq(from=1L,to=n_try_file_list,by=1)
+   file_first      = 1L
+   file_last       = n_try_file_list
+   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
 
    # Initialise the tidy TRY object.
    cat0(&quot; + Initialise the tidy TRY object containing traits and ancillary variables.&quot;)
@@ -1241,6 +1270,7 @@ tibble object, with one row for each observation.</p>
    # Copy the empty tibble to a Template
    CntTidyTRY = nrow(TidyTRY)
 
+
    # Go through every file, and retrieve information.
   cat0(&quot; + Read the trait data base.&quot;)
   for ( f in loop_list){
@@ -1301,7 +1331,8 @@ tibble object, with one row for each observation.</p>
          PowerNow      = eval(parse(text=try_trait$Power[z]))
          UnitNow       = try_trait$Unit      [z]
          SupportingNow = try_trait$Supporting[z]
-         XylemNow      = as.integer(TraitIDNow) %in% c(719L)
+         XylemNow      = as.integer(TraitIDNow) %in% c(719L,3479L)
+         LTextNow      = as.integer(TraitIDNow) %in% c(2L)
          #cat0(&quot;     ~ Add trait: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;).&quot;)
 
          # Check whether to generate list of unique traits
@@ -1377,6 +1408,7 @@ tibble object, with one row for each observation.</p>
 
          # Append trait values unless some unexpected exception occurred.
          if (any(TraitMess)){
+            DisplayMess = table(TraitOrig=tolower(TraitOrig),NameOrig=tolower(NameOrig),Trouble=TraitMess)
             cat0(&quot; &quot;)
             cat0(&quot;--------------&quot;)
             cat0(&quot; FATAL ERROR! &quot;)
@@ -1384,7 +1416,10 @@ tibble object, with one row for each observation.</p>
             cat0(&quot; Trait: &quot;,DescNow,&quot;.&quot;)
             cat0(&quot; Variable name: &quot;,NameNow,&quot;.&quot;)
             cat0(&quot; TraitID: &quot;,TraitIDNow,&quot;.&quot;)
-            cat0(&quot; Unexpected exception occurred. Type \&quot;print(Trouble)\&quot; for error.&quot;)
+            cat0(&quot; Author: &quot;,paste(sort(unique(AuthorName)),collapse=&quot;   &quot;),&quot;.&quot;)
+            cat0(&quot; Unexpected exception occurred.&quot;)
+            cat0(&quot; - Type \&quot;print(Trouble)\&quot; for detailed list of bogus entries.&quot;)
+            cat0(&quot; - Type \&quot;DisplayMess\&quot; for quick reference of the original values.&quot;)
             Trouble = tibble( Line       = which(sel)[TraitMess]
                             , TraitOrig  = TraitOrig [TraitMess]
                             , UnitOrig   = UnitOrig  [TraitMess]
@@ -1422,13 +1457,19 @@ tibble object, with one row for each observation.</p>
    }#end for ( f in seq_along(try_file_list))
 
    # Save look-up tables
-   cat0(&quot;   - Save raw TRY trait data base to &quot;,basename(Rdata_RawTRY))
-   dummy = save( list              = c( &quot;TidyTRY&quot;,&quot;load_ancil&quot;,&quot;load_extra&quot;
-                                      , &quot;harmonise_geotaxa&quot;,&quot;harmonise_traits&quot;)
-               , file              = Rdata_RawTRY
-               , compress          = &quot;xz&quot;
-               , compression_level = 9
-               )#end save
+   save_file = (file_first == 1L) &amp;&amp; (file_last == n_try_file_list)
+   if (save_file){
+      cat0(&quot;   - Save raw TRY trait data base to &quot;,basename(Rdata_RawTRY))
+      dummy = save( list              = c( &quot;TidyTRY&quot;,&quot;load_ancil&quot;,&quot;load_extra&quot;
+                                         , &quot;harmonise_geotaxa&quot;,&quot;harmonise_traits&quot;)
+                  , file              = Rdata_RawTRY
+                  , compress          = &quot;xz&quot;
+                  , compression_level = 9
+                  )#end save
+   }else{
+      cat0(&quot;   - Do not save trait data. Make sure \&quot;loop_list\&quot; starts at 1 and run chunk again.&quot;)
+      stop(&quot; Trait loading set in debug mode. Stop for now.&quot;)
+   }#end if (loop_list[1] == 1L)
 }# if (reload_TidyTRY &amp;&amp; file.exists(rdata_TidyTRY))</code></pre>
 <p>In this block we incorporate ancillary data to the data base.</p>
 <pre class="r"><code>if (load_ancil){
@@ -1610,7 +1651,7 @@ tibble object, with one row for each observation.</p>
             cat0(&quot; Ancillary data: &quot;,DescNow     ,&quot;.&quot;)
             cat0(&quot; Variable name: &quot; ,NameNow     ,&quot;.&quot;)
             cat0(&quot; Data ID: &quot;       ,DataIDNow   ,&quot;.&quot;)
-            cat0(&quot; Author Name: &quot;   ,unique(AncilAuthor),&quot;.&quot;)
+            cat0(&quot; Author: &quot;        ,paste(sort(unique(AncilAuthor)),collapse=&quot;   &quot;),&quot;.&quot;)
             cat0(&quot; Unexpected exception occurred. Type \&quot;print(Trouble)\&quot; for error.&quot;)
             Trouble = tibble( Line       = which(sel)[AncilMess]
                             , AncilOrig  = AncilOrig [AncilMess]
@@ -1706,7 +1747,7 @@ tibble object, with one row for each observation.</p>
    first_names = c(&quot;ObservationID&quot;,&quot;ScientificName&quot;,&quot;Genus&quot;,&quot;Family&quot;,&quot;Order&quot;,&quot;Class&quot;,&quot;Phylum&quot;,&quot;Author&quot;)
    other_names = names(TidyTRY)[! names(TidyTRY) %in% first_names]
    order_names = c(first_names,other_names)
-   TidyTRY     = TidyTRY %&gt;% select_at(vars(order_names))
+   TidyTRY     = TidyTRY %&gt;% select_at(all_of(order_names))
 
    # Save look-up tables
    save_file = (file_first == 1L) &amp;&amp; (file_last == n_try_file_list)
@@ -1749,11 +1790,16 @@ traits must be standardised beforehand).</p>
       ColTypes  = paste(rep(&quot;c&quot;,ncol(HeadNow)),collapse=&quot;&quot;)
       ExtraNow  = read_csv(file=ExtraFile,col_types=ColTypes,na=c(&quot;&quot;,&quot;NA&quot;))
 
-      # Extract column names. For now this is hard coded but xylem vulnerability curve
-      # at different conductivity losses is provided as a single trait ID in TRY. Suggestions
-      # on how to make this more generalisable are welcome.
+      # Extract column names. For now this is hard coded but leaf texture and xylem vulnerability
+      # curve at different conductivity losses is provided as a single trait ID in TRY.
+      # Suggestions on how to make this more generalisable are welcome.
       ColNames  = names(ExtraNow)
-      SubNames  = gsub(pattern=&quot;xylem_p[0-9][0-9]&quot;,replacement=&quot;xylem_pxx&quot;,ColNames)
+      SubNames  = ColNames
+      SubNames  = gsub(pattern=&quot;xylem_p[0-9][0-9]&quot;,replacement=&quot;xylem_pxx&quot;   ,x=SubNames)
+      SubNames  = gsub(pattern=&quot;leaf_f_tear&quot;      ,replacement=&quot;leaf_texture&quot;,x=SubNames)
+      SubNames  = gsub(pattern=&quot;leaf_f_punct&quot;     ,replacement=&quot;leaf_texture&quot;,x=SubNames)
+      SubNames  = gsub(pattern=&quot;leaf_t_tear&quot;      ,replacement=&quot;leaf_texture&quot;,x=SubNames)
+      SubNames  = gsub(pattern=&quot;leaf_t_punct&quot;     ,replacement=&quot;leaf_texture&quot;,x=SubNames)
 
       # Identify columns that are traits then apply variable transformation if needed
       IsTrait        = which(SubNames %in% try_trait$Name)
@@ -1769,7 +1815,7 @@ traits must be standardised beforehand).</p>
          NameNow       = try_trait$Name      [z]
          DescNow       = try_trait$Desc      [z]
          TypeNow       = try_trait$Type      [z]
-         # cat0(&quot;     ~ Add trait: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;).&quot;)
+         cat0(&quot;     ~ Add trait: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;). Variable type: &quot;,TypeNow,&quot;.&quot;)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
          if (TypeNow %in% &quot;date&quot;){
@@ -1794,7 +1840,7 @@ traits must be standardised beforehand).</p>
          NameNow       = try_ancil$Name      [z]
          DescNow       = try_ancil$Desc      [z]
          TypeNow       = try_ancil$Type      [z]
-         # cat0(&quot;     ~ Add ancillary variable: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;).&quot;)
+         cat0(&quot;     ~ Add ancillary variable: &quot;,DescNow,&quot; (&quot;,NameNow,&quot;). Variable type: &quot;,TypeNow,&quot;.&quot;)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
          if (TypeNow %in% &quot;date&quot;){
@@ -1806,13 +1852,14 @@ traits must be standardised beforehand).</p>
 
       # Create unique observation ID for the extra file, and bind append it to the main structure.
       KeepNames = ColNames[ColNames %in% names(TidyTRY)]
-      ExtraNow  = ExtraNow %&gt;% select_at(vars(KeepNames))
+      ExtraNow  = ExtraNow %&gt;% select(all_of(KeepNames))
       ExtraNow  = ExtraNow %&gt;%
          mutate( ObservationID = max(TidyTRY$ObservationID)+sequence(nrow(ExtraNow)))
       TidyTRY   = bind_rows(TidyTRY,ExtraNow)
 
    }#end for (e in sequence(CntExtra))
 
+   
    # Update step so we can skip loading extra data again
    load_extra = FALSE
    # Save look-up tables
@@ -1870,9 +1917,6 @@ to the best extent possible.</p>
       TidyTRY[[Continent]][sel] = GeoHarm$Continent
    }#end if (IsGeoCoord &amp; IsLocation)
 
-   # Harmonise scientific names.
-   cat0(&quot;   - Harmonise taxonomy.&quot;)
-
    # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
    IsClimate = any(try_trait$TraitID %in% 825L)
    if (IsGeoCoord &amp; IsClimate){
@@ -1890,7 +1934,7 @@ to the best extent possible.</p>
 
       # Find observations with geolocation
       GeoIndex  = is.finite(TidyTRY[[Lon]]) &amp; is.finite(TidyTRY[[Lat]])
-      TRYPoints = TidyTRY %&gt;% select_at(vars(c(Lon,Lat))) %&gt;% filter(GeoIndex)
+      TRYPoints = TidyTRY %&gt;% select(all_of(c(Lon,Lat))) %&gt;% filter(GeoIndex)
       names(TRYPoints) = c(&quot;x&quot;,&quot;y&quot;)
       coordinates(TRYPoints) = ~ x + y
       proj4string(TRYPoints) = &quot;+init=epsg:4326&quot;
@@ -1942,7 +1986,7 @@ to the best extent possible.</p>
       # KeepObs = SelectPanTropical(TidyTRY)
    }#end if (fitrealm %in% &quot;NeoTropical&quot;)
 
-   
+
    ## Harmonise scientific names
    cat0(&quot;   - Harmonise scientific names.&quot;)
    # Remove &quot;x &quot; from scientific names
@@ -2113,7 +2157,7 @@ to the best extent possible.</p>
       WoodDens    = try_trait$Name[try_trait$TraitID %in%    4L]
       BarkDens    = try_trait$Name[try_trait$TraitID %in%  248L]
       DBH         = try_trait$Name[try_trait$TraitID %in%   21L]
-      Height      = try_trait$Name[try_trait$TraitID %in% 3106L]
+      Height      = try_trait$Name[try_trait$TraitID %in%   18L]
       Raunkiaer   = try_trait$Name[try_trait$TraitID %in%  343L]
       EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
       EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
@@ -2165,7 +2209,7 @@ to the best extent possible.</p>
    source(file.path(util_path,&quot;rconstants.r&quot;         ),chdir=TRUE)
    source(file.path(util_path,&quot;unitlist.r&quot;           ),chdir=TRUE)
 
-   # Replace generic vulnerability curve variable with the specific ones used in this site:
+   # Replace generic vulnerability curve variable with the specific ones used in this workflow:
    cat0(&quot;   - Harmonise list of traits and ancillary variables.&quot;)
    if (&quot;xylem_pxx&quot; %in% try_trait$Name){
       try_xylem  = try_trait %&gt;% filter(grepl(pattern=&quot;xylem_pxx&quot;,x=Name))
@@ -2180,6 +2224,37 @@ to the best extent possible.</p>
       try_trait = bind_rows(try_trait,try_xylem) %&gt;%
          arrange(Name) %&gt;%
          filter(! (Name %in% &quot;xylem_pxx&quot;))
+   }#end if (&quot;xylem_pxx&quot; %in% names(try_trait))
+
+   # Replace generic leaf texture variable with the specific ones used in this workflow:
+   if (&quot;leaf_texture&quot; %in% try_trait$Name){
+      try_ltext  = try_trait %&gt;% filter(grepl(pattern=&quot;leaf_texture&quot;,x=Name))
+      ltext_vars = strsplit(x=try_ltext$Supporting,split=&quot;;&quot;)[[1]]
+      ltext_prss = ! grepl(pattern=&quot;_f_&quot;,x=ltext_vars)
+      ltext_desc = rep(NA_character_,times=length(ltext_vars))
+      ltext_desc[ltext_vars %in% &quot;leaf_f_tear&quot; ] = &quot;Leaf tensile strength&quot;
+      ltext_desc[ltext_vars %in% &quot;leaf_f_punct&quot;] = &quot;Leaf puncturability strength&quot;
+      ltext_desc[ltext_vars %in% &quot;leaf_t_tear&quot; ] = &quot;Leaf tensile toughness&quot;
+      ltext_desc[ltext_vars %in% &quot;leaf_t_punct&quot;] = &quot;Leaf puncturability toughness&quot;
+      try_ltext  =
+         try_ltext[rep(1,times=length(ltext_vars)),,drop=FALSE] %&gt;%
+            mutate( Name       = ltext_vars
+                  , Desc       = ltext_desc
+                  , Unit       = ifelse( test = ltext_prss
+                                       , yes  = ifelse( test = Unit %in% c(&quot;nomm&quot;)
+                                                      , yes  = &quot;nomm2&quot;
+                                                      , no   = ifelse( test = Unit %in% &quot;knom&quot; 
+                                                                     , yes  = &quot;mnom2&quot;
+                                                                     , no   = stop(&quot;Invalid units for leaf texture!&quot;)
+                                                                     )#end ifelse
+                                                      )#end ifelse
+                                       , no   = Unit
+                                       )#end ifelse
+                  , Supporting = NA_character_
+                  )#end mutate
+      try_trait = bind_rows(try_trait,try_ltext) %&gt;%
+         arrange(Name) %&gt;%
+         filter(! (Name %in% &quot;leaf_texture&quot;))
    }#end if (&quot;xylem_pxx&quot; %in% names(try_trait))
 
    # Update the list of traits and ancillary data
@@ -2315,7 +2390,7 @@ to the best extent possible.</p>
    # Harmonise leaf biomass and leaf area.
    LeafBioAreaID = c(3117L,129L,410L)
    if (any(try_trait$TraitID %in% LeafBioAreaID)){
-      cat0(&quot;   - Fill in leaf area and leaf oven-dry mass&quot;)
+      cat0(&quot;   - Fill in leaf area and leaf oven-dry mass.&quot;)
       # Build a subset of the tibble for testing tree likelihood.
       SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
       LeafMass    = try_trait$Name[try_trait$TraitID %in%  129L]
@@ -2338,6 +2413,88 @@ to the best extent possible.</p>
       if(length(LeafArea) != 0L) TidyTRY[[LeafArea]] = SubsetTRY$leaf_area
    }#end if (any(try_trait$ID %in% LeafBioAreaID))
 
+
+
+   # Harmonise crown diameter and crown area
+   CrownAreaID = c(20L)
+   CrownDiamID = c(324L)
+   if (any(try_trait$TraitID %in% CrownAreaID) &amp;&amp; any(try_trait$TraitID %in% CrownDiamID)){
+      cat0(&quot;   - Fill in crown size.&quot;)
+      # Build a subset of the tibble for filling information.
+      CrownArea  = try_trait$Name[(try_trait$TraitID %in%   20L)]
+      CrownDiam  = try_trait$Name[(try_trait$TraitID %in%  324L)]
+      EmptyChar  = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal  = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , Author         = TidyTRY$Author
+                          , crown_area     = if(length(CrownArea) == 0L){EmptyReal}else{TidyTRY[[CrownArea]]}
+                          , crown_diam     = if(length(CrownDiam) == 0L){EmptyReal}else{TidyTRY[[CrownDiam]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_CrownSize(x=SubsetTRY,cd2ca_fac=crown_diam2area_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(CrownArea) != 0L) TidyTRY[[CrownArea]] = SubsetTRY$crown_area
+      if(length(CrownDiam) != 0L) TidyTRY[[CrownDiam]] = SubsetTRY$crown_diam
+   }#end if (any(try_trait$TraitID %in% CrownAreaID) &amp;&amp; any(try_trait$TraitID %in% CrownDiamID))
+
+
+
+
+   # Harmonise area-based and mass-based concentration of leaf components.
+   LeafAMConcID = c(13L,14L,15L,50L,51L,164L,413L,570L,809L,491L)
+   if (any(try_trait$TraitID %in% LeafAMConcID)){
+      cat0(&quot;   - Fill in leaf area and leaf oven-dry mass.&quot;)
+      # Build a subset of the tibble for testing tree likelihood.
+      SLA         = try_trait$Name[try_trait$TraitID %in% 3117L]
+      LeafCarbonM = try_trait$Name[try_trait$TraitID %in%   13L]
+      LeafCarbonA = try_trait$Name[try_trait$TraitID %in%  510L]
+      LeafNitroM  = try_trait$Name[try_trait$TraitID %in%   14L]
+      LeafNitroA  = try_trait$Name[try_trait$TraitID %in%   50L]
+      LeafPhosphM = try_trait$Name[try_trait$TraitID %in%   15L]
+      LeafPhosphA = try_trait$Name[try_trait$TraitID %in%   51L]
+      LeafChloroM = try_trait$Name[try_trait$TraitID %in%  164L]
+      LeafChloroA = try_trait$Name[try_trait$TraitID %in%  413L]
+      LeafCarotM  = try_trait$Name[try_trait$TraitID %in%  809L]
+      LeafCarotA  = try_trait$Name[try_trait$TraitID %in%  491L]
+      EmptyChar   = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal   = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , SLA            = if(length(SLA        ) == 0L){EmptyReal}else{TidyTRY[[SLA        ]]}
+                          , leaf_m_carbon  = if(length(LeafCarbonM) == 0L){EmptyReal}else{TidyTRY[[LeafCarbonM]]}
+                          , leaf_a_carbon  = if(length(LeafCarbonA) == 0L){EmptyReal}else{TidyTRY[[LeafCarbonA]]}
+                          , leaf_m_nitro   = if(length(LeafNitroM ) == 0L){EmptyReal}else{TidyTRY[[LeafNitroM ]]}
+                          , leaf_a_nitro   = if(length(LeafNitroA ) == 0L){EmptyReal}else{TidyTRY[[LeafNitroA ]]}
+                          , leaf_m_phosph  = if(length(LeafPhosphM) == 0L){EmptyReal}else{TidyTRY[[LeafPhosphM]]}
+                          , leaf_a_phosph  = if(length(LeafPhosphA) == 0L){EmptyReal}else{TidyTRY[[LeafPhosphA]]}
+                          , leaf_m_chloro  = if(length(LeafChloroM) == 0L){EmptyReal}else{TidyTRY[[LeafChloroM]]}
+                          , leaf_a_chloro  = if(length(LeafChloroA) == 0L){EmptyReal}else{TidyTRY[[LeafChloroA]]}
+                          , leaf_m_carot   = if(length(LeafCarotM ) == 0L){EmptyReal}else{TidyTRY[[LeafCarotM ]]}
+                          , leaf_a_carot   = if(length(LeafCarotA ) == 0L){EmptyReal}else{TidyTRY[[LeafCarotA ]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_AreaMassConc(x=SubsetTRY,a2m_fac=leaf_acnp2mcnp_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafCarbonM) != 0L) TidyTRY[[LeafCarbonM]] = SubsetTRY$leaf_m_carbon
+      if(length(LeafCarbonA) != 0L) TidyTRY[[LeafCarbonA]] = SubsetTRY$leaf_a_carbon
+      if(length(LeafNitroM ) != 0L) TidyTRY[[LeafNitroM ]] = SubsetTRY$leaf_m_nitro
+      if(length(LeafNitroA ) != 0L) TidyTRY[[LeafNitroA ]] = SubsetTRY$leaf_a_nitro
+      if(length(LeafPhosphM) != 0L) TidyTRY[[LeafPhosphM]] = SubsetTRY$leaf_m_phosph
+      if(length(LeafPhosphA) != 0L) TidyTRY[[LeafPhosphA]] = SubsetTRY$leaf_a_phosph
+      if(length(LeafChloroM) != 0L) TidyTRY[[LeafChloroM]] = SubsetTRY$leaf_m_chloro
+      if(length(LeafChloroA) != 0L) TidyTRY[[LeafChloroA]] = SubsetTRY$leaf_a_chloro
+      if(length(LeafCarotM ) != 0L) TidyTRY[[LeafCarotM ]] = SubsetTRY$leaf_m_carot
+      if(length(LeafCarotA ) != 0L) TidyTRY[[LeafCarotA ]] = SubsetTRY$leaf_a_carot
+   }#end if (any(try_trait$ID %in% LeafBioAreaID))
+
+   
 
    # Harmonise leaf carbon, nitrogen and phosphorus ratios
    LeafStoichID = c(13L,14L,15L,146L,151L,56L)
@@ -2377,8 +2534,42 @@ to the best extent possible.</p>
       
    }#end if (any(try_trait$ID %in% LeafArchID))
 
-   
-   
+
+   # Harmonise leaf texture and thickness
+   LeafTextureID = c(2L)
+   LeafThickID   = c(46L)
+   if (any(try_trait$TraitID %in% LeafTextureID) &amp;&amp; any(try_trait$TraitID %in% LeafTextureID)){
+      cat0(&quot;   - Fill in leaf texture properties.&quot;)
+      # Build a subset of the tibble for filling information.
+      LeafFTear  = try_trait$Name[(try_trait$TraitID %in%   2L) &amp; (try_trait$Name %in% &quot;leaf_f_tear&quot; )]
+      LeafTTear  = try_trait$Name[(try_trait$TraitID %in%   2L) &amp; (try_trait$Name %in% &quot;leaf_t_tear&quot; )]
+      LeafFPunct = try_trait$Name[(try_trait$TraitID %in%   2L) &amp; (try_trait$Name %in% &quot;leaf_f_punct&quot;)]
+      LeafTPunct = try_trait$Name[(try_trait$TraitID %in%   2L) &amp; (try_trait$Name %in% &quot;leaf_t_punct&quot;)]
+      LeafThick  = try_trait$Name[try_trait$TraitID %in%  46L]
+      EmptyChar  = rep(NA_character_,times=nrow(TidyTRY))
+      EmptyReal  = rep(NA_real_     ,times=nrow(TidyTRY))
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = tibble( ScientificName = TidyTRY$ScientificName
+                          , Author         = TidyTRY$Author
+                          , leaf_f_tear    = if(length(LeafFTear ) == 0L){EmptyReal}else{TidyTRY[[LeafFTear ]]}
+                          , leaf_t_tear    = if(length(LeafTTear ) == 0L){EmptyReal}else{TidyTRY[[LeafTTear ]]}
+                          , leaf_f_punct   = if(length(LeafFPunct) == 0L){EmptyReal}else{TidyTRY[[LeafFPunct]]}
+                          , leaf_t_punct   = if(length(LeafTPunct) == 0L){EmptyReal}else{TidyTRY[[LeafTPunct]]}
+                          , leaf_thick     = if(length(LeafThick ) == 0L){EmptyReal}else{TidyTRY[[LeafThick ]]}
+                          )#end tibble
+
+      # Create a subset of the data set for finding the tree score.
+      SubsetTRY   = TRY_Harmonise_LeafTexture(x=SubsetTRY,thtx_fac=leaf_thick2text_factor)
+
+      # Copy back harmonised photosynthesis data
+      if(length(LeafFTear ) != 0L) TidyTRY[[LeafFTear ]] = SubsetTRY$leaf_f_tear
+      if(length(LeafTTear ) != 0L) TidyTRY[[LeafTTear ]] = SubsetTRY$leaf_t_tear
+      if(length(LeafFPunct) != 0L) TidyTRY[[LeafFPunct]] = SubsetTRY$leaf_f_punct
+      if(length(LeafTPunct) != 0L) TidyTRY[[LeafTPunct]] = SubsetTRY$leaf_t_punct
+      if(length(LeafThick ) != 0L) TidyTRY[[LeafThick ]] = SubsetTRY$leaf_thick
+
+   }#end if (any(try_trait$ID %in% LeafArchID))
    
    
    # Exclude data from life forms that should not be analysed
@@ -2410,7 +2601,7 @@ to the best extent possible.</p>
    KeepTRY  = unlist(TidyTRY %&gt;% summarise_all( ~ any(! is.na(.x))))
    EraseTRY = names(KeepTRY)[! KeepTRY]
    KeepTRY  = names(KeepTRY)[KeepTRY]
-   TidyTRY  = TidyTRY %&gt;% select_at(vars(KeepTRY))
+   TidyTRY  = TidyTRY %&gt;% select(all_of(KeepTRY))
 
    # Identify rows with trait or ancillary data.
    cat0(&quot;   - Remove rows with no information.&quot;)

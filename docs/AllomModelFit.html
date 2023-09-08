@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Marcos Longo" />
+
+<meta name="date" content="2023-01-09" />
+
+<title>TRY allometric models</title>
+
+<script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+<link rel="stylesheet" href="styles.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Trait and Allometry Workflow</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="TidyTraitAllomDB.html">Tidy trait and allometry data base</a>
+</li>
+<li>
+  <a href="TraitTradeOffs.html">Trait trade-off analysis</a>
+</li>
+<li>
+  <a href="AllomModelFit.html">Allometric model fitting</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">TRY allometric models</h1>
+<h4 class="author">Marcos Longo</h4>
+<h4 class="date">2023-01-09</h4>
+
+</div>
+
+
+<style>
+pre {
+  overflow-x: auto;
+}
+pre code {
+  word-wrap: normal;
+  white-space: pre;
+}
+</style>
+<div id="introduction." class="section level1">
+<h1>Introduction.</h1>
+<p>This script seeks to establish allometric relationships for different
+plant functional groups.</p>
+<p>Set paths and file names for input and output.</p>
+<ul>
+<li><strong>home_path</strong>. The user home path.</li>
+<li><strong>main_path</strong>. Main working directory</li>
+<li><strong>util_path</strong>. The path with the additional utility
+scripts (the full path of <code>RUtils</code>).</li>
+<li><strong>plot_path</strong>. The main output path for the simulation
+plots.</li>
+<li><strong>rdata_path</strong>. Output path for R objects (so we can
+use it for comparisons.)</li>
+<li><strong>br_state_shp</strong>. Shapefile with Brazilian states.</li>
+</ul>
+<pre class="r"><code># Set useful paths and file names
+home_path       = path.expand(&quot;~&quot;)
+main_path       = file.path(home_path,&quot;Data&quot;,&quot;TraitAllom_Workflow&quot;)
+util_path       = file.path(main_path,&quot;RUtils&quot;)
+plot_path       = file.path(main_path,&quot;Figures&quot;)
+rdata_path      = file.path(main_path,&quot;RData&quot;)
+br_state_shp    = file.path(home_path,&quot;Shared&quot;,&quot;southam_map&quot;,&quot;brazil_states.shp&quot;)</code></pre>
+<p>The following block defines some settings that were used for defining
+clusters and standardised major axes. This is used to reload the correct
+data sets and to generate unique labels for the allometry objects.</p>
+<ul>
+<li><p><strong>xsma_TraitID</strong>. Variable to be used as the X axis
+of the SMA fit for most traits. This must be a trait ID that matches one
+of the traits listed in <code>try_trait</code>, defined in the trait
+file list (<code>trait_file</code>) and loaded from file
+<code>rdata_TidyTRY</code>.</p></li>
+<li><p><strong>use_lifeclass</strong>. Which life-form/phylogenetic
+level was used to subset the original data set. Options are:</p>
+<ul>
+<li><code>"FlowerTrees"</code>. Trees, classes Magnoliopsida and
+Liliopsida (flowering plants).</li>
+<li><code>"Shrubs"</code>. Shrubs</li>
+<li><code>"Grasses"</code>. Grasses/Herbs</li>
+<li><code>"FlowerPlants"</code>. All life forms, classes Magnoliopsida
+and Liliopsida</li>
+<li><code>"Pinopsida"</code>. Conifers (class Pinopsida), all life
+forms</li>
+<li><code>"SeedPlants"</code>. Seed plants, all life forms: classes
+Cycadopsida, Ginkgoopsida, Gnetopsida, Liliopsida, Magnoliopsida and
+Pinopsida.</li>
+<li><code>"Plantae"</code>. All plants</li>
+</ul></li>
+<li><p><strong>use_realm</strong>. Which realm was used to subset the
+original data set. Current options are:</p>
+<ul>
+<li><code>"NeoTropical"</code>. South and Central America</li>
+<li><code>"PanTropical"</code>. All continents.</li>
+</ul></li>
+</ul>
+<pre class="r"><code># Variable to use as X axis for trait SMA analyses?
+xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_turnover=12L,leaf_f_punct=2L)[2L]
+
+# Life-form/phylogenetic level to use for SMA analyses.
+use_lifeclass  = c(&quot;FlowerTrees&quot;,&quot;Shrubs&quot;,&quot;Grasses&quot;,&quot;FlowerPlants&quot;,&quot;Pinopsida&quot;,&quot;SeedPlants&quot;,&quot;Plantae&quot;)[4L]
+
+# Realm to use for SMA analyses.
+use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;)[1L]
+
+# Taxonomic level of detail for SMA analyses. This is used to retrieve the correct &quot;Tidy TRY&quot; data set
+# with the cluster assignment. Allometric models are always developed from individual observations.
+fit_taxon = c(&quot;Individual&quot;,&quot;Species&quot;,&quot;Genus&quot;)[2L]</code></pre>
+<p>Settings for reloading or rerunning multiple steps of this script.
+These are all logical variables, with <code>TRUE</code> meaning to
+reload previous calculations, and <code>FALSE</code> meaning to
+calculate the step again. If the RData file is not found, these
+variables will be ignored.</p>
+<ul>
+<li><strong>reload_input_allom</strong>. Reload the input data for
+fitting the allometric models?</li>
+<li><strong>reload_height_allom</strong>. Reload the height-DBH
+models?</li>
+<li><strong>reload_agb_allom</strong>. Reload above-ground biomass
+models?</li>
+<li><strong>reload_bleaf_allom</strong>. Reload leaf biomass
+models?</li>
+<li><strong>reload_leaf_area_allom</strong>. Reload individual leaf area
+models?</li>
+<li><strong>reload_crown_area_allom</strong>. Reload individual crown
+area models?</li>
+<li><strong>reload_crown_depth_allom</strong>. Reload crown depth
+models?</li>
+<li><strong>reload_bark_thick_allom</strong>. Reload bark thickness
+models?</li>
+</ul>
+<pre class="r"><code>reload_input_allom       = c(FALSE,TRUE)[2L] # Reload the input data for fitting the allometric models?
+reload_height_allom      = c(FALSE,TRUE)[2L] # Reload the height-DBH models?
+reload_agb_allom         = c(FALSE,TRUE)[2L] # Reload above-ground biomass models?
+reload_bleaf_allom       = c(FALSE,TRUE)[2L] # Reload leaf biomass models?
+reload_leaf_area_allom   = c(FALSE,TRUE)[2L] # Reload individual leaf area models?
+reload_crown_area_allom  = c(FALSE,TRUE)[2L] # Reload individual crown area models?
+reload_crown_depth_allom = c(FALSE,TRUE)[2L] # Reload crown depth models?
+reload_bark_thick_allom  = c(FALSE,TRUE)[2L] # Reload bark thickness models?</code></pre>
+<p>The following block defines some settings for model fitting.</p>
+<ul>
+<li><strong>CntAllomMin</strong>. Minimum number of valid points to
+consider for maps.</li>
+<li><strong>AllomConfInt</strong>. Confidence interval for allometric
+equations.</li>
+<li><strong>AllomMaxItGain</strong>. Maximum number of iterations for
+calling the main optimiser for seeking a better maximum using the
+previous optimised set of parameters. This sometimes helps improving the
+model, but it typically stabilises after a handful of iterations (about
+5).</li>
+<li><strong>AllomMaxItOptim</strong>. Maximum number of iterations
+before giving up optimising the model. This is actually what controls
+the search for the optimal point, and should be relatively high
+(1000–5000) as sometimes the initial guess is too far from the actual
+optimal.</li>
+<li><strong>AllomTolGain</strong>. Relative tolerance for successive
+calls of the main optimiser. Values of the order of <span
+class="math inline">\(10^{-5}\)</span> are typically sufficient.</li>
+<li><strong>AllomTolOptim</strong>. Relative tolerance for model
+fitting. This controls the error tolerance of the optimiser itself and
+should be stricter (<span class="math inline">\(10^{-7}\)</span>) or
+less).</li>
+<li><strong>UseFixedModel</strong>. If <code>TRUE</code>, use global
+observations to define the best model formulation (equation type), and
+use this one for all classes and categories. If <code>FALSE</code>, use
+the test the best formulation for each class and category within
+class.</li>
+<li><strong>AllomCntPred</strong>. Number of points spanning the range
+of predictors for fitted curve.</li>
+<li><strong>AllomQuantPred</strong>. Logical flag: should the values
+span evenly by quantiles (TRUE) or just linearly (FALSE).</li>
+</ul>
+<pre class="r"><code>CntAllomMin   = 30L       # Minimum number of points for fitting allometric models.
+AllomConfInt  = 0.95      # Confidence interval for allometric model fittings.
+
+# Settings for non-linear heteroscedastic model fitting.
+AllomMaxItGain  = 4L     # Maximum number of iterations for calling the optimiser
+AllomMaxItOptim = 1000L  # Maximum number of iterations for finding the optimal point
+AllomTolGain    = 1.e-3  # Tolerance for accepting convergence of multiple optimiser calls.
+AllomTolOptim   = 1.e-8  # Tolerance for finding the optimum within each optimiser call.
+
+# Settings for predicting values.
+UseFixedModel  = TRUE     # Use the same functional form (model) for each class category?
+AllomCntPred   = 101L     # Number of points spanning the range of predictor for fitted curve.
+AllomQuantPred = TRUE     # Span predictor evenly across quantiles (TRUE) or linearly (FALSE)
+AllomCntBoot   = 1024L    # Number of times for bootstrapping for generating confidence bands.</code></pre>
+<p>Set up some flags to either plot (<code>TRUE</code>) or skip
+(<code>FALSE</code>) groups of plots.</p>
+<ul>
+<li><strong>plot_allom_scatter</strong>. Plot scatter plot comparing
+observations with predicted values?</li>
+<li><strong>plot_allom_fun</strong>. Plot functional form of models as
+function of size?</li>
+</ul>
+<pre class="r"><code>plot_allom_scatter     = c(FALSE,TRUE)[2L] # Plot allometry scatter plot ? (TRUE|FALSE)
+plot_allom_fun         = c(FALSE,TRUE)[2L] # Plot allometry function?      (TRUE|FALSE)</code></pre>
+<p>General plot options for <code>ggplot</code>.</p>
+<pre class="r"><code>gg_device        = c(&quot;pdf&quot;) # Output devices to use (Check ggsave for acceptable formats)
+gg_depth         = 300      # Plot resolution (dpi)
+gg_ptsz          = 24       # Font size
+gg_width         = 11.0     # Plot width for non-map plots (units below)
+gg_height        = 8.5      # Plot height for non-map plots (units below)
+gg_units         = &quot;in&quot;     # Units for plot size
+gg_screen        = TRUE     # Show plots on screen as well?
+gg_tfmt          = &quot;%Y&quot;     # Format for time 
+gg_ncolours      = 129      # Number of node colours for heat maps.
+gg_fleg          = 1./6.    # Fraction of plotting area dedicated for legend
+ndevice = length(gg_device)</code></pre>
+<p>Options for allometry plots:</p>
+<ul>
+<li><strong>CntDensThresh</strong>. Number of points above which we
+select density plots instead of scatter plots. Note: if the plot uses
+logarithmic scale in either axis, the code will force scatter
+plots.</li>
+<li><strong>CntDensBin</strong>. Number of bins for 2-D density
+plots.</li>
+<li><strong>DensPalette</strong>. Colour palette for density bins.</li>
+<li><strong>DensReverse</strong>. Should we use the reverse palette?
+(TRUE | FALSE)</li>
+<li><strong>DensCntColour</strong>. Number of colours to use in the
+colour ramp.</li>
+<li><strong>DensTrans</strong>. Variable transformation for density
+plots.</li>
+<li><strong>DensRange</strong>. Range for the binned plots, in case a
+fixed range is sought. This is a vector of 2 (minimum and maximum). If
+you want to use the default values, set them to <code>NA_real_</code>.
+For completely unbounded values, set both values to
+<code>NA_real_</code>.</li>
+<li><strong>PointColour</strong>. Point colour when using scatter plots
+instead of density.</li>
+<li><strong>PointShape</strong>. Point shape when using scatter plots
+instead of density.</li>
+<li><strong>PointSize</strong>. Point size when using scatter plots
+instead of density.</li>
+</ul>
+<p>Scales for x and y axes. Options are <code>"identity"</code>
+(linear), <code>"log"</code> (logarithmic, useful for non-linear ranges
+that are always positive), <code>"neglog"</code> (negative logarithm of
+negative number, i.e. <span
+class="math inline">\(-\log{\left(-x\right)}\)</span>, useful for
+non-linear scales that are always negative), <code>"sqrt"</code> (square
+root, useful for non-linear ranges that must include zero) and
+<code>"cbrt"</code> (cube root, useful for non-linear ranges that can be
+positive or negative).</p>
+<ul>
+<li><strong>xTransAllom</strong>. Vector with transformation for the x
+axis, one for each X predictor (DBH, Height, Size, WDSize, LMSize)</li>
+<li><strong>xTransAllom</strong>. Vector with transformation for the y
+axis, one for each allometric relationship (Height, AGB, BLeaf,
+LeafArea, CrownArea, CrownDepth, BarkThick)</li>
+</ul>
+<pre class="r"><code>CntDensThresh = 1000L
+CntDensBin    = 40L
+DensPalette   = &quot;Blues&quot;
+DensReverse   = FALSE
+DensCntColour = 200L
+DensTrans     = &quot;log10&quot;
+DensRange     = c(1L,NA_real_)
+PointColour   = &quot;#418CC3&quot; # Colour for points (when not using density).
+PointShape    = 16L      # Point shape format (when not using density).
+PointSize     = 0.75      # Point size (when not using density).
+
+xTransAllom   = c( DBH        = &quot;identity&quot;, Height     = &quot;identity&quot;, Size       = &quot;log&quot;
+                 , WDSize     = &quot;log&quot;     , LMSize     = &quot;log&quot;     )
+yTransAllom   = c( Height     = &quot;identity&quot;, AGB        = &quot;log&quot;     , BLeaf      = &quot;log&quot;
+                 , LeafArea   = &quot;log&quot;     , CrownArea  = &quot;log&quot;     , CrownDepth = &quot;identity&quot;
+                 , BarkThick  = &quot;log&quot;     )</code></pre>
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!--                                                                                     -->
+<!--               CHANGES BEYOND THIS POINT ARE ONLY FOR CODE DEVELOPMENT               -->
+<!--                                                                                     -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+<!-- =================================================================================== -->
+</div>
+<div id="main-script" class="section level1">
+<h1>Main script</h1>
+<p><strong>Note:</strong> Code changes beyond this point are only needed
+if you are developing the notebook.</p>
+<div id="initial-settings." class="section level2">
+<h2>Initial settings.</h2>
+<p>First, we load the list of host land model variables that we may
+consider for the comparison.</p>
+<pre class="r"><code>source(file.path(util_path,&quot;load.everything.r&quot;),chdir=TRUE)</code></pre>
+<p>Load all countries and Brazilian states to include in the plot.</p>
+<pre class="r"><code># Load countries and Brazilian states
+all_countries = sf::st_as_sf(maps::map(&quot;world2&quot;,plot=FALSE,fill=TRUE,wrap=c(-180,180)))
+br_states     = sf::st_as_sf(st_read(br_state_shp))</code></pre>
+<p>We also list all colour palettes from packages
+<code>RColorBrewer</code> and <code>viridis</code>. This will be useful
+when deciding the colour ramps.</p>
+<pre class="r"><code># List of palettes in package RColorBrewer and viridis
+BrewerPalInfo  = rownames(RColorBrewer::brewer.pal.info)
+ViridisPalInfo = as.character(lsf.str(&quot;package:viridis&quot;))
+ViridisPalInfo = ViridisPalInfo[! grepl(pattern=&quot;^scale_&quot;,x=ViridisPalInfo)]</code></pre>
+<p>Load the harmonised trait data set, stored in file
+<code>rdata_TidyTRY</code>. This is the output of script
+<code>TidyTRY.Rmd</code> so make sure to run that pre-processing
+first.</p>
+<pre class="r"><code># Set subset of TRY entries.
+use_suffix   = paste(use_realm,use_lifeclass         ,sep=&quot;_&quot;)
+
+# File name with the tidy data set of individual trait observations.
+rdata_TidyTRY = file.path(rdata_path,paste0(&quot;TidyTRY_&quot; ,use_suffix,&quot;.RData&quot;)) 
+
+# Check that the file exists and load it.
+if (file.exists(rdata_TidyTRY)){
+   # Load data.
+   cat0(&quot; + Load data from file: &quot;,basename(rdata_TidyTRY),&quot;.&quot;)
+   dummy = load(rdata_TidyTRY)
+}else{
+   # File not found, stop the script
+   cat0(&quot; + File &quot;,basename(rdata_TidyTRY),&quot; not found!&quot;)
+   cat0(&quot;   This script requires pre-processing and subsetting TRY observations.&quot;)
+   cat0(&quot; - Run script \&quot;TidyTRY.Rmd\&quot; before running this script, and set: &quot;)
+   cat0(&quot;      use_realm     = \&quot;&quot;,use_realm    ,&quot;\&quot;&quot;)
+   cat0(&quot;      use_lifeclass = \&quot;&quot;,use_lifeclass,&quot;\&quot;&quot;)
+   cat0(&quot;   in the TidyTRY preamble.&quot;)
+   stop(&quot; RData object not found.&quot;)
+}#end if (file.exists(rdata_TidyTRY))
+
+#    Find the local trait name consistent with the TidyTRY object. For most traits, we use 
+# the trait ID, however for leaf texture and xylem loss of conductivity, we use the names
+# because the same ID is split into multiple variables.
+if (xsma_TraitID %in% c(2L,719L,3479L)){
+   xsma_idx   = match(names(xsma_TraitID),try_trait$Name)
+}else{
+   xsma_idx   = match(xsma_TraitID,try_trait$TraitID)
+}#end if (xsma_TraitID %in% c(2L,719L,3479L))
+xsma_name   = try_trait$Name[xsma_idx]
+
+
+# Build suffix for model fittings.
+trait_suffix      = paste(use_suffix,fit_taxon,xsma_name  ,sep=&quot;_&quot;)
+rdata_TidyCluster = file.path(rdata_path,paste0(&quot;TidyCluster_&quot;,trait_suffix,&quot;.RData&quot;))
+
+# Check that the file exists and load it.
+if (file.exists(rdata_TidyCluster)){
+   # Load data.
+   cat0(&quot; + Load data from file: &quot;,basename(rdata_TidyCluster),&quot;.&quot;)
+   dummy = load(rdata_TidyCluster)
+}else{
+   # File not found, stop the script
+   cat0(&quot; + File &quot;,basename(rdata_TidyCluster),&quot; not found!&quot;)
+   cat0(&quot;   This script requires pre-processing, subsetting TRY observations, and a cluster analysis.&quot;)
+   cat0(&quot; - Run scripts \&quot;TidyTRY.Rmd\&quot; and \&quot;TRYTradeOffs.Rmd\&quot; in this orde before running this script, and set: &quot;)
+   cat0(&quot;      use_realm     = \&quot;&quot;,use_realm    ,&quot;\&quot;&quot;)
+   cat0(&quot;      use_lifeclass = \&quot;&quot;,use_lifeclass,&quot;\&quot;&quot;)
+   cat0(&quot;      xsma_name     = \&quot;&quot;,xsma_name    ,&quot;\&quot;&quot;)
+   cat0(&quot;   in the \&quot;TidyTRY.Rmd\&quot; and \&quot;TRYTradeOffs.Rmd\&quot; preambles.&quot;)
+   stop(&quot; RData object not found.&quot;)
+}#end if (file.exists(rdata_TidyCluster))</code></pre>
+<p>Define files and paths for input and output. We also create the
+output paths.</p>
+<pre class="r"><code># Build output directory for trait, allometry, and photosynthesis fits.
+allom_path  = file.path(plot_path,paste0(&quot;Allom_&quot;,trait_suffix))
+
+# Build RData object file names for the allometric models.
+rdata_input_allom       = file.path(rdata_path,paste0(&quot;AllomInput&quot;         ,use_suffix,&quot;.RData&quot;))
+rdata_height_allom      = file.path(rdata_path,paste0(&quot;AllomFit_Height&quot;    ,use_suffix,&quot;.RData&quot;))
+rdata_agb_allom         = file.path(rdata_path,paste0(&quot;AllomFit_AGB&quot;       ,use_suffix,&quot;.RData&quot;))
+rdata_bleaf_allom       = file.path(rdata_path,paste0(&quot;AllomFit_BLeaf&quot;     ,use_suffix,&quot;.RData&quot;))
+rdata_leaf_area_allom   = file.path(rdata_path,paste0(&quot;AllomFit_LeafArea&quot;  ,use_suffix,&quot;.RData&quot;))
+rdata_crown_area_allom  = file.path(rdata_path,paste0(&quot;AllomFit_CrownArea&quot; ,use_suffix,&quot;.RData&quot;)) 
+rdata_crown_depth_allom = file.path(rdata_path,paste0(&quot;AllomFit_CrownDepth&quot;,use_suffix,&quot;.RData&quot;))
+rdata_bark_thick_allom  = file.path(rdata_path,paste0(&quot;AllomFit_BarkThick&quot; ,use_suffix,&quot;.RData&quot;))
+
+
+# Make sure directories are set.
+dummy = dir.create(path=rdata_path     ,showWarnings=FALSE,recursive=TRUE)
+dummy = dir.create(path=allom_path     ,showWarnings=FALSE,recursive=TRUE)</code></pre>
+<p>Define the labels for titles:</p>
+<pre class="r"><code># Label for life-form/phylogenetic level
+LabelLife = switch( use_lifeclass
+                  , FlowerTrees  = &quot;flowering trees&quot;
+                  , Shrubs       = &quot;shrubs&quot;
+                  , Grasses      = &quot;grasses&quot;
+                  , FlowerPlants = &quot;flowering plants&quot;
+                  , Pinopsida    = &quot;conifers&quot;
+                  , SeedPlants   = &quot;seed plants&quot;
+                  , Plantae      = &quot;plants&quot;
+                  , stop(&quot;Unrecognised life-form/phylogenetic level.&quot;)
+                  )#end switch
+
+# Label for floristic realm
+LabelRealm = switch( use_realm
+                   , NeoTropical = &quot;Neotropical&quot;
+                   , PanTropical = &quot;Pantropical&quot;
+                   , stop(&quot;Unrecognised realm.&quot;)
+                   )#end switch
+
+# Build sub-title
+LabelSubtitle = paste0(LabelRealm,&quot; &quot;,LabelLife)</code></pre>
+<p>Find confidence quantiles based on the confidence range.</p>
+<pre class="r"><code># Find lower and upper confidence bands
+AllomConfLwr = 0.5 - 0.5 * AllomConfInt
+AllomConfUpr = 0.5 + 0.5 * AllomConfInt
+
+# Find the significance level to consider allometric models significant
+AllomAlpha = 1. - AllomConfInt</code></pre>
+<p>For some plots, we use a square image so it looks nicer. Define the
+size as the average between height and width.</p>
+<pre class="r"><code># Find size for square plots
+gg_square = sqrt(gg_width*gg_height)</code></pre>
+<p>Define the tibble that helps fitting and plotting allometric models
+by category</p>
+<pre class="r"><code># Find the number of sub-classes to test the model
+CategTmp  = CategExtra %&gt;%
+   filter( ( (XYUse %in% &quot;Colour&quot;) | (TraitID %in% 0L) ) &amp; (! duplicated(Class))) %&gt;%
+   mutate( TraitName = ifelse( test = TraitID %in% 0L
+                             , yes  = &quot;Cluster&quot;
+                             , no   = try_trait$Name[match(TraitID,try_trait$TraitID)]
+                             )#end ifelse
+         )#end mutate
+CategAll   = CategExtra %&gt;%
+   filter( is.na(TraitID) &amp; (Class %in% &quot;ALL&quot;))
+
+CategAllom = tibble( TraitID    = c(CategAll$TraitID,CategTmp$TraitID)
+                   , Name       = c(CategAll$Class,CategTmp$Class)
+                   , TraitClass = ifelse( test = TraitID %gt% 0L
+                                        , yes  = try_trait$Name[match(TraitID,try_trait$TraitID)]
+                                        , no   = ifelse(test=TraitID %eq% 0L, yes=&quot;Cluster&quot;,no=&quot;All&quot;)
+                                        )#end ifelse
+                   , DescClass  = ifelse( test = TraitID %gt% 0L
+                                        , yes  = try_trait$Desc[match(TraitID,try_trait$TraitID)]
+                                        , no   = ifelse( test = TraitID %eq% 0L
+                                                       , yes  = &quot;Data-based cluster&quot;
+                                                       , no   = &quot;All data&quot;
+                                                       )#end ifelse
+                                        )#end ifelse
+                   , Colour     = c(CategAll$Colour,CategTmp$Colour)
+                   , Symbol     = c(CategAll$Symbol,CategTmp$Symbol)
+                   , XYUse      = c(CategAll$XYUse ,CategTmp$XYUse )
+                   )#end tibble
+
+CntCategAllom = nrow(CategAllom)</code></pre>
+</div>
+</div>
+<div id="prepare-data-for-model-fitting" class="section level1">
+<h1>Prepare data for model fitting</h1>
+<p>Here we will generate tibble <code>AllomTRY</code>, which will be the
+based on <code>TidyTRY</code>, but with the following differences:</p>
+<ol style="list-style-type: decimal">
+<li>Wood density (<span class="math inline">\(\rho_{w}\)</span>) and
+specific leaf area (<span class="math inline">\(\mathrm{SLA}\)</span>),
+when available, will be gap filled. If the species has a value
+associated with the trait, we use that value, otherwise, we randomly
+sample from either the cluster or using the global distribution of
+values.</li>
+<li>New variable leaf mass per area (<span
+class="math inline">\(\mathrm{LMA}\)</span>) as the reciprocal of <span
+class="math inline">\(\mathrm{SLA}\)</span>. This may be useful for
+defining allometric models.</li>
+<li>We will define three new variables that are derived from diameter at
+breast height (<span class="math inline">\(\mathrm{DBH}\)</span>) and
+plant height (<span class="math inline">\(h\)</span>), as well as <span
+class="math inline">\(\rho_w\)</span> or <span
+class="math inline">\(\mathrm{LMA}\)</span> which are often used in
+allometric models.</li>
+</ol>
+<ol style="list-style-type: lower-alpha">
+<li>Size - This is defined as <span class="math inline">\(\mathrm{DBH}^2
+\, h\)</span></li>
+<li>WDSize - This is defined as <span class="math inline">\(\rho_w \,
+\mathrm{Size}\)</span></li>
+<li>LMSize - This is defined as <span class="math inline">\(\mathrm{LMA}
+\, \mathrm{Size}\)</span></li>
+</ol>
+<pre class="r"><code>if (reload_input_allom &amp;&amp; file.exists(rdata_input_allom)){
+   # Load existing data.
+   cat0(&quot; + Load input allometry data from &quot;,basename(rdata_input_allom),&quot;.&quot;)
+   dummy = load(rdata_input_allom)
+}else{
+   
+   cat0(&quot; + Create input data set for training allometric models.&quot;)
+   # Create tibble AllomTRY based on TidyTRY
+   AllomTRY = TidyTRY
+
+   cat0(&quot; + Create template for appending new traits as needed.&quot;)
+   try_template = try_trait[1L,,drop=FALSE] %&gt;%
+      mutate( across(where(is.character), ~ NA_character_)
+            , across(where(is.integer  ), ~ NA_integer_  )
+            , across(where(is.double   ), ~ NA_real_     )
+            , across(where(is.logical  ), ~ FALSE        )
+            , across(matches(&quot;Type&quot;)    , ~ &quot;numeric&quot;    )
+            , across(matches(&quot;Add&quot; )    , ~ 0.           )
+            , across(matches(&quot;Mult&quot; )   , ~ 1.           )
+            , across(matches(&quot;Power&quot;)   , ~ 1.           ) )
+
+   
+   #    Make sure that the main predictors and predictands are all defined. If they are not
+   # part of the original data set, add dummy vectors.
+   TraitCheck = tribble( ~Name       , ~IDList                     , ~Desc                          , ~Unit   , ~Trans
+                       , &quot;SLA&quot;       , &quot;c(3086L,3115L,3116L,3117L)&quot;, &quot;Specific Leaf Area&quot;           , &quot;m2okg&quot; , &quot;log&quot;
+                       , &quot;WoodDens&quot;  ,                      &quot;c(4L)&quot;, &quot;Wood Density&quot;                 , &quot;gocm3&quot; , &quot;identity&quot;
+                       , &quot;DBH&quot;       ,                     &quot;c(21L)&quot;, &quot;Diameter at Breast Height&quot;    , &quot;cm&quot;    , &quot;identity&quot;
+                       , &quot;Height&quot;    ,               &quot;c(18L,3106L)&quot;, &quot;Plant Height&quot;                 , &quot;m&quot;     , &quot;identity&quot;
+                       , &quot;AGB&quot;       ,                   &quot;c(3446L)&quot;, &quot;Aboveground Biomass&quot;          , &quot;kg&quot;    , &quot;log&quot;
+                       , &quot;BLeaf&quot;     ,              &quot;c(129L,3441L)&quot;, &quot;Leaf Biomass&quot;                 , &quot;kg&quot;    , &quot;log&quot;
+                       , &quot;LeafArea&quot;  ,                    &quot;c(410L)&quot;, &quot;Leaf Area per Plant&quot;          , &quot;m2&quot;    , &quot;log&quot;
+                       , &quot;CrownArea&quot; ,                     &quot;c(20L)&quot;, &quot;Crown Area per Plant&quot;         , &quot;m2&quot;    , &quot;log&quot;
+                       , &quot;CrownDepth&quot;,                    &quot;c(773L)&quot;, &quot;Crown Depth&quot;                  , &quot;m&quot;     , &quot;log&quot;
+                       , &quot;BarkThick&quot; ,                     &quot;c(24L)&quot;, &quot;Bark thickness&quot;               , &quot;cm&quot;    , &quot;identity&quot;
+                       , &quot;LMA&quot;       ,                     &quot;c(-1L)&quot;, &quot;Leaf Mass per Area&quot;           , &quot;kgom2&quot; , &quot;log&quot;
+                       , &quot;Size&quot;      ,                     &quot;c(-2L)&quot;, &quot;Tree size&quot;                    , &quot;cm2m&quot;  , &quot;log&quot;
+                       , &quot;WDSize&quot;    ,                     &quot;c(-3L)&quot;, &quot;Wood-Density Scaled Tree Size&quot;, &quot;cg&quot;    , &quot;log&quot;
+                       , &quot;LMSize&quot;    ,                     &quot;c(-4L)&quot;, &quot;LMA-Scaled Tree Size&quot;         , &quot;gdm&quot;   , &quot;log&quot;
+                       )#end tribble
+   CntTraitCheck = nrow(TraitCheck)
+
+   
+   #---~---
+   #   Loop through the list of predictors and predictands, and make sure they are all 
+   # present in both the look-up table (try_trait) and the training data set (AllomTRY).
+   #---~---
+   cat0(&quot; + Check if trait/size variable is available.&quot;)
+   for (u in sequence(CntTraitCheck)){
+      # Retrieve check information.
+      uName   = TraitCheck$Name [u]
+      uIDList = eval(parse(text=TraitCheck$IDList[u]))
+      uDesc   = TraitCheck$Desc [u]
+      uUnit   = TraitCheck$Unit [u]
+      uTrans  = TraitCheck$Trans[u]
+
+      # Figure out if there is any trait that matches this ID.
+      IsTrait = which(try_trait$TraitID %in% uIDList)
+
+      # If trait is not in the data base, include it.
+      if (length(IsTrait) == 0L){
+         cat0(&quot;   - Trait &quot;,uName,&quot; not available in look-up table. Append it.&quot;)
+
+         # Include trait to the look-up table
+         try_append = try_template %&gt;%
+            mutate( across(matches(&quot;Name&quot;   ), ~ uName      )
+                  , across(matches(&quot;TraitID&quot;), ~ uIDList[1L])
+                  , across(matches(&quot;Desc&quot;   ), ~ uDesc      )
+                  , across(matches(&quot;Unit&quot;   ), ~ uUnit      )
+                  , across(matches(&quot;Trans&quot;  ), ~ uTrans     ) )
+         try_trait = rbind(try_trait,try_append)
+
+         # Add dummy vector to AllomTRY
+         AllomTRY[[uName]] = NA_real_
+      }#end if (length(IsTrait) == 0L)
+   }#end for (tc in sequence(CntTraitCheck))
+   #---~---
+   
+      
+   #---~----
+   #   Check if we can fill in wood density. We will try whenever there are some available
+   # data, otherwise, we just skip it. In this case, all models using wood density will be
+   # automatically rejected.
+   #---~---
+   # Retrieve column name.
+   IsWoodDens = which(try_trait$TraitID %in% c( 4L))
+   WoodDens   = try_trait$Name[IsWoodDens][1L]
+   if (any(is.finite(AllomTRY[[WoodDens]]))){
+      cat0(&quot;   - Gap fill wood density.&quot;)
+
+      #---~---
+      #    Prepare data for filling information for species where no data are available.
+      # First we fill in with global sample, then we refine it by sampling data from
+      # within the same cluster (when this is possible).
+      #---~---
+      # 1. Global sampling.
+      GlobalIdx       = which(is.finite(AllomTRY[[WoodDens]]))
+      FillWoodDens    = sample(x=AllomTRY[[WoodDens]][GlobalIdx],size=nrow(AllomTRY),replace=TRUE)
+      # 2. Split reference wood density by cluster.
+      ClusterRef      = which(is.finite(AllomTRY[[WoodDens]]) &amp; (! is.na(AllomTRY$Cluster)))
+      WDClusterList   = split(x = AllomTRY[[WoodDens]][ClusterRef],f=AllomTRY$Cluster[ClusterRef])
+      # 3. Find species that can be filled with cluster data.
+      ClusterFill     = ! is.na(AllomTRY$Cluster)
+      IdxClusterList  = split(x = ClusterFill, f = AllomTRY$Cluster[ClusterFill])
+      # 4. Sample data by cluster
+      ClusterWoodDens = 
+         mapply( FUN      = function(x,name,ref){
+                               ans = sample(x=rep(ref[[name]],times=2L),size=length(x),replace=TRUE)
+                               return(ans)
+                            }#end function
+               , x        = IdxClusterList
+               , name     = as.list(names(IdxClusterList))
+               , SIMPLIFY = FALSE
+               , MoreArgs = list(ref=WDClusterList)
+               )#end mapply
+      # 5. Update data for filling
+      ClusterFill               = c(unlist(IdxClusterList))
+      FillWoodDens[ClusterFill] = c(unlist(ClusterWoodDens))
+      #    Further improve filling data when species wood density is available
+      SpeciesIdx   = match(AllomTRY$ScientificName,SpeciesTRY$ScientificName)
+      FillWoodDens = ifelse( test = is.finite(SpeciesTRY[[WoodDens]][SpeciesIdx])
+                           , yes  = SpeciesTRY[[WoodDens]][SpeciesIdx]
+                           , no   = FillWoodDens
+                           )#end ifelse
+
+      #    Fill in data for missing wood density.
+      AllomTRY[[WoodDens]] = ifelse( test = is.finite(AllomTRY[[WoodDens]])
+                                  , yes  = AllomTRY[[WoodDens]]
+                                  , no   = FillWoodDens
+                                  )#end ifelse
+   }#end if (any(is.finite(AllomTRY[[WoodDens]])))
+   #---~---
+
+
+   #---~----
+   #   Check if we can fill in specific leaf area We will try whenever there are some 
+   # available data, otherwise, we just skip it. In this case, all models using wood 
+   # density will be automatically rejected.
+   #---~---
+   # Retrieve column name.
+   IsSLA = which(try_trait$TraitID %in% c(3086L,3115L,3116L,3117L))[1L]
+   SLA   = try_trait$Name[IsSLA]
+   if (any(is.finite(AllomTRY[[SLA]]))){
+      cat0(&quot;   - Gap fill specific leaf area.&quot;)
+   
+      #---~---
+      #    Prepare data for filling information for species where no data are available.
+      # First we fill in with global sample, then we refine it by sampling data from
+      # within the same cluster (when this is possible).
+      #---~---
+      # 1. Global sampling.
+      GlobalIdx       = which(is.finite(AllomTRY[[SLA]]))
+      FillSLA         = sample(x=AllomTRY[[SLA]][GlobalIdx],size=nrow(AllomTRY),replace=TRUE)
+      # 2. Split reference wood density by cluster.
+      ClusterRef      = which(is.finite(AllomTRY[[SLA]]) &amp; (! is.na(AllomTRY$Cluster)))
+      WDClusterList   = split(x = AllomTRY[[SLA]][ClusterRef],f=AllomTRY$Cluster[ClusterRef])
+      # 3. Find species that can be filled with cluster data.
+      ClusterFill     = ! is.na(AllomTRY$Cluster)
+      IdxClusterList  = split(x = ClusterFill, f = AllomTRY$Cluster[ClusterFill])
+      # 4. Sample data by cluster
+      ClusterSLA = 
+         mapply( FUN      = function(x,name,ref){
+                               ans = sample(x=rep(ref[[name]],times=2L),size=length(x),replace=TRUE)
+                               return(ans)
+                            }#end function
+               , x        = IdxClusterList
+               , name     = as.list(names(IdxClusterList))
+               , SIMPLIFY = FALSE
+               , MoreArgs = list(ref=WDClusterList)
+               )#end mapply
+      # 5. Update data for filling
+      ClusterFill          = c(unlist(IdxClusterList))
+      FillSLA[ClusterFill] = c(unlist(ClusterSLA))
+      #    Further improve filling data when species wood density is available
+      SpeciesIdx = match(AllomTRY$ScientificName,SpeciesTRY$ScientificName)
+      FillSLA    = ifelse( test = is.finite(SpeciesTRY[[SLA]][SpeciesIdx])
+                         , yes  = SpeciesTRY[[SLA]][SpeciesIdx]
+                         , no   = FillSLA
+                         )#end ifelse
+
+      #    Fill in data for missing wood density.
+      AllomTRY[[SLA]] = ifelse( test = is.finite(AllomTRY[[SLA]])
+                              , yes  = AllomTRY[[SLA]]
+                              , no   = FillSLA
+                              )#end ifelse
+   }#end if (any(is.finite(AllomTRY[[SLA]])))
+
+   
+   # Find derived quantities
+   cat0(&quot;   - Calculate derived quantities.&quot;)
+   DBH      = try_trait$Name[which(try_trait$TraitID %in% c(  21L)                  )[1L]]
+   Height   = try_trait$Name[which(try_trait$TraitID %in% c(  18L,3106L)            )[1L]]
+   WoodDens = try_trait$Name[which(try_trait$TraitID %in% c(   4L)                  )[1L]]
+   SLA      = try_trait$Name[which(try_trait$TraitID %in% c(3086L,3115L,3116L,3117L))[1L]]
+   LMA      = try_trait$Name[which(try_trait$TraitID %in% c(  -1L)                  )[1L]]
+   Size     = try_trait$Name[which(try_trait$TraitID %in% c(  -2L)                  )[1L]]
+   WDSize   = try_trait$Name[which(try_trait$TraitID %in% c(  -3L)                  )[1L]]
+   LMSize   = try_trait$Name[which(try_trait$TraitID %in% c(  -4L)                  )[1L]]
+
+   # Leaf mass per area as the inverse of SLA
+   AllomTRY[[LMA]] = ifelse( test = AllomTRY[[SLA]] %gt% 0.
+                           , yes  = 1./AllomTRY[[SLA]]
+                           , no   = NA_real_
+                           )#end ifelse
+
+   # Tree Size and the wood-density and SLA scaled versions
+   AllomTRY[[Size  ]] = AllomTRY[[DBH     ]]^2 * AllomTRY[[Height]]
+   AllomTRY[[WDSize]] = AllomTRY[[WoodDens]]   * AllomTRY[[Size  ]]
+   AllomTRY[[LMSize]] = AllomTRY[[LMA     ]]   * AllomTRY[[Size  ]]
+
+   # Save data to an R object.
+   cat0(&quot; + Save input data for allometric models to &quot;,basename(rdata_input_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;)
+               , file              = rdata_input_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_input_allom &amp;&amp; file.exists(rdata_input_allom))</code></pre>
+</div>
+<div id="allometric-model-fitting." class="section level1">
+<h1>Allometric model fitting.</h1>
+<p>Here we fit a series of allometric models that account for
+heteroscedasticity when needed. We currently use pre-determined
+functions for specific traits, but this may be later revisited for more
+generalised modelling. In all cases, we seek to fit allometric models
+for each cluster, and a global model, and save the results for deciding
+whether or not a global model is more parsimonious than the PFT-specific
+models. To do this, we use a generic set of functions that will fit
+multiple allometric models and select the most parsimonious based on the
+Bayes Information criterion.</p>
+<div id="height-allometry" class="section level2">
+<h2>Height allometry</h2>
+<p>For DBH-Height allometry, we try to fit three models: (1) a modified
+Michaelis-Mentel relationship, following <a
+href="https://dx.doi.org/10.1111/gcb.15188">Martínez-Cano <em>et
+al.</em>, 2020</a>, (2) a Weibull-based relationship, following <a
+href="https://dx.doi.org/10.5194/bg-9-3381-2012">Feldpausch
+<em>et_al.</em>, 2012</a>, and (3) a simple exponential relationship. We
+then select the one that has the best predictive power.</p>
+<pre class="r"><code>if (reload_height_allom &amp;&amp; file.exists(rdata_height_allom)){
+   # Reload data
+   cat0(&quot; + Reload height allometry.&quot;)
+   dummy = load(rdata_height_allom)
+}else{
+
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;optim.lsq.htscd.r&quot;    ),chdir=TRUE)
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   DBH      = try_trait$Name[which(try_trait$TraitID %in% c(21L)      )[1L]]
+   Height   = try_trait$Name[which(try_trait$TraitID %in% c(18L,3106L))[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelHeight = tribble( ~Model         , ~xName , ~wName        , ~yName
+                        , &quot;MartinezCano&quot; , DBH    , NA_character_ , Height
+                        , &quot;Weibull&quot;      , DBH    , NA_character_ , Height
+                        , &quot;OneLogLinear&quot; , DBH    , NA_character_ , Height
+                        )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating DBH and height.&quot;)
+   FitHeight = Allom_Fit( DataTRY         = AllomTRY
+                        , try_trait       = try_trait
+                        , ModelTRY        = ModelHeight
+                        , CategAllom      = CategAllom
+                        , UseFixedModel   = UseFixedModel
+                        , CntAllomMin     = CntAllomMin
+                        , AllomConfInt    = AllomConfInt
+                        , AllomMaxItGain  = AllomMaxItGain
+                        , AllomMaxItOptim = AllomMaxItOptim
+                        , AllomTolGain    = AllomTolGain
+                        , AllomTolOptim   = AllomTolOptim
+                        , AllomCntPred    = AllomCntPred
+                        , AllomQuantPred  = AllomQuantPred
+                        , AllomCntBoot    = AllomCntBoot
+                        , Verbose         = TRUE
+                        )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_height_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitHeight&quot;)
+               , file              = rdata_height_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_height_allom &amp;&amp; file.exists(rdata_height_allom))</code></pre>
+</div>
+<div id="aboveground-biomass-allometry" class="section level2">
+<h2>Aboveground Biomass allometry</h2>
+<p>For Size-Aboveground Biomass allometry, we try a variation of models
+based on <a href="https://dx.doi.org/10.1111/gcb.12629">Chave <em>et
+al.</em>, (2014)</a> and <a
+href="https://dx.doi.org/10.1111/j.1365-2486.2004.00751.x">Baker <em>et
+al.</em> (2004)</a>. Specifically we test whether diameter at breast
+height (<span class="math inline">\(\mathrm{DBH}\)</span>) is sufficient
+for predicting biomass, or if we should consider a model that uses the
+volume equivalent (<span
+class="math inline">\(\mathrm{DBH}^2\,h\)</span>), and whether or not to
+scale the model with wood density. We also try to relate AGB directly to
+height instead of <span class="math inline">\(\mathrm{DBH}\)</span>,
+which may be easier for lidar applications.</p>
+<pre class="r"><code>if (reload_agb_allom &amp;&amp; file.exists(rdata_agb_allom)){
+   # Reload data
+   cat0(&quot; + Reload AGB allometry.&quot;)
+   dummy = load(rdata_agb_allom)
+}else{
+
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   WoodDens = try_trait$Name[which(try_trait$TraitID %in% c(   4L)      )[1L]]
+   DBH      = try_trait$Name[which(try_trait$TraitID %in% c(  21L)      )[1L]]
+   Height   = try_trait$Name[which(try_trait$TraitID %in% c(  18L,3106L))[1L]]
+   Size     = try_trait$Name[which(try_trait$TraitID %in% c(  -2L)      )[1L]]
+   WDSize   = try_trait$Name[which(try_trait$TraitID %in% c(  -3L)      )[1L]]
+   AGB      = try_trait$Name[which(try_trait$TraitID %in% c(3446L)      )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelAGB = tribble( ~Model         , ~xName , ~wName        , ~yName
+                     , &quot;OneLinear&quot;    , Size   , NA_character_ , AGB
+                     , &quot;OneLinear&quot;    , WDSize , NA_character_ , AGB
+                     , &quot;OneLogLinear&quot; , DBH    , NA_character_ , AGB
+                     , &quot;OneLogLinear&quot; , Height , NA_character_ , AGB
+                     , &quot;OneLogLinear&quot; , Size   , NA_character_ , AGB
+                     , &quot;OneLogLinear&quot; , WDSize , NA_character_ , AGB
+                     , &quot;TwoMixLinear&quot; , DBH    , WoodDens      , AGB
+                     , &quot;TwoLogLinear&quot; , DBH    , WoodDens      , AGB
+                     , &quot;TwoMixLinear&quot; , Height , WoodDens      , AGB
+                     , &quot;TwoLogLinear&quot; , Height , WoodDens      , AGB
+                     , &quot;TwoMixLinear&quot; , Size   , WoodDens      , AGB
+                     , &quot;TwoLogLinear&quot; , Size   , WoodDens      , AGB
+                     )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree size, specific mass, and AGB.&quot;)
+   FitAGB = Allom_Fit( DataTRY         = AllomTRY
+                     , try_trait       = try_trait
+                     , ModelTRY        = ModelAGB
+                     , CategAllom      = CategAllom
+                     , UseFixedModel   = UseFixedModel
+                     , CntAllomMin     = CntAllomMin
+                     , AllomConfInt    = AllomConfInt
+                     , AllomMaxItGain  = AllomMaxItGain
+                     , AllomMaxItOptim = AllomMaxItOptim
+                     , AllomTolGain    = AllomTolGain
+                     , AllomTolOptim   = AllomTolOptim
+                     , AllomCntPred    = AllomCntPred
+                     , AllomQuantPred  = AllomQuantPred
+                     , AllomCntBoot    = AllomCntBoot
+                     , Verbose         = TRUE
+                     )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_agb_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitAGB&quot;)
+               , file              = rdata_agb_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_agb_allom &amp;&amp; file.exists(rdata_agb_allom))</code></pre>
+</div>
+<div id="leaf-biomass-allometry" class="section level2">
+<h2>Leaf Biomass allometry</h2>
+<p>For Size-Leaf Biomass allometry, we try to fit models based on <a
+href="http://www.documentation.ird.fr/hor/fdi:010005089">Lescure <em>et
+al.</em> (1983)</a>, <a
+href="https://dx.doi.org/10.2307/2260625">Saldarriaga <em>et al.</em>
+(1988)</a>. Unlike <a
+href="https://dx.doi.org/10.2307/2260625">Saldarriaga <em>et al.</em>
+(1988)</a>, we do not try to fit a model with different power parameters
+for each of <span class="math inline">\(\mathrm{DBH}\)</span>, height
+and wood density; instead, we use “tree size” instead. We also fit leaf
+mass per unit area (<span class="math inline">\(\mathrm{LMA}\)</span>)
+instead of wood density, as LMA is more directly related to leaf biomass
+and there is evidence of decoupling between wood and leaf traits in
+tropical forests (<a
+href="https://dx.doi.org/10.1111/j.1461-0248.2010.01517.x">Baraloto et
+al. (2010)</a>). We also try to relate leaf biomass directly to height
+instead of <span class="math inline">\(\mathrm{DBH}\)</span>, which may
+be easier for lidar applications.</p>
+<pre class="r"><code>if (reload_bleaf_allom &amp;&amp; file.exists(rdata_bleaf_allom)){
+   # Reload data
+   cat0(&quot; + Reload Leaf biomass allometry.&quot;)
+   dummy = load(rdata_bleaf_allom)
+}else{
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   LMA      = try_trait$Name[which(try_trait$TraitID %in% c(  -1L)                  )[1L]]
+   SLA      = try_trait$Name[which(try_trait$TraitID %in% c(3086L,3115L,3116L,3117L))[1L]]
+   DBH      = try_trait$Name[which(try_trait$TraitID %in% c(  21L)                  )[1L]]
+   Height   = try_trait$Name[which(try_trait$TraitID %in% c(  18L,3106L)            )[1L]]
+   Size     = try_trait$Name[which(try_trait$TraitID %in% c(  -2L)                  )[1L]]
+   LMSize   = try_trait$Name[which(try_trait$TraitID %in% c(  -4L)                  )[1L]]
+   BLeaf    = try_trait$Name[which(try_trait$TraitID %in% c( 129L,3441L)            )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelBLeaf = tribble( ~Model         , ~xName , ~wName        , ~yName
+                       , &quot;OneLinear&quot;    , Size   , NA_character_ , BLeaf
+                       , &quot;OneLinear&quot;    , LMSize , NA_character_ , BLeaf
+                       , &quot;OneLogLinear&quot; , DBH    , NA_character_ , BLeaf
+                       , &quot;OneLogLinear&quot; , Height , NA_character_ , BLeaf
+                       , &quot;OneLogLinear&quot; , Size   , NA_character_ , BLeaf
+                       , &quot;OneLogLinear&quot; , LMSize , NA_character_ , BLeaf
+                       , &quot;TwoMixLinear&quot; , DBH    , LMA           , BLeaf
+                       , &quot;TwoLogLinear&quot; , DBH    , SLA           , BLeaf
+                       , &quot;TwoMixLinear&quot; , Height , LMA           , BLeaf
+                       , &quot;TwoLogLinear&quot; , Height , SLA           , BLeaf
+                       , &quot;TwoMixLinear&quot; , Size   , LMA           , BLeaf
+                       , &quot;TwoLogLinear&quot; , Size   , SLA           , BLeaf
+                       )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree size, specific mass, and leaf biomass.&quot;)
+   FitBLeaf = Allom_Fit( DataTRY         = AllomTRY
+                       , try_trait       = try_trait
+                       , ModelTRY        = ModelBLeaf
+                       , CategAllom      = CategAllom
+                       , UseFixedModel   = UseFixedModel
+                       , CntAllomMin     = CntAllomMin
+                       , AllomConfInt    = AllomConfInt
+                       , AllomMaxItGain  = AllomMaxItGain
+                       , AllomMaxItOptim = AllomMaxItOptim
+                       , AllomTolGain    = AllomTolGain
+                       , AllomTolOptim   = AllomTolOptim
+                       , AllomCntPred    = AllomCntPred
+                       , AllomQuantPred  = AllomQuantPred
+                       , AllomCntBoot    = AllomCntBoot
+                       , Verbose         = TRUE
+                       )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_bleaf_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitBLeaf&quot;)
+               , file              = rdata_bleaf_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_bleaf_allom &amp;&amp; file.exists(rdata_bleaf_allom))</code></pre>
+</div>
+<div id="leaf-area-allometry" class="section level2">
+<h2>Leaf Area allometry</h2>
+<p>For Size-Leaf Area allometry, we use similar models as <a
+href="http://www.documentation.ird.fr/hor/fdi:010005089">Lescure <em>et
+al.</em> (1983)</a>, <a
+href="https://dx.doi.org/10.2307/2260625">Saldarriaga <em>et al.</em>
+(1988)</a>, but without trying to scale predictors with wood density or
+leaf area (akin to <a
+href="https://dx.doi.org/10.1029/2020JG005677">Longo <em>et al.</em>,
+2020</a>). We also try to relate leaf area directly to height instead of
+<span class="math inline">\(\mathrm{DBH}\)</span>, which may be easier
+for lidar applications.</p>
+<pre class="r"><code>if (reload_leaf_area_allom &amp;&amp; file.exists(rdata_leaf_area_allom)){
+   # Reload data
+   cat0(&quot; + Reload LeafArea allometry.&quot;)
+   dummy = load(rdata_leaf_area_allom)
+}else{
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   SLA      = try_trait$Name[which(try_trait$TraitID %in% c(3086L,3115L,3116L,3117L))[1L]]
+   DBH      = try_trait$Name[which(try_trait$TraitID %in% c( 21L)      )[1L]]
+   Height   = try_trait$Name[which(try_trait$TraitID %in% c( 18L,3106L))[1L]]
+   Size     = try_trait$Name[which(try_trait$TraitID %in% c( -2L)      )[1L]]
+   LeafArea = try_trait$Name[which(try_trait$TraitID %in% c(410L)      )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelLeafArea = tribble( ~Model         , ~xName , ~wName        , ~yName
+                          , &quot;OneLinear&quot;    , Size   , NA_character_ , LeafArea
+                          , &quot;OneLogLinear&quot; , DBH    , NA_character_ , LeafArea
+                          , &quot;OneLogLinear&quot; , Height , NA_character_ , LeafArea
+                          , &quot;OneLogLinear&quot; , Size   , NA_character_ , LeafArea
+                          )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree size and leaf area.&quot;)
+   FitLeafArea = Allom_Fit( DataTRY         = AllomTRY
+                          , try_trait       = try_trait
+                          , ModelTRY        = ModelLeafArea
+                          , CategAllom      = CategAllom
+                          , UseFixedModel   = UseFixedModel
+                          , CntAllomMin     = CntAllomMin
+                          , AllomConfInt    = AllomConfInt
+                          , AllomMaxItGain  = AllomMaxItGain
+                          , AllomMaxItOptim = AllomMaxItOptim
+                          , AllomTolGain    = AllomTolGain
+                          , AllomTolOptim   = AllomTolOptim
+                          , AllomCntPred    = AllomCntPred
+                          , AllomQuantPred  = AllomQuantPred
+                          , AllomCntBoot    = AllomCntBoot
+                          , Verbose         = TRUE
+                          )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_leaf_area_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitLeafArea&quot;)
+               , file              = rdata_leaf_area_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_leaf_area_allom &amp;&amp; file.exists(rdata_leaf_area_allom))</code></pre>
+</div>
+<div id="crown-area-allometry" class="section level2">
+<h2>Crown Area allometry</h2>
+<p>For Size-Crown Area allometry, we try to fit the exact same models we
+tried for leaf area, i.e. similar models as <a
+href="http://www.documentation.ird.fr/hor/fdi:010005089">Lescure <em>et
+al.</em> (1983)</a>, <a
+href="https://dx.doi.org/10.2307/2260625">Saldarriaga <em>et al.</em>
+(1988)</a>, but without trying to scale predictors with wood density or
+leaf area (akin to <a
+href="https://dx.doi.org/10.1029/2020JG005677">Longo <em>et al.</em>,
+2020</a>). We also try to relate crown area directly to height instead
+of <span class="math inline">\(\mathrm{DBH}\)</span>, which may be
+easier for lidar applications.</p>
+<pre class="r"><code>if (reload_crown_area_allom &amp;&amp; file.exists(rdata_crown_area_allom)){
+   # Reload data
+   cat0(&quot; + Reload crown area allometry.&quot;)
+   dummy = load(rdata_crown_area_allom)
+}else{
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   DBH       = try_trait$Name[which(try_trait$TraitID %in% c(21L)      )[1L]]
+   Height    = try_trait$Name[which(try_trait$TraitID %in% c(18L,3106L))[1L]]
+   Size      = try_trait$Name[which(try_trait$TraitID %in% c(-2L)      )[1L]]
+   CrownArea = try_trait$Name[which(try_trait$TraitID %in% c(20L)      )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelCrownArea = tribble( ~Model         , ~xName , ~wName        , ~yName
+                           , &quot;OneLinear&quot;    , Size   , NA_character_ , CrownArea
+                           , &quot;OneLogLinear&quot; , DBH    , NA_character_ , CrownArea
+                           , &quot;OneLogLinear&quot; , Height , NA_character_ , CrownArea
+                           , &quot;OneLogLinear&quot; , Size   , NA_character_ , CrownArea
+                           )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree size and crown area.&quot;)
+   FitCrownArea = Allom_Fit( DataTRY         = AllomTRY
+                           , try_trait       = try_trait
+                           , ModelTRY        = ModelCrownArea
+                           , CategAllom      = CategAllom
+                           , UseFixedModel   = UseFixedModel
+                           , CntAllomMin     = CntAllomMin
+                           , AllomConfInt    = AllomConfInt
+                           , AllomMaxItGain  = AllomMaxItGain
+                           , AllomMaxItOptim = AllomMaxItOptim
+                           , AllomTolGain    = AllomTolGain
+                           , AllomTolOptim   = AllomTolOptim
+                           , AllomCntPred    = AllomCntPred
+                           , AllomQuantPred  = AllomQuantPred
+                           , AllomCntBoot    = AllomCntBoot
+                           , Verbose         = TRUE
+                           )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_crown_area_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitCrownArea&quot;)
+               , file              = rdata_crown_area_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_crown_area_allom &amp;&amp; file.exists(rdata_crown_area_allom))</code></pre>
+</div>
+<div id="crown-depth-allometry" class="section level2">
+<h2>Crown Depth allometry</h2>
+<p>For Height-Crown Depth allometry, we fit a model similar to <a
+href="https://dx.doi.org/10.1890/0012-9658(2006)87%7B$%5B$%7D1289:AOMTST%7B$%5D$%7D2.0.CO;2">Poorter
+et al. (2006)</a>, using height as predictor. We also try to fit a
+purely linear function.</p>
+<pre class="r"><code>if (reload_crown_depth_allom &amp;&amp; file.exists(rdata_crown_depth_allom)){
+   # Reload data
+   cat0(&quot; + Reload crown depth allometry.&quot;)
+   dummy = load(rdata_crown_depth_allom)
+}else{
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   Height     = try_trait$Name[which(try_trait$TraitID %in% c( 18L,3106L))[1L]]
+   CrownDepth = try_trait$Name[which(try_trait$TraitID %in% c(773L)      )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelCrownDepth = tribble( ~Model         , ~xName , ~wName        , ~yName
+                            , &quot;OneLinear&quot;    , Height , NA_character_ , CrownDepth
+                            , &quot;OneLogLinear&quot; , Height , NA_character_ , CrownDepth
+                            )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree height and crown depth.&quot;)
+   FitCrownDepth = Allom_Fit( DataTRY         = AllomTRY
+                            , try_trait       = try_trait
+                            , ModelTRY        = ModelCrownDepth
+                            , CategAllom      = CategAllom
+                            , UseFixedModel   = UseFixedModel
+                            , CntAllomMin     = CntAllomMin
+                            , AllomConfInt    = AllomConfInt
+                            , AllomMaxItGain  = AllomMaxItGain
+                            , AllomMaxItOptim = AllomMaxItOptim
+                            , AllomTolGain    = AllomTolGain
+                            , AllomTolOptim   = AllomTolOptim
+                            , AllomCntPred    = AllomCntPred
+                            , AllomQuantPred  = AllomQuantPred
+                            , AllomCntBoot    = AllomCntBoot
+                            , Verbose         = TRUE
+                            )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_crown_depth_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitCrownDepth&quot;)
+               , file              = rdata_crown_depth_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_crown_depth_allom &amp;&amp; file.exists(rdata_crown_depth_allom))</code></pre>
+</div>
+<div id="bark-thickness-allometry" class="section level2">
+<h2>Bark Thickness allometry</h2>
+<p>For bark thickness allometry, we seek for relationships with either
+DBH or height, potentially scaled by wood density.</p>
+<pre class="r"><code>if (reload_bark_thick_allom &amp;&amp; file.exists(rdata_bark_thick_allom)){
+   # Reload data
+   cat0(&quot; + Reload bark thickness allometry.&quot;)
+   dummy = load(rdata_bark_thick_allom)
+}else{
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+   
+   # Select variables that will be used for deriving the allometry.
+   DBH       = try_trait$Name[which(try_trait$TraitID %in% c(  21L)      )[1L]]
+   Height    = try_trait$Name[which(try_trait$TraitID %in% c(  18L,3106L))[1L]]
+   Size      = try_trait$Name[which(try_trait$TraitID %in% c(  -2L)      )[1L]]
+   BarkThick = try_trait$Name[which(try_trait$TraitID %in% c(  24L)      )[1L]]
+
+   # Build tibble with all models to be tested.
+   ModelBarkThick = tribble( ~Model         , ~xName , ~wName        , ~yName
+                           , &quot;OneLinear&quot;    , DBH    , NA_character_ , BarkThick
+                           , &quot;OneLinear&quot;    , Height , NA_character_ , BarkThick
+                           , &quot;OneLinear&quot;    , Size   , NA_character_ , BarkThick
+                           , &quot;OneLogLinear&quot; , DBH    , NA_character_ , BarkThick
+                           , &quot;OneLogLinear&quot; , Height , NA_character_ , BarkThick
+                           , &quot;OneLogLinear&quot; , Size   , NA_character_ , BarkThick
+                           )#end tribble
+
+   # Find the suite of allometric models and uncertainties
+   cat0(&quot; + Fit models relating tree size and bark thickness.&quot;)
+   FitBarkThick = Allom_Fit( DataTRY         = AllomTRY
+                           , try_trait       = try_trait
+                           , ModelTRY        = ModelBarkThick
+                           , CategAllom      = CategAllom
+                           , UseFixedModel   = UseFixedModel
+                           , CntAllomMin     = CntAllomMin
+                           , AllomConfInt    = AllomConfInt
+                           , AllomMaxItGain  = AllomMaxItGain
+                           , AllomMaxItOptim = AllomMaxItOptim
+                           , AllomTolGain    = AllomTolGain
+                           , AllomTolOptim   = AllomTolOptim
+                           , AllomCntPred    = AllomCntPred
+                           , AllomQuantPred  = AllomQuantPred
+                           , AllomCntBoot    = AllomCntBoot
+                           , Verbose         = TRUE
+                           )#end Allom_Fit
+
+   # Save allometric models
+   cat0(&quot; + Save fitted allometric models to &quot;,basename(rdata_bark_thick_allom),&quot;.&quot;)
+   dummy = save( list              = c( &quot;AllomTRY&quot;, &quot;try_trait&quot;, &quot;FitBarkThick&quot;)
+               , file              = rdata_bark_thick_allom
+               , compress          = &quot;xz&quot;
+               , compression_level = 9
+               )#end save
+}#end if (reload_bark_thick_allom &amp;&amp; file.exists(rdata_bark_thick_allom))</code></pre>
+</div>
+</div>
+<div id="prepare-data-for-plotting" class="section level1">
+<h1>Prepare data for plotting</h1>
+<p>Here we define the list of predicted variables along with the
+description, units and the associated object with the fitted model.</p>
+<pre class="r"><code># Select predictands of the various allometry models
+idHeight     = try_trait$TraitID[which(try_trait$TraitID %in% c(  18L,3106L))[1L]]
+idAGB        = try_trait$TraitID[which(try_trait$TraitID %in% c(3446L)      )[1L]]
+idBLeaf      = try_trait$TraitID[which(try_trait$TraitID %in% c( 129L,3441L))[1L]]
+idLeafArea   = try_trait$TraitID[which(try_trait$TraitID %in% c( 410L)      )[1L]]
+idCrownArea  = try_trait$TraitID[which(try_trait$TraitID %in% c(  20L)      )[1L]]
+idCrownDepth = try_trait$TraitID[which(try_trait$TraitID %in% c( 773L)      )[1L]]
+idBarkThick  = try_trait$TraitID[which(try_trait$TraitID %in% c(  24L)      )[1L]]
+
+# List of objects to fit models
+PlotTRY = tribble( ~TraitID    , ~DefName
+                 , idHeight    , &quot;Height&quot;
+                 , idAGB       , &quot;AGB&quot;
+                 , idBLeaf     , &quot;BLeaf&quot;
+                 , idLeafArea  , &quot;LeafArea&quot;
+                 , idCrownArea , &quot;CrownArea&quot;
+                 , idCrownDepth, &quot;CrownDepth&quot;
+                 , idBarkThick , &quot;BarkThick&quot;
+                 )#end tribble
+
+
+# Keep only plots that are associated with existing objects
+PlotTRY = PlotTRY %&gt;%
+   mutate( FitName = paste0(&quot;Fit&quot;,DefName)) %&gt;%
+   filter(FitName %in% ls(envir=.GlobalEnv))
+
+# Number of models to plot
+CntPlotTRY = nrow(PlotTRY)</code></pre>
+</div>
+<div id="plot-the-allometric-relationships." class="section level1">
+<h1>Plot the allometric relationships.</h1>
+<div id="goodness-of-fit-assessment" class="section level2">
+<h2>Goodness-of-fit assessment</h2>
+<p>First, we plot the model goodness of fit for every variable of
+interest, by plotting scatter plots of predicted estimates against
+observed.</p>
+<pre class="r"><code># Load some files which will likely be updated as the code is developed.
+source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+source(file.path(util_path,&quot;unitlist.r&quot;           ),chdir=TRUE)
+
+
+
+# Find colours and levels
+if (DensPalette %in% BrewerPalInfo){
+   DensColours = RColorBrewer::brewer.pal(n=5,name=DensPalette)
+}else if (h_csch %in% viridis_pal_info){
+   DensColours = viridis::viridis(n=5,option=DensPalette)
+}else{
+   DensPalette = match.fun(DensPalette)
+   DensColours = DensPalette(n=5)
+}#end if (v_cnorm %in% brewer_pal_info)
+
+# Reverse palette in case it is needed
+if (DensReverse) DensColours = rev(DensColours)
+
+# Create colour ramp palette
+DensRamp = grDevices::colorRampPalette(colors=DensColours,space=&quot;Lab&quot;)
+
+
+# Initialise list of output variables
+gg_allom = list()
+
+# Loop through all models
+GoodLoop = sequence(CntPlotTRY * plot_allom_scatter)
+for (p in GoodLoop){
+   # Retrieve name containing the model fitting object and the trait ID for predictand.
+   y        = match(PlotTRY$TraitID[p],try_trait$TraitID)
+   yTraitID = try_trait$TraitID[y]
+   yDefName = PlotTRY$DefName  [p]
+   yName    = try_trait$Name   [y]
+   yDesc    = try_trait$Desc   [y]
+   yDescObs = paste0(yDesc,&quot; - Observed&quot;)
+   yDescMod = paste0(yDesc,&quot; - Fitted&quot;  )
+   yUnit    = try_trait$Unit   [y]
+   yTrans   = if(yDefName %in% names(yTransAllom)){yTransAllom[yDefName]}else{&quot;identity&quot;}
+   yTPlot   = switch( EXPR = yTrans, log = &quot;log10&quot;, neglog=&quot;neglog10&quot;,yTrans)
+   yFit     = get(PlotTRY$FitName[p])
+   ySumm    = yFit$SummAllom
+   
+   cat0(&quot; + Plot scatter plot of predicted allometry for &quot;,yDesc,&quot;.&quot;)
+
+   
+   # Initialise data object that will contain predictors, predicted value and observed
+   PredTRY = tibble( Class      = character(0L)
+                   , TraitClass = character(0L)
+                   , x          = numeric(0L)
+                   , w          = numeric(0L)
+                   , yObs       = numeric(0L)
+                   , yMod       = numeric(0L)
+                   )#end tibble
+
+     
+   # Find the number of traits for plotting the model
+   for (ct in sequence(CntCategAllom)){
+      # Load settings for the classes.
+      zTrait = CategAllom$TraitID   [ct]
+      zClass = CategAllom$Name      [ct]
+      zName  = CategAllom$TraitClass[ct]
+      zDesc  = CategAllom$DescClass [ct]
+
+      # Select model and parameters
+      zIdx   = which( (ySumm$TraitClass %in% zName) &amp; (ySumm$Class %in% zClass) )
+      zModel = ySumm$Function[zIdx]
+      zParam = c( a0 = ySumm$a0[zIdx]
+                , a1 = ySumm$a1[zIdx]
+                , a2 = ySumm$a2[zIdx]
+                , s0 = ySumm$s0[zIdx]
+                , s1 = ySumm$s1[zIdx]
+                )#end c
+      xName  = ySumm$xName[zIdx]
+      wName  = ySumm$wName[zIdx]
+
+      # Select data from the allometry data set
+      if (is.na(zTrait)){
+         zSel = rep(x=TRUE,times=nrow(AllomTRY))
+      }else{
+         zSel = AllomTRY[[zName]] %in% zClass
+      }#end if (is.na(zTrait))
+
+      # Initialise data from the allometry data set. 
+      PredNow = tibble( Class      = zClass
+                      , TraitClass = zName
+                      , x          = if(is.na(xName)){NA_real_}else{AllomTRY[[xName]][zSel]}
+                      , w          = if(is.na(wName)){NA_real_}else{AllomTRY[[wName]][zSel]}
+                      , yObs       = if(is.na(yName)){NA_real_}else{AllomTRY[[yName]][zSel]}
+                      , yMod       = if(is.na(zModel)){
+                                        NA_real_
+                                     }else{
+                                        Allom_Pred( x     = x
+                                                  , w     = w
+                                                  , param = zParam
+                                                  , fun   = zModel
+                                                  , ans   = &quot;mu&quot;
+                                                  )#end try TRY_AllomPred
+                                     }#end if (is.na(zModel)) 
+                      )#end tibble
+      # Bind predictions to a unified object
+      PredTRY = as_tibble(rbind(PredTRY,PredNow))
+   }#end for (ct in seq_along(CategTrait))
+
+
+   # Find the number of traits for plotting the model
+   CategSel    = is.finite(CategAllom$TraitID)
+   CategTrait  = sort(unique(CategAllom$TraitID[CategSel]))
+   for (ct in seq_along(CategTrait)){
+      # Load settings for the classes.
+      zTrait = CategTrait[ct]
+      if (zTrait %in% 0L){
+         zName  = &quot;Cluster&quot;
+         zDesc  = &quot;Data-based cluster class&quot;
+      }else{
+         z      = match(zTrait,try_trait$TraitID)
+         zName  = try_trait$Name   [z]
+         zDesc  = try_trait$Desc   [z]
+      }#end if (zTrait %in% 0L)
+      zTitle = paste0(&quot;Allometric model for &quot;,yDesc,&quot; by &quot;,tolower(zDesc))
+
+            
+      # Set path for this group of plots.
+      categ_allom_path = file.path(allom_path,zName)
+      
+      # Select categories for this trait type.
+      CategNow = CategAllom %&gt;%
+         rename( Class = Name) %&gt;%
+         filter( (TraitID %in% zTrait) | is.na(TraitID)) %&gt;%
+         filter(! Class %in% &quot;UKN&quot;) %&gt;%
+         filter(! duplicated(Class))
+      CntCategNow = nrow(CategNow)
+
+      
+      # Find the optimal number of rows and columns, and find multiplication factor 
+      # so plots are not ridiculously small
+      nColCateg   = min(3,ceiling(sqrt(CntCategNow)))
+      nRowCateg   = ceiling(CntCategNow/nColCateg)
+      multHeight  = sqrt(nRowCateg)
+      multWidth   = multHeight * nColCateg / nRowCateg
+
+      # Select valid data for the axes
+      oSel = switch( EXPR     = yTrans
+                   , identity = is.finite(PredTRY$yObs)
+                   , log      = PredTRY$yObs %gt% 0.
+                   , neglog   = PredTRY$yObs %lt% 0.
+                   , sqrt     = PredTRY$yObs %ge% 0.
+                   , cbrt     = is.finite(PredTRY$yObs)
+                   , stop(paste0(&quot; Invalid transformation for trait &quot;,yName,&quot; (TraitID = &quot;,yTraitID,&quot;).&quot;))
+                   )#end switch
+      mSel = switch( EXPR     = yTrans
+                   , identity = is.finite(PredTRY$yMod)
+                   , log      = PredTRY$yMod %gt% 0.
+                   , neglog   = PredTRY$yMod %lt% 0.
+                   , sqrt     = PredTRY$yMod %ge% 0.
+                   , cbrt     = is.finite(PredTRY$yMod)
+                   , stop(paste0(&quot; Invalid transformation for trait &quot;,yName,&quot; (TraitID = &quot;,yTraitID,&quot;).&quot;))
+                   )#end switch
+
+      
+      #    Subset data. We keep only valid data points that were either assigned one of the
+      # categories of this class, or classified as &quot;All&quot;.
+      PredPlot    = PredTRY %&gt;%
+         filter(oSel &amp; mSel) %&gt;%
+         filter( Class %in% CategNow$Class) %&gt;%
+         mutate( Class = factor(x=Class,levels=CategNow$Class) )
+      CntPredPlot = nrow(PredPlot)
+      PlotAllom   = CntPredPlot %ge% CntAllomMin
+      PlotFit     = any(is.finite(PredPlot$yMod))
+
+      # Decide whether to use density plots or scatter plots for observations.
+      DensObserv = ( CntPredPlot %ge% CntDensThresh ) &amp;&amp; ( yTrans %in% &quot;identity&quot; )
+
+      # Plot only the variables with meaningful data
+      if (PlotAllom){
+         cat0(&quot;   - Plot the allometric model for &quot;,yDesc,&quot;, by &quot;,zDesc,&quot;.&quot;)
+
+         
+         # Set path for this group of plots.
+         dummy = dir.create(categ_allom_path,recursive=TRUE,showWarnings=FALSE)
+ 
+
+         # Find limits for plots.   
+         xyLimit = range(c(PredPlot$yObs,PredPlot$yMod),finite=TRUE)
+         xyWidth = diff(xyLimit) / CntDensBin
+
+         # Set categories for colours, lines and symbols
+         colClasses         = CategNow$Colour
+         names(colClasses)  = CategNow$Class
+         pchClasses         = CategNow$Symbol
+         names(pchClasses)  = CategNow$Class
+         
+         
+         # Build the plot
+         gg_now = ggplot()
+         gg_now = gg_now + facet_wrap( ~ Class, ncol = nColCateg, labeller = label_parsed)
+         if (DensObserv){
+            gg_now = gg_now + geom_bin_2d(data=PredPlot,aes(x=yMod,y=yObs),binwidth=c(xyWidth,xyWidth))
+            gg_now = gg_now + scale_fill_gradientn( name    = &quot;Point density&quot;
+                                                  , colours = DensRamp(n=DensCntColour)
+                                                  , limits  = DensRange
+                                                  , labels  = label_number()
+                                                  , trans   = DensTrans
+                                                  )#end scale_fill_gradientn
+         }else{
+            gg_now = gg_now + geom_point( data    = PredPlot
+                                        , mapping = aes(x=yMod,y=yObs)
+                                        , colour  = PointColour
+                                        , shape   = PointShape
+                                        , size    = PointSize
+                                        )#end geom_point
+         }#end if (DensObserv)
+
+         if (PlotFit){
+            gg_now = gg_now + geom_abline( data        = PredPlot
+                                         , mapping     = aes(colour=Class) 
+                                         , slope       = 1.0
+                                         , intercept   = 0.0
+                                         , linewidth   = 1.5
+                                         , linetype    = &quot;solid&quot;
+                                         , inherit.aes = FALSE
+                                         , show.legend = FALSE
+                                         )#end geom_line
+            gg_now = gg_now + scale_colour_manual(values=colClasses)
+            gg_now = gg_now + labs( x        = desc.unit(desc=yDescMod,unit=untab[[yUnit]])
+                                  , y        = desc.unit(desc=yDescObs,unit=untab[[yUnit]])
+                                  , colour   = element_blank()
+                                  , fill     = element_blank()
+                                  , shape    = element_blank()
+                                  , linetype = element_blank()
+                                  , title    = zTitle
+                                  , subtitle = LabelSubtitle
+                                  )#end labs
+         }else{
+            gg_now = gg_now + labs( x        = desc.unit(desc=yDescMod,unit=untab[[yUnit]])
+                                  , y        = desc.unit(desc=yDescObs,unit=untab[[yUnit]])
+                                  , colour   = element_blank()
+                                  , shape    = element_blank()
+                                  , title    = zTitle
+                                  , subtitle = LabelSubtitle
+                                  )#end labs
+         }#end if (PlotFit)
+         gg_now = gg_now + theme_grey( base_size = gg_ptsz, base_family = &quot;Helvetica&quot;,base_line_size = 0.8,base_rect_size =0.8)
+         gg_now = gg_now + theme( axis.text.x       = element_text( size = gg_ptsz, margin = unit(rep(0.35,times=4),&quot;cm&quot;))
+                                , axis.text.y       = element_text( size = gg_ptsz, margin = unit(rep(0.35,times=4),&quot;cm&quot;))
+                                , plot.title        = element_text( size = gg_ptsz)
+                                , plot.subtitle     = element_text( size = 0.7*gg_ptsz)
+                                , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                                , legend.position   = &quot;bottom&quot;
+                                , legend.direction  = &quot;horizontal&quot;
+                                )#end theme
+         gg_now = gg_now + guides(fill= guide_colourbar(barwidth=unit(1./6.,&quot;npc&quot;)))
+         gg_now = gg_now + scale_x_continuous(trans=yTPlot,limits=xyLimit)
+         gg_now = gg_now + scale_y_continuous(trans=yTPlot,limits=xyLimit)
+
+         # Save plot in every format requested.
+         for (d in sequence(ndevice)){
+            f_output = paste0(&quot;AllomScatter_&quot;,yName,&quot;_by-&quot;,zName,&quot;_&quot;,trait_suffix,&quot;.&quot;,gg_device[d])
+            dummy    = ggsave( filename = f_output
+                             , plot     = gg_now
+                             , device   = gg_device[d]
+                             , path     = categ_allom_path
+                             , width    = gg_square * multWidth
+                             , height   = gg_square * multHeight
+                             , units    = gg_units
+                             , dpi      = gg_depth
+                             )#end ggsave
+         }#end for (o in sequence(nout))
+         
+         # Write plot settings to the list.
+         yzName             = paste0(yName,&quot;_&quot;,zName)
+         gg_allom[[yzName]] = gg_now
+      }else{
+         cat0(&quot; + Skip plot for &quot;,yDesc,&quot; by &quot;,zDesc,&quot;: too few valid points.&quot;)
+      }#end if (PlotAllom)
+   }#end for (ct in seq_along(CategTrait))
+}#end for (p in GoodLoop){
+
+# If sought, plot images on screen
+cnt_gg_allom = length(gg_allom)
+if (gg_screen &amp;&amp; (cnt_gg_allom %gt% 0L)){
+   gg_show = sort(sample.int(n=cnt_gg_allom,size=min(cnt_gg_allom,3L),replace=FALSE))
+   gg_allom[gg_show]
+}#end if (gg_screen &amp;&amp; (length(gg_allom) %gt% 0L))</code></pre>
+<p><img src="AllomModelFit_files/figure-html/plot-scatter-predobs-1.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-scatter-predobs-2.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-scatter-predobs-3.png" width="768" /></p>
+</div>
+<div id="functional-form." class="section level2">
+<h2>Functional form.</h2>
+<p>In this block, we plot the functional shape of the fitted equations,
+and compare the results for the different categories. We only plot this
+if all classes are using the same functional form.</p>
+<pre class="r"><code># Load some files which will likely be updated as the code is developed.
+source(file.path(util_path,&quot;TRY_Allometry_Utils.r&quot;),chdir=TRUE)
+source(file.path(util_path,&quot;unitlist.r&quot;           ),chdir=TRUE)
+
+
+# Initialise list of output variables
+gg_funct = list()
+
+# Loop through all models
+FunLoop = sequence(CntPlotTRY * plot_allom_fun * UseFixedModel)
+for (p in FunLoop){
+   # Retrieve name containing the model fitting object and the trait ID for predictand.
+   y        = match(PlotTRY$TraitID[p],try_trait$TraitID)
+   yTraitID = try_trait$TraitID[y]
+   yDefName = PlotTRY$DefName  [p]
+   yName    = try_trait$Name   [y]
+   yDesc    = try_trait$Desc   [y]
+   yDescObs = paste0(yDesc,&quot; - Observed&quot;)
+   yDescMod = paste0(yDesc,&quot; - Fitted&quot;  )
+   yUnit    = try_trait$Unit   [y]
+   yTrans   = if(yDefName %in% names(yTransAllom)){yTransAllom[yDefName]}else{&quot;identity&quot;}
+   yTPlot   = switch( EXPR = yTrans, log = &quot;log10&quot;, neglog=&quot;neglog10&quot;,yTrans)
+   yFit     = get(PlotTRY$FitName[p])
+   ySumm    = yFit$SummAllom
+   
+   cat0(&quot; + Plot scatter plot of predicted allometry for &quot;,yDesc,&quot;.&quot;)
+
+   
+   # Copy data object that contains the fitted model.
+   PredTRY = yFit$PredAllom
+
+   # Find the number of traits for plotting the model
+   CategSel    = is.finite(CategAllom$TraitID)
+   CategTrait  = sort(unique(CategAllom$TraitID[CategSel]))
+   for (ct in seq_along(CategTrait)){
+      # Load settings for the classes.
+      zTrait = CategTrait[ct]
+      if (zTrait %in% 0L){
+         zName  = &quot;Cluster&quot;
+         zDesc  = &quot;Data-based cluster class&quot;
+      }else{
+         z      = match(zTrait,try_trait$TraitID)
+         zName  = try_trait$Name   [z]
+         zDesc  = try_trait$Desc   [z]
+      }#end if (zTrait %in% 0L)
+      zTitle = paste0(&quot;Allometric model for &quot;,yDesc,&quot; by &quot;,tolower(zDesc))
+
+      # Select model and parameters
+      zIdx   = which(ySumm$TraitClass %in% zName)[1L]
+      zModel = ySumm$Function[zIdx]
+      xName  = ySumm$xName[zIdx]
+      wName  = ySumm$wName[zIdx]
+
+      # Load information for X axis.
+      x        = match(xName,try_trait$Name)
+      xTraitID = try_trait$TraitID[x]
+      xLabel   = sprintf(&quot;ID_%+4.4i&quot;,xTraitID)
+      xLabel   = gsub(pattern=&quot;\\+&quot;,replacement=&quot;p&quot;,x=xLabel)
+      xLabel   = gsub(pattern=&quot;\\-&quot;,replacement=&quot;m&quot;,x=xLabel)
+      xDefName = switch( EXPR     = xLabel
+                       , ID_m0004 = &quot;LMSize&quot;
+                       , ID_m0003 = &quot;WDSize&quot;
+                       , ID_m0002 = &quot;Size&quot;
+                       , ID_p0018 = &quot;Height&quot;
+                       , ID_p0021 = &quot;DBH&quot;
+                       , ID_p3106 = &quot;Height&quot;
+                       )#end switch
+      xName    = try_trait$Name   [x]
+      xDesc    = try_trait$Desc   [x]
+      xUnit    = try_trait$Unit   [x]
+      xTrans   = if(xDefName %in% names(xTransAllom)){xTransAllom[xDefName]}else{&quot;identity&quot;}
+      xTPlot   = switch( EXPR = xTrans, log = &quot;log10&quot;, neglog=&quot;neglog10&quot;,xTrans)
+      
+            
+      # Set path for this group of plots.
+      categ_allom_path = file.path(allom_path,zName)
+      
+      # Select categories for this trait type.
+      CategNow = CategAllom %&gt;%
+         rename( Class = Name) %&gt;%
+         filter( (TraitID %in% zTrait) | is.na(TraitID)) %&gt;%
+         filter(! Class %in% &quot;UKN&quot;) %&gt;%
+         filter(! duplicated(Class))
+      CntCategNow = nrow(CategNow)
+
+      
+      # Find the optimal number of rows and columns, and find multiplication factor 
+      # so plots are not ridiculously small
+      nColCateg   = min(3,ceiling(sqrt(CntCategNow)))
+      nRowCateg   = ceiling(CntCategNow/nColCateg)
+      multHeight  = sqrt(nRowCateg)
+      multWidth   = multHeight * nColCateg / nRowCateg
+
+      # Select valid data for the axes
+      xSel = switch( EXPR     = xTrans
+                   , identity = is.finite(PredTRY$x)
+                   , log      = PredTRY$x %gt% 0.
+                   , neglog   = PredTRY$x %lt% 0.
+                   , sqrt     = PredTRY$x %ge% 0.
+                   , cbrt     = is.finite(PredTRY$x)
+                   , stop(paste0(&quot; Invalid transformation for trait &quot;,xName,&quot; (TraitID = &quot;,xTraitID,&quot;).&quot;))
+                   )#end switch
+      ySel = switch( EXPR     = yTrans
+                   , identity = is.finite(PredTRY$y)
+                   , log      = PredTRY$y %gt% 0.
+                   , neglog   = PredTRY$y %lt% 0.
+                   , sqrt     = PredTRY$y %ge% 0.
+                   , cbrt     = is.finite(PredTRY$y)
+                   , stop(paste0(&quot; Invalid transformation for trait &quot;,yName,&quot; (TraitID = &quot;,yTraitID,&quot;).&quot;))
+                   )#end switch
+
+      
+      #    Subset data. We keep only valid data points that were either assigned one of the
+      # categories of this class, or classified as &quot;All&quot;.
+      PredPlot    = PredTRY %&gt;%
+         filter(xSel &amp; ySel) %&gt;%
+         filter( Class %in% CategNow$Class) %&gt;%
+         mutate( Class = factor(x=Class,levels=CategNow$Class) )
+      CntPredPlot = nrow(PredPlot)
+      PlotAllom   = CntPredPlot %ge% CntAllomMin
+      PlotFit     = any(is.finite(PredPlot$y))
+
+      # Plot only the variables with meaningful data
+      if (PlotAllom){
+         cat0(&quot;   - Plot the allometric model for &quot;,yDesc,&quot;, by &quot;,zDesc,&quot;.&quot;)
+
+         
+         # Set path for this group of plots.
+         dummy = dir.create(categ_allom_path,recursive=TRUE,showWarnings=FALSE)
+ 
+
+         # Find limits for plots.   
+         xLimit = range(c(PredPlot$x),finite=TRUE)
+         yLimit = range(c(PredPlot$y,PredPlot$yLwr,PredPlot$yUpr),finite=TRUE)
+
+         # Set categories for colours, lines and symbols
+         colClasses         = CategNow$Colour
+         names(colClasses)  = CategNow$Class
+         pchClasses         = CategNow$Symbol
+         names(pchClasses)  = CategNow$Class
+         labClasses         = names(colClasses)
+         
+         
+         # Build the plot
+         gg_now = ggplot()
+         if (PlotFit){
+            gg_now = gg_now + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;fill&quot;  ,labels=labClasses,values=colClasses)
+            gg_now = gg_now + scale_colour_manual(name=&quot;&quot;,aesthetics=&quot;colour&quot;,labels=labClasses,values=colClasses)
+            gg_now = gg_now + geom_ribbon( data        = PredPlot
+                                         , mapping     = aes(x=x,ymin=yLwr,ymax=yUpr,fill=Class)
+                                         , alpha       = 0.25
+                                         , colour      = &quot;transparent&quot;
+                                         , linewidth   = 1.0
+                                         , linetype    = &quot;dotdash&quot;
+                                         , inherit.aes = FALSE
+                                         , show.legend = FALSE
+                                         )#end geom_line
+            gg_now = gg_now + geom_line( data        = PredPlot
+                                       , mapping     = aes(x=x,y=y,colour=Class)
+                                       , linewidth   = 1.5
+                                       , linetype    = &quot;solid&quot;
+                                       , inherit.aes = FALSE
+                                       , show.legend = TRUE
+                                       )#end geom_line
+            gg_now = gg_now + labs( x        = desc.unit(desc=xDesc,unit=untab[[xUnit]])
+                                  , y        = desc.unit(desc=yDesc,unit=untab[[yUnit]])
+                                  , colour   = element_blank()
+                                  , fill     = element_blank()
+                                  , shape    = element_blank()
+                                  , linetype = element_blank()
+                                  , title    = zTitle
+                                  , subtitle = LabelSubtitle
+                                  )#end labs
+         }else{
+            gg_now = gg_now + labs( x        = desc.unit(desc=xDesc,unit=untab[[xUnit]])
+                                  , y        = desc.unit(desc=yDesc,unit=untab[[yUnit]])
+                                  , colour   = element_blank()
+                                  , shape    = element_blank()
+                                  , title    = zTitle
+                                  , subtitle = LabelSubtitle
+                                  )#end labs
+         }#end if (PlotFit)
+         gg_now = gg_now + theme_grey( base_size = gg_ptsz, base_family = &quot;Helvetica&quot;,base_line_size = 0.8,base_rect_size =0.8)
+         gg_now = gg_now + theme( axis.text.x       = element_text( size = gg_ptsz, margin = unit(rep(0.35,times=4),&quot;cm&quot;))
+                                , axis.text.y       = element_text( size = gg_ptsz, margin = unit(rep(0.35,times=4),&quot;cm&quot;))
+                                , plot.title        = element_text( size = gg_ptsz)
+                                , plot.subtitle     = element_text( size = 0.7*gg_ptsz)
+                                , axis.ticks.length = unit(-0.25,&quot;cm&quot;)
+                                , legend.position   = &quot;bottom&quot;
+                                , legend.direction  = &quot;horizontal&quot;
+                                )#end theme
+         gg_now = gg_now + guides(fill= guide_colourbar(barwidth=unit(1./6.,&quot;npc&quot;)))
+         gg_now = gg_now + scale_x_continuous(trans=xTPlot,limits=xLimit)
+         gg_now = gg_now + scale_y_continuous(trans=yTPlot,limits=yLimit)
+
+         # Save plot in every format requested.
+         for (d in sequence(ndevice)){
+            f_output = paste0(&quot;AllomFit_&quot;,yName,&quot;_by-&quot;,zName,&quot;_&quot;,trait_suffix,&quot;.&quot;,gg_device[d])
+            dummy    = ggsave( filename = f_output
+                             , plot     = gg_now
+                             , device   = gg_device[d]
+                             , path     = categ_allom_path
+                             , width    = gg_square
+                             , height   = gg_square
+                             , units    = gg_units
+                             , dpi      = gg_depth
+                             )#end ggsave
+         }#end for (o in sequence(nout))
+         
+         # Write plot settings to the list.
+         yzName             = paste0(yName,&quot;_&quot;,zName)
+         gg_funct[[yzName]] = gg_now
+      }else{
+         cat0(&quot; + Skip plot for &quot;,yDesc,&quot; by &quot;,zDesc,&quot;: too few valid points.&quot;)
+      }#end if (PlotAllom)
+   }#end for (ct in seq_along(CategTrait))
+}#end for (p in GoodLoop){
+
+# If sought, plot images on screen
+cnt_gg_funct = length(gg_funct)
+if (gg_screen &amp;&amp; (cnt_gg_funct %gt% 0L)){
+   gg_show = sort(sample.int(n=cnt_gg_funct,size=min(cnt_gg_funct,3L),replace=FALSE))
+   gg_funct[gg_show]
+}#end if (gg_screen &amp;&amp; (cnt_gg_funct %gt% 0L))</code></pre>
+<p><img src="AllomModelFit_files/figure-html/plot-fitted-function-1.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-function-2.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-function-3.png" width="768" /></p>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

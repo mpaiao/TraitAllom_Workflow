@@ -7,8 +7,10 @@ navbar:
     href: index.html
   - text: "Tidy trait and allometry data base"
     href: TidyTraitAllomDB.html
-  - text: "Trait trade-off analyses"
+  - text: "Trait trade-off analysis"
     href: TraitTradeOffs.html
+  - text: "Allometric model fitting"
+    href: AllomModelFit.html
 output:
   html_document:
     theme: darkly

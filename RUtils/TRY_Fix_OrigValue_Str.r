@@ -27,14 +27,22 @@
 #                  the same TraitID.
 # - UniqOutput  -- Write unique values to this file. If NULL, data are not written.
 # - OutputName  -- Names for output variables.  For most cases, this is completely 
-#                  irrelevant and should only have a single name. The only exception as of
-#                  now is the xylem vulnerability otential: currently this must be a vector
-#                  of five elements corresponding to the potential at 12, 20, 50, 80, 
-#                  and 88% loss of conductivity.  If the vector of length five doesn't 
-#                  have names, the code will assume the names are in the 12-88 order. 
-#                  Otherwise, the vector elements must be named P12, P20, ..., P88.
-#                  (example: OutputName = c(P12="xylem_p12",P20="xylem_p20",...))
-#                  If OutputName = NULL, the code will assign the default values.
+#                  irrelevant and should only have a single name. The only exceptions are:
+#                  - Leaf strength. Currently this must be a vector of four elements 
+#                    corresponding to either FT (leaf tensile strength, kN/m), FP (leaf 
+#                    resistance to puncture, kN/m), TT (leaf tensile toughness, kN/m2) and
+#                    TP (leaf puncturability toughness, kN/m2). If the vector of length 
+#                    four does not have names, the code will assume the names are in the
+#                    order above. Otherwise, provide the vector with named elements
+#                    (example: OutputName = c( FT="leaf_f_tear", FP="leaf_f_punct",...)
+#                    If OutputName=NULL, the code will assign the default values.
+#                  - Xylem vulnerability potential: currently this must be a vector
+#                    of five elements corresponding to the potential at 12, 20, 50, 80, 
+#                    and 88% loss of conductivity.  If the vector of length five doesn't 
+#                    have names, the code will assume the names are in the 12-88 order. 
+#                    Otherwise, the vector elements must be named P12, P20, ..., P88.
+#                    (example: OutputName = c(P12="xylem_p12",P20="xylem_p20",...))
+#                    If OutputName = NULL, the code will assign the default values.
 #---~---
 TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOrig
                                        , AuthorName, UniqOutput=NULL, OutputName = NULL){
@@ -69,9 +77,16 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
    #---~---
    if (is.null(OutputName)){
       #---~---
-      #   Give the standard names for xylem vulnerability (or nothing otherwise).
+      #   Give the standard names for leaf toughness and xylem vulnerability (or nothing 
+      # otherwise).
       #---~---
-      if (TraitID %in% c(719L)){
+      if (TraitID %in% c(2L)){
+         OutputName = c( FT = "leaf_f_tear"
+                       , FP = "leaf_f_punct"
+                       , TT = "leaf_t_tear"
+                       , TP = "leaf_t_punct"
+                       )#end c
+      }else if (TraitID %in% c(719L)){
          OutputName = c( P12 = "xylem_p12"
                        , P20 = "xylem_p20"
                        , P50 = "xylem_p50"
@@ -82,6 +97,41 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
          OutputName = paste0("trait_",sprintf("%4.4i",TraitID))
       }#end if
       #---~---
+   }else if (TraitID %in% c(2L)){
+      CntOutputName = length(OutputName)
+      #---~---
+
+      #---~---
+      #   User provided names, make sure the length is correct and name the names.
+      #---~---
+      if (CntOutputName %in% 4L){
+         if (is.null(names(OutputName))){
+            names(OutputName) = c("FT","FP","TT","TP")
+         }else if (! all(c("FT","FP","TT","TP") %in% names(OutputName))){
+            cat0(" ")
+            cat0("------------------")
+            cat0("   FATAL ERROR!   ")
+            cat0("------------------")
+            cat0(" - Vector element names for variable \"OutputName\" must be.")
+            cat0("      \"FT\", \"FP\", \"TT\", and \"TP\".")
+            cat0("   when  when TraitID = 2L (Leaf texture).")
+            cat0(" - Alternatively, provide the vector without names by setting:")
+            cat0("      names(OutputName) = NULL    before calling the function.")
+            cat0("------------------")
+            stop(" Inconsistent settings.")
+         }#end if
+      }else{
+         cat0(" ")
+         cat0("------------------")
+         cat0("   FATAL ERROR!   ")
+         cat0("------------------")
+         cat0(" - Length of variable \"OutputName\": ",CntOutputName  ,".")
+         cat0(" ")
+         cat0(" - \"OutputName\" must be a vector of length 4 when TraitID = 2L")
+         cat0("   (Leaf texture).")
+         cat0("------------------")
+         stop(" Inconsistent settings.")
+      }#end if
    }else if (TraitID %in% c(719L)){
       CntOutputName = length(OutputName)
       #---~---
@@ -133,13 +183,14 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
    #---~---
-   #   Output name: assign the variable names to the output (except xylem vulnerability).
+   #   Output name: assign the variable names to the output (except leaf texture and 
+   # xylem vulnerability).
    #---~---
-   if (TraitID %in% c(719L)){
+   if (TraitID %in% c(2L,719L,3479L)){
       VName  = rep(x=NA_character_,times=length(Value))
    }else{
       VName  = ifelse(test=Valid,yes=OutputName,no=NA_character_)
-   }#end if (TraitID %in% c(719L))
+   }#end if (TraitID %in% c(719L,3479L))
    #---~---
 
 
@@ -153,9 +204,12 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
    #---~---
    #   Some entries have odd characters.
    #---~---
-   Value = gsub(pattern="\x92",replacement="'",Value)
-   Value = gsub(pattern="\x96",replacement="-",Value)
-   Value = gsub(pattern="\xa0",replacement="" ,Value)
+   Value = gsub(pattern="\u0092",replacement="'",x=Value)
+   Value = gsub(pattern="\u0096",replacement="-",x=Value)
+   Value = gsub(pattern="\u00a0",replacement="" ,x=Value)
+   Value = gsub(pattern="<92>"  ,replacement="'",x=Value)
+   Value = gsub(pattern="<96>"  ,replacement="-",x=Value)
+   Value = gsub(pattern="<a0>"  ,replacement="" ,x=Value)
    #---~---
 
    #---~---
@@ -377,13 +431,12 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
          sort_uniq = function(x) sort(unique(x))
          nl_table  = function(x) tabulate(factor(x=x,levels=sort_uniq(x)))
          UniqName = 
-            UniqName                                                   %>%
-            group_by(NameOrig)                                         %>%
-            summarise( AuthorName = commonest(AuthorName,na.rm=TRUE)
-                     , CntUnit    = nl_table (UnitOrig)
-                     , UnitOrig   = sort_uniq(UnitOrig)              ) %>%
-            ungroup()                                                  %>%
-            select(AuthorName,NameOrig,UnitOrig,CntUnit)
+            UniqName                                                 %>%
+            group_by(NameOrig)                                       %>%
+            reframe( AuthorName = commonest(AuthorName,na.rm=TRUE)
+                   , CntUnit    = nl_table (UnitOrig)
+                   , UnitOrig   = sort_uniq(UnitOrig)              ) %>%
+            select(c("AuthorName","NameOrig","UnitOrig","CntUnit"))
          #---~---
 
 
@@ -447,13 +500,12 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
          sort_uniq = function(x) sort(unique(x))
          nl_table  = function(x) tabulate(factor(x=x,levels=sort_uniq(x)))
          UniqName = 
-            UniqName                                                   %>%
-            group_by(NameOrig)                                         %>%
-            summarise( AuthorName = commonest(AuthorName,na.rm=TRUE)
-                     , CntValue   = nl_table (Value)
-                     , Value      = sort_uniq(Value)                 ) %>%
-            ungroup()                                                  %>%
-            select(AuthorName,NameOrig,Value,CntValue)
+            UniqName                                                 %>%
+            group_by(NameOrig)                                       %>%
+            reframe( AuthorName = commonest(AuthorName,na.rm=TRUE)
+                   , CntValue   = nl_table (Value)
+                   , Value      = sort_uniq(Value)                 ) %>%
+            select(c("AuthorName","NameOrig","Value","CntValue"))
          #---~---
 
 
@@ -487,9 +539,327 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
    # This block may need revision if more trait data are needed and as more data are
    # contributed to TRY data base.
    #---~---
-   if (TraitID %in% c(6L,21L,46L,773L,1777L,2545L,3106L,3107L)){
+   if (TraitID %in% c(2L)){
+      #---~---
+      #   2 - Leaf texture (sclerophylly; physical strength; toughness)
+      #---~---
+
+
+
+      #---~---
+      #   Initialise flags for output name to be all FALSE. Also initialise the puncture
+      # circumference (in m) and tear cross-section width (also in m), which may be needed
+      # if authors provide force in Newtons. These values depend on the instrument used and
+      # may vary by author.
+      #---~---
+      IsFT   = rep(FALSE   ,times=length(NameOrig))
+      IsFP   = rep(FALSE   ,times=length(NameOrig))
+      IsTT   = rep(FALSE   ,times=length(NameOrig))
+      IsTP   = rep(FALSE   ,times=length(NameOrig))
+      CPunct = rep(NA_real_,times=length(NameOrig))
+      WTear  = rep(NA_real_,times=length(NameOrig))
+      #---~---
+
+
+
+      #---~---
+      #   Some authors provided sclerophylly classification. Delete them.
+      #---~---
+      #--- Fatih Fazlioglu
+      IsTMI        =
+         ( AuthorName %in% "Fatih Fazlioglu" ) & ( NameOrig   %in% "leaf condition" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Walton Green
+      IsTMI        =
+         ( AuthorName %in% "Walton Green" ) & ( NameOrig   %in% "foliage texture" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Sandy Harrison
+      IsTMI        =
+         ( ( AuthorName %in% "Sandy Harrison" )
+         & ( NameOrig   %in% c( "leaf texture: coriaceous", "leaf texture: fleshy"
+                              , "leaf texture: leathery", "leaf texture: malacophyll"
+                              , "leaf texture: papery", "leaf texture: rigidly coriaceous"
+                              )#end c
+           )#end NameOrig
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Ingolf Kuhn
+      IsTMI        =
+         ( AuthorName %in% "Ingolf Kuhn" ) & ( NameOrig   %in% "leafmorphology" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Michelle Leishman
+      IsTMI        =
+         ( AuthorName %in% "Michelle Leishman" ) & ( NameOrig   %in% "lt; leaf texture" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Renske Onstein
+      IsTMI        =
+         ( ( AuthorName %in% "Renske Onstein" )
+         & ( NameOrig   %in% "leaf_sclerophylly_thickness_description" )
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Han Wang
+      IsTMI        =
+         ( AuthorName %in% "Han Wang" ) & ( NameOrig   %in% "leaf texture" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Some data seem to be bogus entries.
+      #---~---
+      Discard        =
+         ( ( AuthorName %in% "Justin Wright"               )
+         & ( NameOrig   %in% "treatment water table depth" )
+         )#end Discard
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Define data based on author, original units, and name.
+      #---~---
+      #--- Peter Adler, name and units indicate leaf tensile strength.
+      IsAuthor = 
+         ( AuthorName %in% "Peter Adler" ) & (NameOrig %in% "leaf tensile strength" )
+      IsTT = IsTT | IsAuthor
+      #---~---
+      #   Chris Baraloto, force to puncture provided. However, no diameter of the puncture
+      # element was provided. As a patch solution, we use the distribution of values from
+      # Vanessa Boukili, and assume the diameter of puncture element to be 4.5 mm. This 
+      # can be revised in the future if the exact puncture element circumference becomes 
+      # known.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Chris Baraloto" ) & (NameOrig %in% "toughness" )
+      IsFP             = IsFP | IsAuthor
+      CPunct[IsAuthor] = pi * 0.0045
+      #--- Vanessa Boukili, assume FP based on the reference paper.
+      IsAuthor = 
+         ( AuthorName %in% "Vanessa Boukili" ) & (NameOrig %in% "leaf toughness" )
+      IsFP     = IsFP | IsAuthor
+      #--- Marc Cadotte, assume FP based on the reference paper.
+      IsAuthor = 
+         ( AuthorName %in% "Marc Cadotte" ) & (NameOrig %in% "toughness (g/mm)" )
+      IsFP     = IsFP | IsAuthor
+      #--- Johannes Cornelissen, tensile strength provided.
+      IsAuthor = 
+         ( ( AuthorName %in% "Johannes Cornelissen" ) 
+         & (NameOrig %in% c("leaf toughness (tensile strength)","tensile strength (n/mm)") )
+         )#end IsAuthor
+      IsFT     = IsFT | IsAuthor
+      #--- Sandra Diaz, the comments indicate they measured tensile strength
+      IsAuthor = 
+         ( AuthorName %in% "Sandra Diaz" ) & (NameOrig %in% "leaf toughness (nmm-1)" )
+      IsFT     = IsFT | IsAuthor
+      #--- Bryan Finegan, the original name indicates leaf tensile strength
+      IsAuthor = 
+         ( AuthorName %in% "Bryan Finegan" ) & (NameOrig %in% "lts" )
+      IsFT     = IsFT | IsAuthor
+      #---~---
+      #   Pengcheng He, they provided both tear and puncture data. They also provided
+      # values normalised by LMA, but we delete these.
+      #---~---
+      IsAuthor     = AuthorName %in% "Pengcheng He"
+      IsTMI        = IsAuthor & ( NameOrig %in% c("fp/lma","ft/ lma") )
+      IsFT         = IsFT | ( IsAuthor & ( NameOrig %in% c("ft") ) )
+      IsFP         = IsFP | ( IsAuthor & ( NameOrig %in% c("fp") ) )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+      #   Herve Jactel, leaf toughness provided, but unclear whether this is tear- or
+      # puncture-tested. The data are also provided in Newtons and no publication is 
+      # associated with this data. For the time being we discard the data.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Herve Jactel" ) & (NameOrig %in% "leaf.toughness" )
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #--- Kim La Pierre, puncture pressure according to meta data
+      IsAuthor = 
+         ( AuthorName %in% "Kim La Pierre" ) & (NameOrig %in% "leaf_toughness" )
+      IsTP     = IsTP | IsAuthor
+      #---~---
+      #   Tara Massad. They provide puncture pressure according to meta data. Their
+      # units are rather confusing (they added the punch area in the denominator), but
+      # based on the distribution of values, it seems they meant g/mm2, after they divided
+      # by the punch area.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Tara Massad" ) & (NameOrig %in% "mean_leaf_toughness" )
+      IsTP     = IsTP | IsAuthor
+      #--- Rebecca Montgomery, leaf tensile strength
+      IsAuthor = 
+         ( AuthorName %in% "Rebecca Montgomery" ) & (NameOrig %in% "leaf tensile strength")
+      IsFT     = IsFT | IsAuthor
+      #---~---
+      #   Yusuke Onoda. They provide tensile and puncture strength and pressure. They also
+      # provide work to shear, but we don't keep these for now.
+      #---~---
+      IsAuthor     = AuthorName %in% "Yusuke Onoda"
+      IsTMI        = IsAuthor & ( NameOrig %in% c("ws","wss") )
+      IsFT         = IsFT | ( IsAuthor & ( NameOrig %in% c("ft" ) ) )
+      IsTT         = IsTT | ( IsAuthor & ( NameOrig %in% c("fts") ) )
+      IsFP         = IsFP | ( IsAuthor & ( NameOrig %in% c("fp" ) ) )
+      IsTP         = IsTP | ( IsAuthor & ( NameOrig %in% c("fps") ) )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Valerio Pillar, leaf tensile specific strength
+      IsAuthor = 
+         ( ( AuthorName %in% "Valerio Pillar" )
+         & (NameOrig %in% "leaf tensile strength average (n/mm2)")
+         )#end IsAuthor
+      IsTT     = IsTT | IsAuthor
+      #--- Lourens Poorter, leaf specific puncturability
+      IsAuthor = 
+         ( AuthorName %in% "Lourens Poorter" ) & (NameOrig %in% "lto")
+      IsTP     = IsTP | IsAuthor
+      #--- Arthur Vinicius Rodrigues, leaf puncture strength (based on reference).
+      IsAuthor = 
+         ( ( AuthorName %in% "Arthur Vinicius Rodrigues" )
+         & (NameOrig %in% "leaftough_n/mm")
+         )#end IsAuthor
+      IsFP     = IsFP | IsAuthor
+      #---~---
+      #   Marko Spasojevic, force to puncture provided. However, no diameter of the
+      # puncture element was provided. As a patch solution, we use the distribution of
+      # values from Vanessa Boukili, and assume the diameter of puncture element to be 
+      # 4.2 mm. This can be revised in the future if the exact puncture element 
+      # circumference becomes known.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Marko Spasojevic" ) & (NameOrig %in% "leaftoughness" )
+      IsFP             = IsFP | IsAuthor
+      CPunct[IsAuthor] = pi * 0.0042
+      #---~---
+      #   Tanya Strydom, force to puncture provided. However, no diameter of the puncture
+      # element was provided. The data distribution looks very different than Vanessa 
+      # Boukili, possibly because the sample comes from a montane dryland environment in
+      # South Africa. The average ratio between distributions would indicate puncture 
+      # element size to be of the order of 7-8mm, which is somewhat larger than the 
+      # typical values (0.5-5mm). For now we discard the data.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Tanya Strydom" ) & (NameOrig %in% "toughness" )
+      # IsTP     = IsTP | IsAuthor
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #---~---
+      #   Stephni van der Merwe, force to puncture provided. However, no diameter of the
+      # puncture element was provided. The data distribution looks very different than 
+      # Vanessa Boukili, possibly because the sample comes from a montane dryland 
+      # environment in South Africa. The average ratio between distributions would indicate
+      # puncture element size to be of the order of 8-11mm, which is somewhat larger than 
+      # the typical values (0.5-5mm). For now we discard the data.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Stephni van der Merwe" ) & (NameOrig %in% "penetrometer (n)" )
+      #IsTP     = IsTP | IsAuthor
+      Value     [IsAuthor] = NA_character_
+      Valid     [IsAuthor] = FALSE
+      VName     [IsAuthor] = NA_character_
+      #--- Masha van der Sande, leaf puncture pressure (based on reference).
+      IsAuthor = 
+         ( ( AuthorName %in% "Masha van der Sande"     )
+         & ( NameOrig   %in% "specific force to punch" )
+         )#end IsAuthor
+      IsTP     = IsTP | IsAuthor
+      #--- Jaime Villacis, leaf tensile strength (based on original name).
+      IsAuthor = 
+         ( ( AuthorName %in% "JAIME VILLACIS"     )
+         & ( NameOrig   %in% "fuerza tensil foliar  (n/mm)" )
+         )#end IsAuthor
+      IsFT     = IsFT | IsAuthor
+      #---~---
+      #   Alexandra Weigelt, force to punch provided. According to the supporting 
+      # information of their reference paper (https://doi.org/10.1111/1365-2745.12489), 
+      # the needle diameter was 1.4 mm.
+      #---~---
+      IsAuthor         =
+         ( ( AuthorName %in% "Alexandra Weigelt" )
+         & ( NameOrig   %in% "leaftoughness"     )
+         )#end IsAuthor
+      IsFP             = IsFP | IsAuthor
+      CPunct[IsAuthor] = pi * 0.0014
+      #---~---
+
+
+      #--- Make sure all data have the same units (N/mm).
+      kgT_sel          =  IsFT          & ( UnitOrig %in% c("kg"       ) )
+      kgP_sel          =  IsFP          & ( UnitOrig %in% c("kg"       ) )
+      NT_sel           =  IsFT          & ( UnitOrig %in% c("N"        ) )
+      NP_sel           =  IsFP          & ( UnitOrig %in% c("N"        ) )
+      gomm_sel         = (IsFT | IsFP ) & ( UnitOrig %in% c("g/mm"     ) )
+      Nocm_sel         = (IsFT | IsFP ) & ( UnitOrig %in% c("(N/10)/mm") )
+      kNom_sel         = 
+         ( (IsFT | IsFP )
+         & ( UnitOrig %in% c("N/mm","Newton_mm-1","kN m-1","Newtons/mm","N/mm#") )
+         )#end knom_sel
+      MNom2_sel        = 
+         ( (IsTT | IsTP )
+         & ( UnitOrig %in% c("N/mm2","Newtons mm-2","MN m-2","n/mm2") )
+         )#end mnom2_sel
+      Nocm2_sel        = (IsTT | IsTP ) & ( UnitOrig %in% c("N/cm2") )
+      gomm2_sel        = (IsTT | IsTP ) & ( UnitOrig %in% c("g/mm2","g/(15.85mm2)") )
+      Value[NT_sel   ] = as.character(        N.2.kN / WTear  * as.numeric(Value[NT_sel   ]) )
+      Value[NP_sel   ] = as.character(        N.2.kN / CPunct * as.numeric(Value[NP_sel   ]) )
+      Value[kgT_sel  ] = as.character( grav * N.2.kN / WTear  * as.numeric(Value[kgT_sel  ]) )
+      Value[kgP_sel  ] = as.character( grav * N.2.kN / CPunct * as.numeric(Value[kgP_sel  ]) )
+      Value[gomm_sel ] = as.character(            g2kg * grav * as.numeric(Value[gomm_sel ]) )
+      Value[Nocm_sel ] = as.character(                    10. * as.numeric(Value[Nocm_sel ]) )
+      Value[kNom_sel ] = as.character(                          as.numeric(Value[kNom_sel ]) )
+      Value[MNom2_sel] = as.character(                          as.numeric(Value[MNom2_sel]) )
+      Value[Nocm2_sel] = as.character(      N.2.MN * m2.2.cm2 * as.numeric(Value[Nocm2_sel]) )
+      Value[gomm2_sel] = as.character(            g2kg * grav * as.numeric(Value[gomm2_sel]) )
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = 
+         Valid & ( NT_sel    | NP_sel    | kgT_sel   | kgP_sel   | Nocm_sel  | gomm_sel  
+                 | kNom_sel  | MNom2_sel | Nocm2_sel | gomm2_sel )
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Assign output names.
+      #---~---
+      VName[IsFT] = OutputName["FT"]
+      VName[IsFP] = OutputName["FP"]
+      VName[IsTT] = OutputName["TT"]
+      VName[IsTP] = OutputName["TP"]
+      #---~---
+
+
+   }else if (TraitID %in% c(6L,18L,21L,46L,773L,1777L,2545L,3106L,3107L)){
       #---~---
       #   6    - Root rooting depth
+      #   18   - Plant height
       #   21   - Stem diameter
       #   46   - Leaf thickness
       #   773  - Crown (canopy) height (base to top)
@@ -610,6 +980,258 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[m_sel  ] = as.character(        m.2.cm * as.numeric(Value[m_sel  ]) )
       #---~---
 
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( um_sel  | dmm_sel | mm_sel  | cm_sel  | dm_sel  | in_sel
+                           | ft_sel  | m_sel   )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
+      #---~---
+   }else if (TraitID %in% c(7L)){
+      #---~---
+      #   7 - Mycorrhiza type
+      #---~---
+
+      #---~---
+      #   Make input values lower case to make classification easier
+      #---~---
+      Value    = tolower(Value)
+      #---~---
+
+
+
+      #---~---
+      #   We define four classes of mycorrhizal association (plus one class for 
+      # non-mycorrhiza species), based on van der Heijdeen et al. (2015)
+      # https://dx.doi.org/10.1111/nph.13288
+      #---~---
+      IsAbsent         = rep(FALSE   ,times=length(NameOrig))
+      IsEctomycorrhiza = rep(FALSE   ,times=length(NameOrig))
+      IsArbutoid       = rep(FALSE   ,times=length(NameOrig))
+      IsEndomycorrhiza = rep(FALSE   ,times=length(NameOrig))
+      IsArbuscular     = rep(FALSE   ,times=length(NameOrig))
+      IsEricoid        = rep(FALSE   ,times=length(NameOrig))
+      IsOrchid         = rep(FALSE   ,times=length(NameOrig))
+      IsMonotropoid    = rep(FALSE   ,times=length(NameOrig))
+      #---~---
+
+
+
+      #---~---
+      #   Some authors ancillary information that describe their classification strength.
+      # Discard these data.
+      #---~---
+      #--- Colleen Iversen
+      IsTMI        =
+         ( ( AuthorName %in% "Colleen Iversen" )
+         & ( NameOrig   %in% c( "mycorrhiza_type_maherali")
+           )#end NameOrig
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Nadejda Soudzilovskaia
+      IsTMI        =
+         ( ( AuthorName %in% "Nadejda Soudzilovskaia" )
+         & ( NameOrig   %in% c( "original term for mycorrhizal type given by selivanov")
+           )#end NameOrig
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Gijsbert Werner
+      IsTMI        =
+         ( ( AuthorName %in% "Gijsbert Werner" )
+         & ( NameOrig   %in% c( "alternative", "am_inferred", "am_lost_likelihood"
+                              , "am_retained_likelihood", "am_stable_likelihood"
+                              ,"labile_likelihood", "stable_am_loss_likelihood"
+                              )#end c
+           )#end NameOrig
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Translate classifications from various authors to a unified system.
+      #---~---
+      #---~---
+      #   F Stuart Chapin III, their classification does not distinguish between 
+      # mycorrhiza types, keep only the non-mycorrhiza data.
+      #---~---
+      IsAuthor       =
+         ( AuthorName %in% "F Stuart Chapin III" ) & ( NameOrig %in% "myco" )
+      IsAbsent       = IsAbsent | ( IsAuthor & (Value %in% "0") )
+      Discard        = IsAuthor & ( ! ( Value %in% "0") )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #--- Johannes Cornelissen, keep all but the mixed classes.
+      IsAuthor       =
+         ( ( AuthorName %in% "Johannes Cornelissen"                      )
+         & ( NameOrig   %in% c("mycorrhizza type", "mycorrhizal type"  ) )
+         )#end IsAuthor
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("n"           )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ecto","ec"   )) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid","er")) )
+      IsArbuscular     = 
+         IsArbuscular | ( IsAuthor & (Value %in% c("am","forb-am","gram-am","wood-am")) )
+      Discard          = IsAuthor & ( Value %in% c("nm/am", "ec/am") )
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Joseph Craine, keep all but the mixed classes.
+      IsAuthor       =
+         ( AuthorName %in% "Joseph Craine" ) & ( NameOrig %in% "mycorrhizal guess" )
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("non"    )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ecto"   )) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid")) )
+      IsArbuscular     = IsArbuscular     | ( IsAuthor & (Value %in% c("am"     )) )
+      #---~---
+      #   Ian Dickie, their classification does not distinguish between non-mycorrhiza
+      # and endomycorrhiza. Keep only the ectomycorrhiza data.
+      #---~---
+      IsAuthor       =
+         ( AuthorName %in% "Ian Dickie" ) & ( NameOrig %in% "ectomycorrhizal" )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ectomycorrhizal")))
+      Discard          = IsAuthor & ( Value %in% c("non-ectomycorrhizal") )
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Henry Ford, keep all but mixed classes.
+      IsAuthor       =
+         ( AuthorName %in% "Henry Ford" ) & ( NameOrig %in% "mycorrhiza" )
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("absent"     )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ec?","ecto" )) )
+      IsArbutoid       = 
+         IsArbutoid       | ( IsAuthor & (Value %in% c("arbutoid","pyroloid"        )) )
+      IsEndomycorrhiza = IsEndomycorrhiza | ( IsAuthor & (Value %in% c("endo"       )) )
+      IsArbuscular     = 
+         IsArbuscular     | ( IsAuthor & (Value %in% c("?va","arbuscular","va","va?")) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid"    )) )
+      IsOrchid         = IsOrchid         | ( IsAuthor & (Value %in% c("orchid"     )) )
+      IsMonotropoid    = IsMonotropoid    | ( IsAuthor & (Value %in% c("monotropoid")) )
+      Discard        = 
+         IsAuthor & ( Value %in% c("ectendo", "ecto; ectendo", "ecto; endo; va") )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #--- Colleen Iversen, keep all but mixed classes.
+      IsAuthor       =
+         ( AuthorName %in% "Colleen Iversen" ) & ( NameOrig %in% "mycorrhiza_type" )
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("nm"  )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("em"  )) )
+      IsArbutoid       = IsArbutoid       | ( IsAuthor & (Value %in% c("abtm")) )
+      IsArbuscular     = IsArbuscular     | ( IsAuthor & (Value %in% c("am"  )) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("erm" )) )
+      IsOrchid         = IsOrchid         | ( IsAuthor & (Value %in% c("orm" )) )
+      Discard          = IsAuthor & ( Value %in% c("am + em", "ds", "eem") )
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Renske Onstein, mycorrhiza classification is binary. Keep only the negatives.
+      IsAuthor       =
+         ( AuthorName %in% "Renske Onstein" ) & ( NameOrig %in% "mycorrhiza" )
+      IsAbsent         = IsAbsent         | ( IsAuthor & ( Value %in% "no" ) )
+      Discard          = IsAuthor & ( ! ( Value %in% "no") )
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Josep Penuelas, a single data entry exists (an ericoid mycorrhiza).
+      IsAuthor       =
+         ( AuthorName %in% "Josep Penuelas" ) & ( NameOrig %in% "mycorrhizal type" )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid") ) )
+      #--- Colleen Seymour, they used binary flags for ectomycorrhiza (no further classes)
+      IsAuthor         =
+         ( ( AuthorName %in% "Colleen Seymour"                            )
+         & ( NameOrig   %in% "nutrient uptake strategy (ectomycorrhizae)" )
+         )#end IsAuthor
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("1")) )
+      Discard          = IsAuthor & ( Value %in% "0")
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Nadejda Soudzilovskaia, keep all but mixed classes.
+      IsAuthor       =
+         ( ( AuthorName %in% "Nadejda Soudzilovskaia"                )
+         & ( NameOrig %in% "modern term for type of mycorrhiza type" )
+         )#end IsAuthor
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("no"               )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ectomycorrhiza"   )) )
+      IsArbutoid       = IsArbutoid       | ( IsAuthor & (Value %in% c("arbutoid"         )) )
+      IsEndomycorrhiza = IsEndomycorrhiza | ( IsAuthor & (Value %in% c("endo-unidentified")) )
+      IsArbuscular     = IsArbuscular     | ( IsAuthor & (Value %in% c("am"  )) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid" )) )
+      IsOrchid         = IsOrchid         | ( IsAuthor & (Value %in% c("orchid" )) )
+      Discard          = IsAuthor & ( Value %in% c("ds") )
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Oscar Valverde-Barrantes, keep all but mixed classes.
+      IsAuthor       =
+         ( ( AuthorName %in% "Oscar Valverde-Barrantes" )
+         & ( NameOrig %in% "mycorrhizal_affiliation"    )
+         )#end IsAuthor
+      IsAbsent         = IsAbsent         | ( IsAuthor & (Value %in% c("nm"      )) )
+      IsEctomycorrhiza = IsEctomycorrhiza | ( IsAuthor & (Value %in% c("ecm"     )) )
+      IsArbuscular     = IsArbuscular     | ( IsAuthor & (Value %in% c("am"      )) )
+      IsEricoid        = IsEricoid        | ( IsAuthor & (Value %in% c("ericoid" )) )
+      Discard          = IsAuthor & ( Value %in% "noinf")
+      Value[Discard]   = NA_character_
+      Valid[Discard]   = FALSE
+      VName[Discard]   = NA_character_
+      #--- Gijsbert Werner, they use a system of Boolean variables.
+      IsAuthor          = ( AuthorName %in% "Gijsbert Werner" ) & ( Value %in% "yes" )
+      IsArbuscular      = IsArbuscular     | ( IsAuthor & ( NameOrig %in% c("am" ) ) )
+      IsArbutoid        = IsArbutoid       | ( IsAuthor & ( NameOrig %in% c("arb") ) )
+      IsEctomycorrhiza  = IsEctomycorrhiza | ( IsAuthor & ( NameOrig %in% c("ecm") ) )
+      IsEricoid         = IsEricoid        | ( IsAuthor & ( NameOrig %in% c("er" ) ) )
+      IsAbsent          = IsAbsent         | ( IsAuthor & ( NameOrig %in% c("nm" ) ) )
+      IsOrchid          = IsOrchid         | ( IsAuthor & ( NameOrig %in% c("orm") ) )
+      Value[IsAuthor]   = NA_character_
+      Discard           = 
+         ( ( AuthorName %in% "Gijsbert Werner" ) 
+         & ( ( Value %in% "no" ) | ( NameOrig %in% c("any_non_am_mf") ) )
+         )#end Discard
+      Value[Discard]    = NA_character_
+      Valid[Discard]    = FALSE
+      VName[Discard]    = NA_character_
+      #---~---
+
+      #---~---
+      #   Assign standardised classes (multiple pathways separated by dashes).
+      #---~---
+      Value[IsAbsent        ] = "Absent"
+      Value[IsEndomycorrhiza] = "Endomycorrhiza (not specified)"
+      Value[IsArbutoid      ] = "Arbutoid"
+      Value[IsArbuscular    ] = "Arbuscular"
+      Value[IsEricoid       ] = "Ericoid"
+      Value[IsOrchid        ] = "Orchid"
+      Value[IsMonotropoid   ] = "Monotropois"
+      Value[IsEctomycorrhiza] = "Ectomycorrhiza"
+      #---~---
+
+
+
+      #---~---
+      #   In case some class has not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( IsAbsent  | IsEndomycorrhiza | IsArbutoid    | IsArbuscular 
+                           | IsEricoid | IsOrchid         | IsMonotropoid | IsEctomycorrhiza )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
+      #---~---
+
    }else if (TraitID %in% c(12L,33L,59L,155L,770L,1085L,1809L,1955L)){
       #---~---
       #   12   - Leaf lifespan (longevity)
@@ -697,7 +1319,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #   Discard bad values, either odd units, or if longevity or turnover rate are
       # zero, which makes no sense.
       #---~---
-      bad_sel        = UnitOrig %in% c("%","text","m/g")
+      bad_sel        = UnitOrig %in% c("text","m/g")
       Value[bad_sel] = NA_character_
       Valid[bad_sel] = FALSE
       VName[bad_sel] = NA_character_
@@ -749,6 +1371,17 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value = TRY_Fix_Uncertain_Str(Value)
       #---~---
 
+      #---~---
+      #   Dominik Thom provided fraction of total fine root biomass lost per year. We 
+      # can transform this in decay rate, and invert it to report data in years.
+      #---~---
+      IsAuthor = 
+         ( (TraitID %in% 1955L ) & (AuthorName %in% "Dominik Thom")
+         & ( NameOrig %in% "root turnover rate")
+         )#end IsAuthor
+      Value   [IsAuthor] = as.character(- log(1. - as.numeric(Value[IsAuthor])))
+      UnitOrig[IsAuthor] = "yr-1"
+      #---~---
 
 
       #---~---
@@ -767,10 +1400,33 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       mon_sel           = UnitOrig %in% c("mo","month","months")                  | has_mon
       year_sel          = UnitOrig %in% c("y","yr","yrs","year","years","years?") | has_yr
       oneoyr_sel        = UnitOrig %in% c("yr-1")
-      Value[day_sel   ] = as.character(1./yr.day  * as.numeric(Value[day_sel   ]))
-      Value[week_sel  ] = as.character(1./yr.week * as.numeric(Value[week_sel  ]))
-      Value[mon_sel   ] = as.character(1./yr.mon  * as.numeric(Value[mon_sel   ]))
-      Value[oneoyr_sel] = as.character(1.         / as.numeric(Value[oneoyr_sel]))
+      Value[day_sel   ] = as.character( 1./yr.day  * as.numeric(Value[day_sel   ]))
+      Value[day_sel   ] = as.character( 1./yr.day  * as.numeric(Value[day_sel   ]))
+      Value[week_sel  ] = as.character( 1./yr.week * as.numeric(Value[week_sel  ]))
+      Value[mon_sel   ] = as.character( 1./yr.mon  * as.numeric(Value[mon_sel   ]))
+      Value[oneoyr_sel] = as.character( 1.         / as.numeric(Value[oneoyr_sel]))
+      #---~---
+
+
+      #---~---
+      #   Discard data that has no units either in the value or in the units
+      #---~---
+      miss_unit        = is.na(UnitOrig) & ( ! ( has_day | has_wk | has_mon | has_yr ) )
+      Value[miss_unit] = NA_character_
+      Valid[miss_unit] = FALSE
+      VName[miss_unit] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( day_sel | week_sel | mon_sel | year_sel | oneoyr_sel )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
       #---~---
 
    }else if (TraitID %in% c(22L)){
@@ -789,7 +1445,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #   Discard meaningless data
       #---~---
       IsInvalid        = 
-         tolower(Value) %in% c("?","??","no","shrub","unknown"
+         tolower(Value) %in% c("?","??","no","shrub","unknown","tbc"
                               ,"http://tropical.theferns.info/viewtropical.php?id=vochysia+haenkeana"
                               )#end c
       Value[IsInvalid] = NA_character_
@@ -814,13 +1470,13 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       #   Decide photosynthetic pathway
       #---~---
-      IsC3      = tolower(Value) %in% c("3","c3","c3?","c3.")
-      IsC4      = tolower(Value) %in% c("c4","c4?")
-      IsCAM     = tolower(Value) %in% c("cam","cam?")
-      IsC3C4    = tolower(Value) %in% c("c3/c4")
-      IsC3CAM   = tolower(Value) %in% c("c3/cam")
-      IsC4CAM   = tolower(Value) %in% c("c4/cam")
-      IsC3C4CAM = tolower(Value) %in% c("c3/c4/cam")
+      IsC3      = Value %in% c("3","c3","c3?","c3.")
+      IsC4      = Value %in% c("c4","c4?")
+      IsCAM     = Value %in% c("cam","cam?")
+      IsC3C4    = Value %in% c("c3/c4")
+      IsC3CAM   = Value %in% c("c3/cam", "c3-cam")
+      IsC4CAM   = Value %in% c("c4/cam", "c4-cam")
+      IsC3C4CAM = Value %in% c("c3/c4/cam")
       #---~---
 
       #---~---
@@ -860,6 +1516,77 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
       #---~---
+      #   Simplify the information from Udayangani Liu.
+      #---~---
+      IsTMI        = 
+         ( ( AuthorName %in% "Udayangani Liu" ) 
+         & ( NameOrig %in% c( "animalspecies", "disp.mode.animal", "disp.mode.gravity"
+                            , "disp.mode.water", "disp.mode.wind", "seed dispersal"
+                            , "seed weight notes"
+                            )#end c
+           )#end NameOrig
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Remove dispersal agent in case it is animal, so the type of animal is accounted.
+      IsAuthor =
+         ( ( AuthorName %in% "Udayangani Liu" ) 
+         & ( NameOrig %in% "postdispersalagentsubgroupdescription" )
+         )#end IsAuthor
+      IsTMI    = IsAuthor & grepl(pattern="animal",x=Value)
+      #---~---
+
+
+      #---~---
+      #   Juli Pausas used a single-letter system. Replace those that are non-overlapping
+      # with longer, unambiguous names.
+      #---~---
+      IsAuthor      = ( AuthorName %in% "Juli Pausas" ) & ( NameOrig %in% c("dispmode") )
+      IsSelfAbiotic = IsAuthor & ( Value %in% c("b","bg","g", "gb") )
+      IsWind        = IsAuthor & ( Value %in% c("w")         )
+      IsWater       = IsAuthor & ( Value %in% c("h")         )
+      IsInsect      = IsAuthor & ( Value %in% c("m")         )
+      IsAnimal      = IsAuthor & ( Value %in% c("n","o","z", "on") )
+      IsAdhesion    = IsAuthor & ( Value %in% c("p")         )
+      Discard       = 
+         IsAuthor & ( Value %in% c( "gh", "gm", "gw", "hg", "hn", "mb", "mbg", "mg", "ng"
+                                  , "nm", "nog", "npg", "nwgp", "og", "ong", "pg", "ph"
+                                  , "pmbg", "pmg", "pz","wbg", "wg", "wh", "whg", "wm"
+                                  , "wn", "wng", "wp", "wpg", "wpu", "wz", "wzg", "wzh"
+                                  , "zb", "zbg", "zg", "zgh", "zhbg", "zhg") )
+      Value[IsSelfAbiotic] = "autochory"
+      Value[IsWind       ] = "anemochory"
+      Value[IsWater      ] = "hydrochory"
+      Value[IsInsect     ] = "entomochory"
+      Value[IsAnimal     ] = "zoochory"
+      Value[IsAdhesion   ] = "epizoochory"
+      Value[Discard      ] = NA_character_
+      Valid[Discard      ] = FALSE
+      VName[Discard      ] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Valerie Raevel used short names. Replace those that are non-overlapping
+      # with longer, unambiguous names.
+      #---~---
+      IsAuthor      = ( ( AuthorName %in% c("Valerie Raevel")      )
+                      & ( NameOrig   %in% c("seed dispersal mode") )
+                      )#end IsAuthor
+      IsSelfAbiotic = IsAuthor & ( Value %in% c("baro") )
+      IsWind        = IsAuthor & ( Value %in% c("ane" ) )
+      IsAnimal      = IsAuthor & ( Value %in% c("end" ) )
+      IsAdhesion    = IsAuthor & ( Value %in% c("epi" ) )
+      Value[IsSelfAbiotic] = "barochory"
+      Value[IsWind       ] = "anemochory"
+      Value[IsAnimal     ] = "zoochory"
+      Value[IsAdhesion   ] = "epizoochory"
+      #---~---
+
+
+
+      #---~---
       #   Discard non-informative classes and those without any text.
       #---~---
       Discard        = 
@@ -883,7 +1610,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                          , "external", "fleshy", "fruit is fleshy", "germinule"
                          , "gravity and the caching activities of squirrels and mice are the primary means of dispersal. (1 ..."
                          , "gray squirrels bury and recover the seeds; primarily by wind"
-                         , "hemerochor", "hidr/exo", "hoarding", "no", "non specialized"
+                         , "hemerochor", "hidr/exo", "no", "non specialized"
                          , "none", "other", "passive", "pet"
                          , "primarily wind and some by small mammals"
                          , "primarily wind; red squirrels disperse seeds also"
@@ -934,8 +1661,8 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "dispersal endozoochorous", "dys-zoochory", "dysochor", "earthworm"
                      , "endo", "endo-zoochory", "endo/exo", "endozoochor", "endozoochory"
                      , "for a comprehensive list; see: van rheede van oudtshoorn; k. and van rooyen; m.w. (1999). dispe ..."
-                     , "herbivorous mammals; crabs", "herpochor", "invertebrate"
-                     , "mammals (bats)+birds."
+                     , "herbivorous mammals; crabs", "herpochor", "hoarding"
+                     , "invertebrate", "mammals (bats)+birds."
                      , "mammals (incl. bats); birds; reptiles and fish"
                      , "mammals (incl. bats)+birds.", "mammals (non-bat)+birds."
                      , "mammals (non-bat)+reptiles.", "mammals (unspecified)/birds"
@@ -1198,7 +1925,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "azteca sp.; paratrichima sp. & pheidole sp.", "beetle larva"
                      , "camponotus sp.; chelaner sp.; dolichoderus sp.; iridomyrmex sp.; pheidole sp.; rhytidoponera me ..."
                      , "camponotus sp.; iridomyrmex sp. melophorus spp. pheidole sp.; rhytidoponera spp.; anthochaera c ..."
-                     , "harvesting ants", "insects."
+                     , "entomochory", "harvesting ants", "insects."
                      , "iridomyrmex cf. nitidiceps; pheidole sp."
                      , "iridomyrmex purpureus; pheidole sp.; acanthagenys rufogularis; artamus cinereus; corvus coronoi ..."
                      , "iridomyrmex sp.", "melophorus sp.", "melophorus sp.; pheidole sp."
@@ -1272,18 +1999,18 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       #   Assign standardised classes (multiple pathways separated by dashes).
       #---~---
-      Value[IsHuman      ] = "Anthropogenic"
-      Value[IsAnimal     ] = "Animal"
-      Value[IsBird       ] = "Animal/Birds"
-      Value[IsReptile    ] = "Animal/Other Reptiles"
-      Value[IsBat        ] = "Animal/Bats"
-      Value[IsMammal     ] = "Animal/Other Mammals"
-      Value[IsFish       ] = "Animal/Fish"
-      Value[IsInsect     ] = "Animal/Insects"
-      Value[IsAdhesion   ] = "Adhesion"
-      Value[IsWater      ] = "Water"
-      Value[IsWind       ] = "Wind"
-      Value[IsSelfAbiotic] = "Self/Other Abiotic"
+      Value[IsHuman      ] = "Anthropochory"
+      Value[IsAnimal     ] = "Zoochory"
+      Value[IsBird       ] = "Ornithochory"
+      Value[IsReptile    ] = "Saurochory"
+      Value[IsBat        ] = "Chiropterochory"
+      Value[IsMammal     ] = "Mammalochory"
+      Value[IsFish       ] = "Ichthyochory"
+      Value[IsInsect     ] = "Entomochory"
+      Value[IsAdhesion   ] = "Epizoochory"
+      Value[IsWater      ] = "Hydrochory"
+      Value[IsWind       ] = "Anemochory"
+      Value[IsSelfAbiotic] = "Autochory"
       #---~---
 
 
@@ -1594,6 +2321,13 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       })#end suppressWarnings
       Value[IsHigh        ] = "high"
       Value[IsLow         ] = "low"
+      #--- Maowei Liang. Rename drought tolerance to remove ambiguity
+      IsAuthor =
+         ( ( AuthorName %in% "Maowei Liang") & ( NameOrig %in% "water_ecotypes" ) )
+      IsHigh         = IsAuthor & ( Value %in% c("xerophyte"      ) )
+      IsIntermediate = IsAuthor & ( Value %in% c("mesoxerophytes" ) )
+      Value[IsHigh        ] = "high"
+      Value[IsIntermediate] = "intermediate"
       #---~---
 
 
@@ -1806,6 +2540,15 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsDeciduous = IsAuthor & ( Value %in% "no"  )
       Value[IsEvergreen] = "evergreen"
       Value[IsDeciduous] = "deciduous"
+      #--- Marina Scalon: reduce ambiguity and simplify inconsistent classification
+      IsAuthor = 
+         ( AuthorName %in% "Marina Scalon" ) & ( NameOrig %in% c( "phenology", "type") )
+      IsEvergreen         = IsAuthor & ( Value %in% c("evergreen"        ,"ev") )
+      IsBreviDecid        = IsAuthor & ( Value %in% c("briefly deciduous","bd") )
+      IsDeciduous         = IsAuthor & ( Value %in% c("deciduous"        ,"dc") )
+      Value[IsEvergreen ] = "evergreen"
+      Value[IsBreviDecid] = "brevi-deciduous"
+      Value[IsDeciduous ] = "deciduous"
       #--- Colleen Seymour: they provided leafless time.
       IsAuthor    = ( ( AuthorName %in% "Colleen Seymour" )
                     & ( NameOrig %in% "leaf phenology (months without leaves)" )
@@ -1859,7 +2602,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                          , "deciduous or evergreen scale-like", "d_ev"
                          , "http://www.rogerstreesandshrubs.com/gallery/displayblock~bid~11723~gid~~source~gallerydefault.asp"
                          , "megaphanerophyte", "n", "n.d.", "no", "other", "sessile", "x"
-                         , "y/n"
+                         , "y/n","seasonal biomass peak"
                          )#end c
            )#end Value
          )#end Discard
@@ -1880,18 +2623,20 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "http://plants.jstor.org/compilation/blepharispermum.zanguebaricum"
                      , "http://tropical.theferns.info/viewtropical.php?id=borrichia+arborescens"
                      , "http://www.photomazza.com/?bauhinia-integrifolia&lang=en"
-                     , "phyllodium", "w"
+                     , "perennifolio", "phyllodium", "w"
                      )#end c
       IsSpringGreen = 
          Value %in% c( "always spring green", "hibernal", "springgreen", "vernal")
       IsSummerGreen = 
-         Value %in% c( "always summer green", "aestival", "summergreen", "winter deciduous")
+         Value %in% c( "always summer green", "aestival", "cold deciduous", "summergreen"
+                     , "winter deciduous"
+                     )#end c
       IsRainGreen   = 
-         Value %in% c( "drought-deciduous", "drought semi-deciduous"
+         Value %in% c( "drought deciduous", "drought-deciduous", "drought semi-deciduous"
                      , "https://de.wikipedia.org/wiki/mopane", "raingreen"
                      )#end c
       IsDeciduous   = 
-         Value %in% c( "d", "dc", "deciduous", "deciduous broad-leaved"
+         Value %in% c( "caducifolio", "d", "dc", "deciduous", "deciduous broad-leaved"
                      , "deciduous needle-leaved", "deciduous/needlelike"
                      , "deciduous scale-like", "deciduous type 1", "deciduous type 2"
                      , "deciduous type 3", "deciduousecideciduousuous", "decioduous"
@@ -1925,7 +2670,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "semi-evergreen/evergreen", "semi-evergreen/evergren"
                      , "semievergreen"
                      )#end if
-      IsClaophylls  = Value %in% c( "aphyllous", "cladophylls")
+      IsCladophylls = Value %in% c( "aphyllous", "cladophylls", "leafless", "stem succulent")
       #---~---
 
 
@@ -1939,7 +2684,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[IsDeciduous  ] = "Deciduous (not specified)"
       Value[IsSemiDecid  ] = "Semi-deciduous"
       Value[IsBreviDecid ] = "Brevi-deciduous"
-      Value[IsClaophylls ] = "Cladophylls"
+      Value[IsCladophylls] = "Cladophylls"
       #---~---
 
 
@@ -1949,8 +2694,174 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       IsValid          = ( Valid 
                          & ( IsEvergreen   | IsSpringGreen | IsSummerGreen | IsRainGreen
-                           | IsDeciduous   | IsSemiDecid   | IsBreviDecid  | IsClaophylls  )
+                           | IsDeciduous   | IsSemiDecid   | IsBreviDecid  | IsCladophylls )
                          )#end Valid
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
+   }else if (TraitID %in% c(38L)){
+      #---~---
+      #   Plant woodiness
+      #---~---
+
+      #---~---
+      #   Make input values lower case to make classification easier
+      #---~---
+      Value    = tolower(Value)
+      #---~---
+
+
+      #---~---
+      #   Some input variables are ancillary or refer to classification algorithms or
+      # information that is too detailed to retain. We discard these values.
+      #---~---
+      IsTMI = 
+        ( ( ( AuthorName %in% "Benjamin Blonder" ) & ( NameOrig %in% "herbaceous" ) ) )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Some authors provided different classification systems that could be ambiguous
+      # using a generic assignment. Map their classes onto a unequivocal set of names.
+      #---~---
+      #   F Stuart Chapin III, 3 numerical classes:
+      #   0   - non-woody
+      #   0.5 - semi-woody
+      #   1   - woody
+      #---~---
+      IsAuthor             = 
+         ( AuthorName %in% "F Stuart Chapin III" ) & ( NameOrig   %in% "woodiness" )
+      IsNonWoody         = IsAuthor & ( Value %in% c(  "0") )
+      IsSemiWoody        = IsAuthor & ( Value %in% c("0.5") )
+      IsWoody            = IsAuthor & ( Value %in% c(  "1") )
+      Value[IsNonWoody ] = "non-woody"
+      Value[IsSemiWoody] = "semi-woody"
+      Value[IsWoody    ] = "woody"
+      #---~---
+      #   Johannes Cornelissen, two systems due to two data sets but they can be combined
+      #   Original Name GrowthForm2
+      #      1   - non-woody
+      #      h   - non-woody
+      #      1.5 - semi-woody
+      #      2   - woody
+      #      w   - woody
+      #---~---
+      IsAuthor           = 
+         ( ( AuthorName %in% "Johannes Cornelissen"       )
+         & ( NameOrig   %in% c("growthform2","woodiness") ) )
+      IsNonWoody         = IsAuthor & ( Value %in% c("1","h") )
+      IsSemiWoody        = IsAuthor & ( Value %in% c("1.5"  ) )
+      IsWoody            = IsAuthor & ( Value %in% c("2","w") )
+      Value[IsNonWoody ] = "non-woody"
+      Value[IsSemiWoody] = "semi-woody"
+      Value[IsWoody    ] = "woody"
+      #---~---
+      #   Will Cornwell, three systems due to multiple data sets, but they can be combined
+      #      h        - non-woody
+      #      n        - non-woody
+      #      variable - semi-woody
+      #      w        - woody
+      #      y        - woody
+      #---~---
+      IsAuthor           = 
+         ( ( AuthorName %in% "Will Cornwell" )
+         & ( NameOrig   %in% c("gf2","woodiness","woody") ) )
+      IsNonWoody         = IsAuthor & ( Value %in% c("h","n"   ) )
+      IsSemiWoody        = IsAuthor & ( Value %in% c("variable") )
+      IsWoody            = IsAuthor & ( Value %in% c("w","y"   ) )
+      Value[IsWoody    ] = "woody"
+      Value[IsSemiWoody] = "semi-woody"
+      Value[IsNonWoody ] = "non-woody"
+      #---~---
+      #   Sandra Diaz, numeric classification system
+      #      0   - non-woody
+      #      1   - semi-woody
+      #      2,3 - woody (low/high wood density)
+      #---~---
+      IsAuthor           = 
+         ( AuthorName %in% "Sandra Diaz" ) & ( NameOrig %in% c("woodiness") )
+      IsNonWoody         = IsAuthor & ( Value %in% c("0"    ) )
+      IsSemiWoody        = IsAuthor & ( Value %in% c("1"    ) )
+      IsWoody            = IsAuthor & ( Value %in% c("2","3") )
+      Value[IsWoody    ] = "woody"
+      Value[IsSemiWoody] = "semi-woody"
+      Value[IsNonWoody ] = "non-woody"
+      #---~---
+      #   Wenxuan Han, two systems due to different data bases (herb/woody and woodiness),
+      # but they can assessed together
+      #      h        - non-woody
+      #      w, woody - woody
+      #---~---
+      IsAuthor           = 
+         ( AuthorName %in% "Wenxuan Han" ) & ( NameOrig %in% c("herb/woody","woody") )
+      IsNonWoody         = IsAuthor & ( Value %in% c("h"        ) )
+      IsWoody            = IsAuthor & ( Value %in% c("w","woody") )
+      Value[IsWoody    ] = "woody"
+      Value[IsNonWoody ] = "non-woody"
+      #---~---
+      #   Sarah Otto, three categories
+      #      h        - non-woody
+      #      variable - semi-woody
+      #      w        - woody
+      #---~---
+      IsAuthor           = 
+         ( ( AuthorName %in% "Sarah Otto"                  )
+         & ( NameOrig   %in% c("woodiness (w; h; variable)") ) )
+      IsNonWoody         = IsAuthor & ( Value %in% c("h"       ) )
+      IsSemiWoody        = IsAuthor & ( Value %in% c("variable") )
+      IsWoody            = IsAuthor & ( Value %in% c("w"       ) )
+      Value[IsWoody    ] = "woody"
+      Value[IsSemiWoody] = "semi-woody"
+      Value[IsNonWoody ] = "non-woody"
+      #---~---
+      #   Peter Reich, herb/grass classification:
+      #      h   - non-woody
+      #      w   - woody
+      #---~---
+      IsAuthor           = 
+         ( AuthorName %in% "Peter Reich" ) & ( NameOrig   %in% "woodyherb" )
+      IsNonWoody         = IsAuthor & ( Value %in% c("h") )
+      IsWoody            = IsAuthor & ( Value %in% c("w") )
+      Value[IsWoody    ] = "woody"
+      Value[IsNonWoody ] = "non-woody"
+      #---~---
+
+
+      #---~---
+      #   Reduce the number of classes for simplicity
+      #---~---
+      IsWoody     =
+         Value %in% c( "liana", "wood at base", "woody", "woody at base", "woody base" )
+      IsSemiWoody =
+         Value %in% c( "fibrous", "non-woody/woody", "semi-woody", "suffrutex", "variable"
+                     , "woody/non-woody", "woody/nonwoody", "woody rootstock"
+                     )#end c
+      IsNonWoody  =
+         Value %in% c( "grass&sedges", "hearbaceous", "herb", "herb; graminoid"
+                     , "herbaceous", "herbaceous epiphyte", "non woody", "non-woody"
+                     , "nono-woody"
+                     )#end c
+      #---~---
+
+
+      #---~---
+      #   Apply classification.
+      #---~---
+      Value[IsWoody    ] = "Woody"
+      Value[IsSemiWoody] = "Semi-woody"
+      Value[IsNonWoody ] = "Non-woody"
+      #---~---
+
+
+      #---~---
+      #   In case some class has not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid  & ( IsWoody | IsSemiWoody | IsNonWoody ) )
       Value[! IsValid] = NA_character_
       #---~---
 
@@ -1974,6 +2885,18 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsAuthor        = AuthorName %in% c( "Adam Martin", "Fritz Schweingruber"
                                          , "Sabina Burrascano"
                                          )#end c
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Some authors provided multiple classifications. Retain only one of them.
+      #---~---
+      IsAuthor        = ( ( AuthorName %in% c( "William Cornwell") )
+                        & ( NameOrig   %in% c( "growth form (consensus)") )
+                        )#end IsAuthor
       Value[IsAuthor] = NA_character_
       Valid[IsAuthor] = FALSE
       VName[IsAuthor] = NA_character_
@@ -2035,6 +2958,18 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
 
 
+
+
+      #---~---
+      #   Data base uses "woody" instead of "tree". Switch it to remove ambiguity.
+      #---~---
+      IsAuthor      = ( ( AuthorName %in% "Gregoire Freschet" )
+                      & ( NameOrig   %in% "plant type"        ) )
+      IsTree        = IsAuthor & ( Value %in% c("woody deciduous","woody evergreen") )
+      Value[IsTree] = "tree"
+      #---~---
+
+
       #---~---
       #   Data base uses "woody" instead of "tree". Switch it to remove ambiguity.
       #---~---
@@ -2043,6 +2978,73 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsHerb        = IsAuthor & ( Value %in% c("angherb")        )
       Value[IsTree] = "tree"
       Value[IsHerb] = "herb"
+      #---~---
+
+
+      #---~---
+      #   Data base uses "free-standing" instead of "tree". Switch it to remove ambiguity.
+      #---~---
+      IsAuthor          = ( ( AuthorName %in% "William Cornwell" ) 
+                          & ( NameOrig %in% "growth form complete" ) )
+      IsTree            = IsAuthor & ( Value %in% c("free-standing") )
+      IsParasite        = IsAuthor & ( Value %in% c("holo-mycoheterotroph") )
+      Value[IsTree]     = "tree"
+      Value[IsParasite] = "parasite"
+      #---~---
+
+
+      #---~---
+      #   Data base sampled mostly forbs and grasses. Replace legumes with herbs so the
+      # information is not lost.
+      #---~---
+      IsAuthor      = ( ( AuthorName %in% "Justin Luong" ) 
+                      & ( NameOrig %in% "plant growth form" ) )
+      IsHerb        = IsAuthor & ( Value %in% c("annual legume", "perennial legume") )
+      Value[IsHerb] = "herb"
+      #---~---
+
+
+      #---~---
+      #   Simplify and standardise name in the data base.
+      #---~---
+      IsAuthor      = 
+         ( ( AuthorName %in% "Serge Sheremetev" ) 
+         & ( NameOrig %in% c("combined","ecological type","lf") ) )
+      IsAquatic     = IsAuthor & ( Value %in% c("a","ha","hydrophyte") )
+      IsEpiphyte    = IsAuthor & ( Value %in% c("epiphyte (e)") )
+      IsHerb        = IsAuthor & ( Value %in% c("h","herb (h)") )
+      IsLiana       = IsAuthor & ( Value %in% c("l","liana (l)") )
+      IsPalm        = IsAuthor & ( Value %in% c("p","palm (p)") )
+      IsShrub       = IsAuthor & ( Value %in% c("s","shrub (s)") )
+      IsTree        = IsAuthor & ( Value %in% c("t","tree (t)") )
+      IsXerophyte   = 
+         ( IsAuthor 
+         & ( Value %in% c( "c", "cacti (c)", "succulent", "succulent with kranz anatomy"
+                         , "xerophyte"
+                         )#end c
+           )#end Value
+         )#end IsAuthor
+      Discard       = 
+         ( IsAuthor
+         & ( Value %in% c( "epiphyte; liana (el)", "herb; liana (hl)", "herb; shrub (hs)"
+                         , "hl", "hs", "hsa", "hsl", "hslt", "hst", "hygrophyte"
+                         , "liana shrub; tree (lst)", "liana; shrub (ls)", "lt"
+                         , "mesophyte", "mesoxerophyte","sa","shrub; treee (st)"
+                         , "sl", "slt", "st", "tree; liana (tl)", "xeromesophyte"
+                         )#end c
+           )#end Value
+         )#end IsAuthor
+      Value[IsAquatic  ] = "aquatic"
+      Value[IsEpiphyte ] = "epiphyte"
+      Value[IsHerb     ] = "herb"
+      Value[IsLiana    ] = "liana"
+      Value[IsPalm     ] = "palm"
+      Value[IsShrub    ] = "shrub"
+      Value[IsTree     ] = "tree"
+      Value[IsXerophyte] = "xerophyte"
+      Value[Discard    ] = NA_character_
+      Valid[Discard    ] = FALSE
+      VName[Discard    ] = NA_character_
       #---~---
 
 
@@ -2156,39 +3158,42 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       Discard        = 
          ( (! grepl(pattern="[a-z]",x=Value,ignore.case=TRUE) )
-         | ( Value %in% c( "absence", "climber/succulent", "conifers"
-                         , "deciduous shrub or tree", "epiphyte; hemiepiphyte"
-                         , "epiphyte/succulent", "evergreen shrub or tree"
+         | ( Value %in% c( "absence", "angiosperm", "climber/succulent", "conifers"
+                         , "cushion forming", "deciduous shrub or tree"
+                         , "elongated; leaf-bearing rhizomatous"
+                         , "epiphyte; hemiepiphyte", "epiphyte/succulent"
+                         , "evergreen shrub or tree", "foliose lichen"
                          , "forb/herb; shrub; subshrub", "forb/herb; subshrub"
-                         , "gymnangioth", "herb|herb|shrub", "herb|herbaceous vine"
+                         , "fruticose lichen", "gymnangioth", "gymnosperm"
+                         , "herb|herb|shrub", "herb|herbaceous vine"
                          , "herb|liana/woody vine", "herb/shrub", "herb|shrub"
                          , "herb|shrub|herb", "herb|shrub|herbaceous vine"
                          , "herb|shrub|herbaceous vine|liana/woody vine", "herb|shrub|shrub"
                          , "herb|shrub|tree", "herb/shrub/tree", "herb/tree"
                          , "herbaceous or shrubby", "herbaceous vine|herb"
                          , "herbaceous vine|liana/woody vine", "herbaceous vine|shrub"
-                         , "hygrophyte", "legume", "liana/woody vine|herb"
-                         , "liana/woody vine|shrub", "lichen", "mesophyte", "mesoxerophyte"
-                         , "mycoheterotrophic", "nd", "no", "non-succulent", "nontree"
-                         , "not succulent", "sapling", "saplings", "seedlings"
-                         , "semi deciduous tree or shrub", "shrub / tree", "shrub | tree"
-                         , "shrub/climber", "shrub|herb", "shrub|herbaceous vine"
-                         , "shrub|herbaceous vine|liana/woody vine", "shrub/liana"
-                         , "shrub|liana/woody vine", "subshrub; shrub; forb/herb"
-                         , "subshrub; shrub; graminoid", "subshrub; shrub; tree"
-                         , "shrub|shrub|tree", "shrub|tree", "shrub/tree"
-                         , "shrub/tree/climber", "shrub/tree intermediate"
+                         , "hygrophyte", "legume", "legumes", "liana/woody vine|herb"
+                         , "liana/woody vine|shrub", "lichen", "mallee", "mesophyte"
+                         , "mesoxerophyte", "monocot", "mycoheterotrophic", "nd", "no"
+                         , "non-succulent", "nontree", "not succulent", "sapling"
+                         , "saplings", "seedlings", "semi deciduous tree or shrub"
+                         , "shrub / tree", "shrub | tree", "shrub/climber", "shrub|herb"
+                         , "shrub|herbaceous vine", "shrub|herbaceous vine|liana/woody vine"
+                         , "shrub/liana", "shrub|liana/woody vine"
+                         , "subshrub; shrub; forb/herb", "subshrub; shrub; graminoid"
+                         , "subshrub; shrub; tree", "shrub|shrub|tree", "shrub|tree"
+                         , "shrub/tree", "shrub/tree/climber", "shrub/tree intermediate"
                          , "shrub/tree/liana", "shrub/vine", "shrub; tree", "shrub; vine"
                          , "terrestrial", "tree | shrub", "tree shrub intermediate"
                          , "tree/large shrub", "tree/liana", "tree|liana/woody vine"
-                         , "tree|shrub", "tree/shrub", "tree/shrub/climber"
+                         , "tree|shrub", "tree/shrub", "tree-shrub", "tree/shrub/climber"
                          , "tree/shrub/climber/herb", "tree|shrub|shrub", "tree|shrub|tree"
                          , "tree|shrub|tree|shrub", "tree; shrub", "tree; shrub; subshrub"
                          , "tree; shrub; vine", "tree; subshrub; shrub", "t/s"
                          , "unclasified", "unspecified", "various", "vine/shrub"
                          , "vine; shrub", "vine; shrub; graminoid", "vine; subshrub"
-                         , "vine | tree", "woody", "woody legume", "woody plant"
-                         , "woody species", "xeromesophyte"
+                         , "vine | tree", "woody", "woody legume", "woody monocot"
+                         , "woody plant", "woody plants", "woody species", "xeromesophyte"
                          )#end c
            )#end Value
          )#end Discard
@@ -2205,8 +3210,9 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       IsAquatic     = 
          Value %in% c( "amphibiousubmerged", "aquatic", "aquatic forb", "aquatic/fern"
-                     , "aquatic/parasitic", "aquatic/succulent", "graminoid/aquatic"
-                     , "hydrophyte", "hydrophytes", "seagrass", "submerged"
+                     , "aquatic_herb", "aquatic/parasitic", "aquatic/succulent"
+                     , "graminoid/aquatic", "hydrophyte", "hydrophytes", "seagrass"
+                     , "submerged"
                      )#end c
       IsBamboo      = Value %in% c( "bamboo", "culm", "horsetail")
       IsCarnivorous = Value %in% c( "carnivore", "carnivorous")
@@ -2221,37 +3227,44 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "tree fern", "t (treefern)"
                      )#end c
       IsGrass       = 
-         Value %in% c( "annual", "annual forb", "annual grass", "annual herb", "c3 grass"
-                     , "c4 grass", "c3.sedges", "cereal", "crop", "crops", "forage grass"
-                     , "forb", "forb (herbaceous; with or without woody base)", "forb/herb"
-                     , "forbs", "g", "geop", "geophyte", "gram", "graminoid", "graminoids"
-                     , "graminoids tussock", "gras", "grass", "grass (clonal)"
+         Value %in% c( "annual", "annuals", "annual forb", "annual graminoid"
+                     , "annual grass", "annual herb", "bunchgrasses", "c3 grass"
+                     , "c4 grass", "c3.sedges", "cereal", "crop", "crops"
+                     , "extensive-stemmed herb", "forage grass", "forb"
+                     , "forb (herbaceous; with or without woody base)", "forb/herb"
+                     , "forbs", "frobs", "g", "geop", "geophyte", "gram", "graminoid"
+                     , "graminoids", "graminoids tussock", "gras", "grass", "grass (clonal)"
                      , "grass (poaceae only)", "grass (tussock)", "grasses&sedges"
                      , "grasslike", "h", "hemicryptophyte", "herb", "herb; graminoid"
-                     , "herb.", "herb/sub-shrub", "herbaceous", "herbaceous dicot"
+                     , "herb.", "herb/sub-shrub", "herbaceous", "herbaceous annual"
+                     , "herbaceous annual-biennial", "herbaceous dicot"
                      , "herbaceous dicots", "herbaceous forb", "herbaceous legume"
-                     , "herbaceous monocot", "herbaceous perennial", "herbs"
-                     , "leguminous forb", "lycopodiophyta", "pasture grass"
+                     , "herbaceous monocot", "herbaceous perennial", "herbaceous plant"
+                     , "herbs", "leguminous forb", "lycopodiophyta", "pasture grass"
                      , "perennial forb", "perennial graminoid", "perennial grass"
                      , "perennial grass/hemicryptophyte", "perennial herb"
                      , "perennial herb/hemicryptophyte", "perennial leguminous herb"
-                     , "prairie grass", "rus", "se", "sedge", "sub shrub and herb"
-                     , "subshrub; forb/herb", "variable forb", "variable grass", "weed"
-                     , "weed; sedge"
+                     , "prairie grass", "rhizome grass", "rus", "se", "seges", "sedge"
+                     , "sub shrub and herb", "subshrub; forb/herb", "variable forb"
+                     , "variable graminoid", "variable grass", "weed", "weed; sedge"
                      )#end c
       IsHemiepiphyte = 
-         Value %in% c( "hemi-epipjyte", "hemiepiphite", "hemiepiphyte", "hemiepiphytes")
+         Value %in% c( "hemi-epipjyte", "hemiepiphite", "hemiepiphyte", "hemiepiphytes"
+                     , "hemi-epiphyte"
+                     )#end c
       IsLiana        = 
          Value %in% c( "l", "lian", "liana", "liana - top", "liana/woody vine"
                      , "lianas (wody climbers)", "lianna", "tree (evergreen) liana"
+                     , "woody bine"
                      )#end c
       IsMoss         = 
          Value %in% c( "bryophyte", "club moss", "clubmoss", "cushion plant", "cushion"
-                     , "herb/moss", "mat forming", "moss"
+                     , "herb/moss", "mat forming", "mat-forming", "moss", "selaginella"
+                     , "turf moss"
                      )#end c
       IsPalm         = 
          Value %in% c( "p", "palm", "palm/tree", "palmoid", "tree/palmtree"
-                     , "understory palm"
+                     , "understory palm", "canopy_palm", "understory_palm"
                      )#end c
       IsParasite     = 
          Value %in% c( "climber/epiphyte/parasitic", "climber/parasitic"
@@ -2260,25 +3273,26 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      , "root parasite", "stem parasite"
                      )#end c
       IsShrub        = 
-         Value %in% c( "(shrub)", "chaemaephyte", "chaemaephyte | nano-chamaephyte"
-                     , "chaemaephyte | shrub", "drwarf shrub", "dwarf shrub"
-                     , "erect dwarf shrub", "erect dwarf shub", "large shrub"
+         Value %in% c( "arborescent shrubs", "arbusto", "(shrub)", "chaemaephyte"
+                     , "chaemaephyte | nano-chamaephyte", "chaemaephyte | shrub"
+                     , "dwarf semishrub", "drwarf shrub", "dwarf shrub", "erect dwarf shrub"
+                     , "erect dwarf shub", "evergreen dwarf shrub", "large shrub"
                      , "low to high shrub", "nano-chamaephyte", "prostrate dwarf shrub"
                      , "ps", "s", "scrub", "sh", "shru", "shrub", "shrub (chamaephyte)"
                      , "shrub (woody 1-4m)", "shrub | chaemaephyte"
                      , "shrub | nano-chamaephyte", "shrub; subshrub", "shrub or chamaephyt"
-                     , "shrub seedling", "shrubs", "shurb", "srub", "ss", "sub-shrub"
-                     , "sub-shrub (chamaephyte)", "subshrub", "subshrub/shrub"
-                     , "subshrub; shrub", "subshrub (woody <1m)", "suffrutescent"
-                     , "woody shrub"
+                     , "shrub seedling", "shrubs", "shrubs and sub-shrubs", "shurb", "srub"
+                     , "ss", "sub-shrub", "sub-shrub (chamaephyte)", "subshrub", "subshurb"
+                     , "subshrub/shrub", "subshrub; shrub", "subshrub (woody <1m)"
+                     , "suffrutescent", "woody shrub"
                      )#end c
       IsTree         = 
-         Value %in% c( "a", "canopy tree", "macrophyte", "mid canopy", "mid.canopy.tree"
-                     , "savanna", "small tree", "smtree", "t", "top canopy"
-                     , "top.canopy.tree", "tre", "tree", "tree (woody >4m)"
-                     , "tree (deciduous)", "tree (evergreen)", "tree-like", "tree | tree"
-                     , "trees", "understory", "understory tree", "woody deciduous"
-                     , "woody evergreen"
+         Value %in% c( "a", "arbol", "canopy tree", "macrophyte", "mid canopy"
+                     , "mid.canopy.tree", "savanna", "small tree", "smtree", "t"
+                     , "top canopy", "top.canopy.tree", "tre", "tree", "tree crop"
+                     , "tree (woody >4m)", "tree (deciduous)", "tree (evergreen)"
+                     , "tree-like", "tree | tree", "trees", "understory", "understory tree"
+                     , "canopy_tree", "midtree", "treelet"
                      )#end c
       IsVine         = 
          Value %in% c( "c", "c+sc", "chaemaephyte | vine", "climber", "climber or creeper"
@@ -2288,9 +3302,9 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                      )#end c
       IsXerophyte    = 
          Value %in% c( "cact", "cactus", "desert sub-shrubs", "rosette", "rosette forb"
-                     , "succulent", "succulent | annual", "succulent | tree"
-                     , "succulent leaves", "succulent stems", "succulent with kranz anatomy"
-                     , "xerophyte"
+                     , "rosette plant", "succulent", "succulent | annual"
+                     , "succulent | tree", "succulent leaves", "succulent stems"
+                     , "succulent with kranz anatomy", "xerophyte"
                      )#end c
       #---~---
 
@@ -2332,16 +3346,27 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
 
 
-
    }else if (TraitID %in% c(95L)){
       #---~---
       #   Seed germination rate (germination efficiency)
       #---~---
 
       #--- Make sure all data have the same units (%).
-      fr_sel        = UnitOrig %in% c("dimensionless")
+      fr_sel        = UnitOrig %in% c("dimensionless","ratio")
       pc_sel        = UnitOrig %in% c("%","percent")
       Value[fr_sel] = as.character(frac2pc * as.numeric(Value[fr_sel]))
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( fr_sel | pc_sel )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
       #---~---
 
    }else if (TraitID %in% c(146L,151L,167L)){
@@ -2355,12 +3380,26 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
       #--- Make sure all data have the same units (kgC/kgN or kgC/kgP).
-      gNogC_sel        = UnitOrig %in% c("g(N)/g(C)")
-      bad_sel          = UnitOrig %in% c("text")
-      Value[gNogC_sel] = as.character(1. / as.numeric(Value[gNogC_sel]))
-      Value[bad_sel  ] = NA_character_
-      Valid[bad_sel  ] = FALSE
-      VName[bad_sel  ] = NA_character_
+      kgCokgX_sel        = 
+         UnitOrig %in% c("% / %","%/%","unitless","ratio","g/g","Ratio","mg/mg","%C/%N"
+                        , "kg C per kg N","g*g-1")
+      kgXokgC_sel        = UnitOrig %in% c("g(N)/g(C)")
+      bad_sel            = UnitOrig %in% c("text")
+      Value[kgCokgX_sel] = as.character(1. * as.numeric(Value[kgCokgX_sel]))
+      Value[kgXokgC_sel] = as.character(1. / as.numeric(Value[kgXokgC_sel]))
+      Value[bad_sel    ] = NA_character_
+      Valid[bad_sel    ] = FALSE
+      VName[bad_sel    ] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & ( kgCokgX_sel | kgXokgC_sel )
+      Value[! IsValid] = NA_character_
       #---~---
 
    }else if(TraitID %in% c(171L)){
@@ -2397,7 +3436,9 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                        )#end Maurizio Mencuccini
                      )#end m2locm2s_sel
       m2som2l_sel  = ( AuthorName %in% "Steven Jansen") & ( NameOrig %in% "huber value" )
-      cm2som2l_sel = UnitOrig %in% c("m2sapwood m-2leaf x 10-4")
+      cm2som2l_sel = ( ( UnitOrig %in% c("m2sapwood m-2leaf x 10-4") )
+                     | ( ( NameOrig %in% "huber value: hv" ) & ( UnitOrig %in% "cm2 m-2" ) )
+                     )#end cm2som2l_sel
       #---~---
 
 
@@ -2494,21 +3535,44 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
       #---~---
+      #   Some authors used multiple PFT classification systems for the same observation.
+      # We keep only one of them for the record to avoid redundancies or inconsistencies.
+      #---~---
+      IsTMI = 
+         ( ( AuthorName %in% "Owen Atkin" )
+         & ( NameOrig   %in% c("pft_exeter","pft_jules","pft_jules2","pft_lpj"
+                              ,"pft_sheffield")                                  )
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      IsTMI = 
+         ( ( AuthorName %in% "Ian Wright" )
+         & ( NameOrig   %in% c("bgc1", "bgc2", "sheff1", "sheff2", "sheff3") )
+         )#end IsTMI
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+
+
+      #---~---
       #   Discard non-informative classes and those without any text.
       #---~---
+      IsBad          =
+         Value %in% c( "arctic", "climax", "early secondary", "forb", "grass"
+                     , "late secondary", "legume", "maturephase tree", "na"
+                     , "pioneer shrub", "pioneer tree", "understorey shrub"
+                     , "understorey tree", "vine", "xero-mesophyte", "xerophyte"
+                     )#end c
       Discard        = ( ! grepl(pattern="[a-z]",x=Value,ignore.case=TRUE)
-                       | ( Value %in% c( "climax", "early secondary", "late secondary"
-                                       , "xero-mesophyte", "xerophyte", "blt", "dcbl"
-                                       , "dcnl", "evbl", "evnl", "nlt", "s", "tmph"
-                                       , "trph"
-                                       )#end c
-
-
-                         )#end Value
+                       | IsBad
                        )#end Discard
       Value[Discard] = NA_character_
       Valid[Discard] = FALSE
-      VName[Discard] = NA_character_
+      VName[Discard] = NA_character_   
       #---~---
 
 
@@ -2517,24 +3581,25 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       # distinguish broadleaf trees between tropical, temperate, boreal/austral, we
       # do not assign biomes to them, instead simply assign evergreen and deciduous
       #---~---
-      IsBLDeTree = Value %in% c( "bldctmp", "bldctrp", "bordcbl", "boreal deciduous"
-                               , "broadleaved deciduous", "c3_broadleaf_deciduous trees"
-                               , "da", "deciduous broadleaf", "temperate deciduous"
-                               , "savanna", "savanna deciduous"
-                               , "temperate evergreen legume", "tmpdcbl", "trpdcbl"
-                               , "andcblt", "dcblt", "gydcblt", "tdb"
+      IsBLDeTree = Value %in% c( "andcblt", "bdt_te", "bldctmp", "bldctrp", "bordcbl"
+                               , "boreal deciduous", "broadleaved deciduous"
+                               , "c3_broadleaf_deciduous trees", "da", "dcblt"
+                               , "deciduous broadleaf", "gydcblt", "savanna"
+                               , "savanna deciduous", "tdb", "temperate deciduous"
+                               , "tmpdcbl", "trpdcbl"
                                )#end c
-      IsBLEvTree = Value %in% c( "blevtmp", "blevtrp", "borevbl", "broadleaved evergreen"
-                               , "ea", "eg", "evergreen broadleaf", "rainforest"
-                               , "semi-arid evergreen", "temperate evergreen"
-                               , "savanna evergreen", "tmpevbl", "trpevbl"
-                               , "anevblt", "evblt", "gyevblt","seb", "teb"
+      IsBLEvTree = Value %in% c( "anevblt", "bet_te", "bet_tr", "blevtmp", "blevtrp"
+                               , "borevbl", "broadleaved evergreen", "ea", "eg"
+                               , "evergreen broadleaf", "evblt", "gyevblt", "rainforest"
+                               , "savanna evergreen", "semi-arid evergreen","seb"
+                               , "teb", "temperate evergreen", "temperate evergreen legume"
+                               , "tmpevbl", "trpevbl"
                                )#end c
-      IsNLDeTree = Value %in% c( "bordcnl", "dg", "dcnlt", "gydcnlt", "tdn"
+      IsNLDeTree = Value %in% c( "bordcnl", "dg", "dcnlt", "gydcnlt", "tmpevnl", "tdn"
                                )#end c
       IsNLEvTree = Value %in% c( "boreal conifer", "borevnl", "c3_needle_evergreen trees"
-                               , "nlev", "sub-alpine conifer", "temperate conifer"
-                               , "tmpevnl", "gyevnlt","evnlt", "ten"
+                               , "net_b", "net_te", "nlev", "sub-alpine conifer"
+                               , "temperate conifer", "tmpevnl", "gyevnlt","evnlt", "ten"
                                )#end c
       IsC3Grass  = Value %in% c( "c3 grass", "c3 grassland", "crop c3", "esophyte", "gc3"
                                , "mountain grassland", "c3h", "herb; c3; agricultural"
@@ -2790,6 +3855,24 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
 
 
+
+
+      #---~---
+      #   Expand single-letter codes to reduce ambiguity.
+      #---~---
+      IsAuthor              = ( ( AuthorName %in% "Valerie Raevel" ) 
+                              & ( NameOrig %in% "life form" ) )
+      IsTherophyte          = IsAuthor & ( Value %in% c("t") )
+      IsChamaephyte         = IsAuthor & ( Value %in% c("c") )
+      IsGeophyte            = IsAuthor & ( Value %in% c("h") )
+      IsPhanerophyte        = IsAuthor & ( Value %in% c("p") )
+      Value[IsTherophyte  ] = "therophyte"
+      Value[IsChamaephyte ] = "chamaephyte"
+      Value[IsGeophyte    ] = "geophyte"
+      Value[IsPhanerophyte] = "phanerophyte"
+      #---~---
+
+
       #---~---
       #   Discard non-informative classes and those without any text.
       #---~---
@@ -2807,20 +3890,26 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                          , "always macrophanerophyte; always nanophanerophyte"
                          , "always macrophanerophyte; sometimes nanophanerophyte"
                          , "always pseudophanerophyte", "ch-h", "chamaephyte/phanerophyte"
-                         , "chamephyte/hemicryptophyte", "cryptophyte", "g (h)", "g (hh)"
-                         , "g(hh)", "h", "h (ch)", "h (g)", "h (hh)", "h-ch", "h(ch)"
-                         , "h(g)", "h(hh)", "hemicryptophyte/chamaephyte"
-                         , "hemicryptophyte/phanerophyte", "hh", "ht", "ht-h", "ht-t"
+                         , "chamaephyte (nano-phanerophyte)", "chamaephyte (therophyte)"
+                         , "chamephyte/hemicryptophyte", "cryptophyte", "false", "g (h)"
+                         , "g (hh)", "g(hh)", "geophyte (hemicryptophyte)", "h", "h (ch)"
+                         , "h (g)", "h (hh)", "h-ch", "h(ch)", "h(g)", "h(hh)"
+                         , "hemicryptophyte/chamaephyte", "hemicryptophyte/phanerophyte"
+                         , "hemicryptophyte (therophyte)", "hh", "ht", "ht-h", "ht-t"
                          , "hydrophyte/geophyte", "hydrophyte/geophyte/hemicryptophyte"
-                         , "hz", "liana", "mega- meso- and micro- phanerophyte"
+                         , "hz", "liana", "macro-phanerophyte (nano-phanerophyte)"
+                         , "mega- meso- and micro- phanerophyte"
                          , "mega-; meso- and microphanerophyte"
-                         , "multiple apical growth ponits", "n.a.", "no", "np", "p", "ph"
+                         , "multiple apical growth ponits", "n.a."
+                         , "nano-phanerophyte (macro-phanerophyte)", "no", "np", "p", "ph"
                          , "phanerophyte", "phanerophyte (mega-;meso-; nano-)"
                          , "phanerophytes", "shrub", "single basal growth point"
                          , "sometimes chamaephyte; always hemicryptophyte"
                          , "species that represent single apical or multiple apical", "t"
                          , "t-ch", "t-h", "t-h(hh)", "t-ht", "t-th", "t; ht", "t; ht; h"
-                         , "tree", "vascular parasite", "vascular semi-parasite", "yes"
+                         , "therophyte (chamaephyte)", "therophyte (hemicryptophyte)"
+                         , "tree", "true", "vascular parasite", "vascular semi-parasite"
+                         , "yes"
                          )#end c
            )#end Value
          )#end Discard
@@ -2828,7 +3917,6 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Valid[Discard] = FALSE
       VName[Discard] = NA_character_
       #---~---
-
 
       #---~---
       #   Reduce the number of classes. Keep the main classes for most types, but
@@ -2868,7 +3956,8 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                                         , "perennial hydrophyte (perennial water plant)"
                                         , "therophyte/hydrophyte"
                                         )#end c
-      IsMegaphanerophyte  = Value %in% c( "always macrophanerophyte", "megaphanerophyte")
+      IsMegaphanerophyte  = Value %in% c( "always macrophanerophyte", "macro-phanerophyte"
+                                        , "megaphanerophyte")
       IsMesophanerophyte  = Value %in% c( "always hemiphanerophyte"
                                         , "deciduous meso-phanerophytes"
                                         , "evergreen meso-phanerophytes"
@@ -2877,6 +3966,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsMicrophanerophyte = Value %in% c( "micro-phanerophytes")
       IsNanophanerophyte  = Value %in% c( "always nanophanerophyte", "nanophanerophyt"
                                         , "nanophanerophyte", "nanophanerophyte (shrub)"
+                                        , "nano-phanerophyte"
                                         )#end c
       IsTherophyte        = Value %in% c( "always chamaephyte; always therophyte"
                                         , "always hemicryptophyte; always therophyte"
@@ -2951,6 +4041,18 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
 
 
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( umolomol_sel | pa_sel )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
    }else if(TraitID %in% c(596L)){
       #---~---
       #   Seed germination requirement
@@ -3010,6 +4112,28 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
                    & ( Value    %in% "yes"                          )
                    )#end IsChilling
       Value[IsChilling] = "chilling"
+      #---~---
+      #   Dominik Thom uses yes/no system for serotiny, and number of days since last
+      # time the plant experienced temperatures below 5 degC
+      #---~---
+      IsAuthor     = AuthorName %in% "Dominik Thom"
+      IsSerotinous = ( IsAuthor
+                     & ( NameOrig %in% "serotiny"        )
+                     & ( Value    %in% c("yes","partly") )
+                     )#end IsSerotinous
+      IsChilling   = ( IsAuthor
+                     & ( NameOrig          %in% "seed chill requirement" )
+                     & ( as.numeric(Value) %ge% 30                       )
+                     )#end IsChilling
+      Discard      = ( IsAuthor
+                     & ( NameOrig %in% "serotiny" )
+                     & ( Value    %in% c("no")    )
+                     )#end IsSerotinous
+      Value[IsSerotinous] = "fire"
+      Value[IsChilling  ] = "chilling"
+      Value[Discard     ] = NA_character_
+      Valid[Discard     ] = FALSE
+      VName[Discard     ] = NA_character_
       #---~---
 
 
@@ -3122,6 +4246,18 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
 
 
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = ( Valid
+                         & ( fr_sel | pc_sel )
+                         )#end IsValid
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
    }else if(TraitID %in% c(711L)){
       #---~---
       #   Leaf water capacitance
@@ -3129,23 +4265,48 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
       #---~---
-      #   Discard data that are not in absolute units.
+      #   Adam Roddy. They provided the data in multiple units, and also capacitance 
+      # after turgor loss. Discard those.
+      #---~---
+      IsAuthor = 
+         ( ( AuthorName %in% "Adam Roddy" )
+         & ( NameOrig   %in% c( "leaf capacitance after turgor loss"
+                              , "leaf capacitance after turgor loss per dry mass"
+                              , "leaf capacitance before turgor loss per dry mass"
+                              )#end c
+           )#end NameOrig
+         )#end IsAuthor
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Lawren Sack. Keep only the capacitance at full turgor.
       #---~---
       IsAuthor = ( ( AuthorName %in% "Lawren Sack" )
-                 & ( NameOrig   %in% "capacitance at full turgor" )
+                 & ( NameOrig   %in% "leaf absolute capacitance per leaf area" )
                  )#end IsAuthor
       Value[IsAuthor] = NA_character_
       Valid[IsAuthor] = FALSE
       VName[IsAuthor] = NA_character_
       #---~---
 
-      #--- Make sure all data have the same units (%).
-      fr_sel        = UnitOrig %in% c("dimensionless","g/g")
-      pc_sel        = UnitOrig %in% c("%","percent","g/100g")
-      Value[fr_sel] = as.character(frac2pc * (as.numeric(Value[fr_sel])))
+      #--- Make sure all data have the same units (MPa-1).
+      oneompa_sel        = UnitOrig %in% c("1/MPa","MPa-1")
       #---~---
 
-   }else if(TraitID %in% c(719L)){
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & oneompa_sel
+      Value[! IsValid] = NA_character_
+      #---~---
+
+   }else if(TraitID %in% c(719L,3479L)){
       #---~---
       #   Xylem hydraulic vulnerability; xylem cavitation vulnerability; 
       # embolism vulnerability; (P20; P50; P80)
@@ -3157,6 +4318,39 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       IsTMI = NameOrig %in% c( "safety margin (mpa)"
                              , "dh mean hydraulic diameter (?m)"
+                             , "embolism resistance"
+                             , "p50 safety margin"
+                             , "p88 safety margin"
+                             , "pmin midday (mpa)"
+                             , "pmin midday leaf"
+                             , "pmin midday stem"
+                             , "pmin predawn (mpa)"
+                             , "slope"
+                             , "vulnerability index sensu carlquist (vessel diamter / vessel frequency)"
+                             , "vi vulnerabiltiy index"
+                             , "vulnerability index (unitless): vi"
+                             , "mean ?50 (f only) (mpa)"
+                             , "shape parameter for the vulnerability curve; a"
+                             , "reference as reported by choat et al. 2012 for their data"
+                             , "references for global mean data"
+                             )#end c
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Ignore vulnerability curves (we may be able to recover them later).
+      #---~---
+      IsAuthor = AuthorName %in% "Stefano Manzoni"
+      IsTMI    = 
+         ( IsAuthor
+         & ( NameOrig %in% c("fraction of remaining conductivity", "psi (-mpa)") )
+         )#end IsTMI
+      IsTMI = NameOrig %in% c( "safety margin (mpa)"
+                             , "dh mean hydraulic diameter (?m)"
+                             , "embolism resistance"
                              , "p50 safety margin"
                              , "p88 safety margin"
                              , "pmin midday (mpa)"
@@ -3255,6 +4449,16 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
 
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & MPa_sel
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
+
    }else if(TraitID %in% c(748L)){
       #---~---
       #   Leaf hydraulic conductance
@@ -3281,6 +4485,16 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       mmolom2osompa_sel  = UnitOrig %in% c("mmol m-2 s-1 MPa-1")
       #---~---
 
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & mmolom2osompa_sel
+      Value[! IsValid] = NA_character_
+      #---~---
+
    }else if(TraitID %in% c(752L)){
       #---~---
       #   Plant hydraulic conductance
@@ -3305,6 +4519,17 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[gosompa_sel] = as.character( mmh2oi * g2kg * as.numeric(Value[gosompa_sel]) )
       #---~---
 
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = 
+         Valid & ( molosompa_sel | gosompa_sel )
+      Value[! IsValid] = NA_character_
+      #---~---
+
    }else if(TraitID %in% c(785L,809L,1181L)){
       #---~---
       #   Root dry mass per root fresh mass (root dry matter content; RDMC)
@@ -3312,14 +4537,45 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #   Stem dry mass per stem fresh mass (stem dry matter content; StDMC)
       #---~---
 
+      #--- Initialise molar mass vector for data sets that report ratio in mols.
+      mmcomp = rep(NA_real_,times=length(Value))
+      #---~---
+
+
+      #---~---
+      #   Rob Salguero-Gomez, convert carotenoid molar content to mass.
+      #---~---
+      IsAuthor         = ( ( TraitID    %in% 809L) 
+                         & ( AuthorName %in% "Rob Salguero-Gomez")
+                         & ( NameOrig   %in% "total carotenoids" )
+                         )#end IsAuthor
+      mmcomp[IsAuthor] = mmcarot
+      #---~---
+
+
+
       #--- Make sure all data have the same units (mg/g).
-      ugog_sel        = UnitOrig %in% c("micro g / g","micro g/g")
-      mgog_sel        = UnitOrig %in% c("mg/g","mg g-1")
-      gog_sel         = UnitOrig %in% c("g/g","g*g-1")
-      pc_sel          = UnitOrig %in% c("Root DM/FM %")
-      Value[ugog_sel] = as.character(ug2mg          * as.numeric(Value[ugog_sel]))
-      Value[gog_sel ] = as.character(g2mg           * as.numeric(Value[gog_sel ]))
-      Value[pc_sel  ] = as.character(pc2frac * g2mg * as.numeric(Value[pc_sel  ]))
+      umolog_sel        = UnitOrig %in% c("umol/gDW")
+      ugog_sel          = UnitOrig %in% c("micro g / g","micro g/g")
+      mgog_sel          = UnitOrig %in% c("mg/g","mg g-1")
+      gog_sel           = UnitOrig %in% c("g/g","g*g-1","mg/mg")
+      pc_sel            = UnitOrig %in% c("Root DM/FM %")
+      Value[umolog_sel] = as.character(mmcomp * mg2kg * mol.2.umol
+                                                      * as.numeric(Value[umolog_sel]))
+      Value[ugog_sel  ] = as.character(ug2mg          * as.numeric(Value[ugog_sel  ]))
+      Value[gog_sel   ] = as.character(g2mg           * as.numeric(Value[gog_sel   ]))
+      Value[pc_sel    ] = as.character(pc2frac * g2mg * as.numeric(Value[pc_sel    ]))
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = 
+         Valid & ( umolog_sel | ugog_sel | mgog_sel | gog_sel | pc_sel )
+      Value[! IsValid] = NA_character_
       #---~---
 
 
@@ -3414,6 +4670,33 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[IsNonResprouter] = "non-resprouter"
       Value[IsResprouter   ] = "resprouter"
       #---~---
+      #   Vasco Silva uses yes/no system for resprouting
+      #---~---
+      IsAuthor             = 
+         ( ( AuthorName %in% "Vasco Silva" )
+         & ( NameOrig %in% c( "resprouting capacity after fire"
+                            , "resprouting cpcity fter fire"
+                            )#end c
+           )#end NameOrig
+         )#end IsAuthor
+      IsNonResprouter        = IsAuthor & ( Value %in% c("no" ) )
+      IsResprouter           = IsAuthor & ( Value %in% c("yes") )
+      Value[IsNonResprouter] = "non-resprouter"
+      Value[IsResprouter   ] = "resprouter"
+      #---~---
+      #   Dominik Thom uses high/moderate/low/no systems for resprouting
+      #---~---
+      IsAuthor             = 
+         ( ( AuthorName %in% "Dominik Thom" )
+         & ( NameOrig   %in% c("resprouting ability") )
+         )#end IsAuthor
+      IsNonResprouter        = IsAuthor & ( Value %in% c("none"           ) )
+      IsLowResprouter        = IsAuthor & ( Value %in% c("low"            ) )
+      IsResprouter           = IsAuthor & ( Value %in% c("moderate","high") )
+      Value[IsNonResprouter] = "non-resprouter"
+      Value[IsLowResprouter] = "limited resprouting"
+      Value[IsResprouter   ] = "resprouter"
+      #---~---
 
 
       #---~---
@@ -3458,11 +4741,11 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       IsNonResprouter = Value %in% c( "fire-killed"
                                     , "killed by 100% scorch; no seed storage in area"
-                                    , "killed by fire", "non-resprouter", "not resprouting"
-                                    , "not resprouting after defoliation"
+                                    , "killed by fire", "nonresprouter", "non-resprouter"
+                                    , "not resprouting", "not resprouting after defoliation"
                                     )#end c
       IsLowResprouter = Value %in% c( "limited resprouting")
-      IsAerial        = Value %in% c( "epicormic sprouting", "resprouter (e)"
+      IsAerial        = Value %in% c( "epicormic sprouting", "epicormic", "resprouter (e)"
                                     , "survives 100% scorch; resprouts from epicormic shoots"
                                     , "survives 100% scorch; resprouts from epicormic shoots & survives 100% scorch; outgrowth of apic ..."
                                     , "survives 100% scorch; resprouts from epicormic shoots & survives 100% scorch; resprout location ..."
@@ -3532,11 +4815,16 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       # standardised climate in ancillary variable "Vegetation type / Biome", use that 
       # one instead).
       #---~---
-      IsTMI = ( ( AuthorName %in% "Johannes Cornelissen"   )
+      IsTMI = ( ( AuthorName %in% "Alessandro Bricca"      )
+              | ( AuthorName %in% "Johannes Cornelissen"   )
               | ( AuthorName %in% "Will Cornwell"          )
               | ( AuthorName %in% "Joseph Craine"          )
+              | ( AuthorName %in% "nicolas fanin"          )
+              | ( AuthorName %in% "Gregoire Freschet"      )
               | ( AuthorName %in% "Colleen Iversen"        )
+              | ( AuthorName %in% "Pengcheng He"           )
               | ( AuthorName %in% "Jens Kattge"            )
+              | ( AuthorName %in% "Yuanzhi Li"             )
               | ( AuthorName %in% "Patrick Meir"           )
               | ( AuthorName %in% "Peter Reich"            )
               | ( AuthorName %in% "Nadejda Soudzilovskaia" )
@@ -3559,8 +4847,8 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsBWh = Value %in% c( "bwh")
       IsBWk = Value %in% c( "bwk")
       IsBSh = Value %in% c( "bsh")
-      IsBSk = Value %in% c( "bsk")
-      IsCsa = Value %in% c( "csa")
+      IsBSk = Value %in% c( "bsk", "arid steppe cold")
+      IsCsa = Value %in% c( "csa", "mediterranean: mild with dry; hot summer")
       IsCsb = Value %in% c( "csb")
       IsCsc = Value %in% c( "csc")
       IsCwa = Value %in% c( "cwa")
@@ -3585,7 +4873,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsDfb = Value %in% c( "dfb")
       IsDfc = Value %in% c( "dfc")
       IsDfd = Value %in% c( "dfd")
-      IsET  = Value %in% c( "et" )
+      IsET  = Value %in% c( "et" , "tundra")
       IsEF  = Value %in% c( "ef" )
       #---~---
 
@@ -3693,7 +4981,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[! IsValid] = NA_character_
       #---~---
 
-   }#end if (TraitID %in% c(6L,21L,46L,773L,1777L,2545L,3106L,3107L))
+   }#end if (TraitID %in% c(6L,18L,21L,46L,773L,1777L,2545L,3106L,3107L))
    #---~---
 
 
@@ -3790,9 +5078,12 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    #---~---
    #   Some entries have odd characters.
    #---~---
-   Value = gsub(pattern="\x92",replacement="'",Value)
-   Value = gsub(pattern="\x96",replacement="-",Value)
-   Value = gsub(pattern="\xa0",replacement="" ,Value)
+   Value = gsub(pattern="\u0092",replacement="'",x=Value)
+   Value = gsub(pattern="\u0096",replacement="-",x=Value)
+   Value = gsub(pattern="\u00a0",replacement="" ,x=Value)
+   Value = gsub(pattern="<92>"  ,replacement="'",x=Value)
+   Value = gsub(pattern="<96>"  ,replacement="-",x=Value)
+   Value = gsub(pattern="<a0>"  ,replacement="" ,x=Value)
    #---~---
 
 
@@ -3953,13 +5244,12 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
          sort_uniq = function(x) sort(unique(x))
          nl_table  = function(x) tabulate(factor(x=x,levels=sort_uniq(x)))
          UniqName = 
-            UniqName                                                   %>%
-            group_by(NameOrig)                                         %>%
-            summarise( AuthorName = commonest(AuthorName,na.rm=TRUE)
-                     , CntUnit    = nl_table (UnitOrig)
-                     , UnitOrig   = sort_uniq(UnitOrig)              ) %>%
-            ungroup()                                                  %>%
-            select(AuthorName,NameOrig,UnitOrig,CntUnit)
+            UniqName                                                 %>%
+            group_by(NameOrig)                                       %>%
+            reframe( AuthorName = commonest(AuthorName,na.rm=TRUE)
+                   , CntUnit    = nl_table (UnitOrig)
+                   , UnitOrig   = sort_uniq(UnitOrig)              ) %>%
+            select(c("AuthorName","NameOrig","UnitOrig","CntUnit"))
          #---~---
 
 
@@ -4024,14 +5314,13 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
          #---~---
          sort_uniq = function(x) sort(unique(x))
          nl_table  = function(x) tabulate(factor(x=x,levels=sort_uniq(x)))
-         UniqName = 
+         UniqName  = 
             UniqName                                                   %>%
             group_by(NameOrig)                                         %>%
-            summarise( AuthorName = commonest(AuthorName,na.rm=TRUE)
-                     , CntValue   = nl_table (Value)
-                     , Value      = sort_uniq(Value)                 ) %>%
-            ungroup()                                                  %>%
-            select(AuthorName,NameOrig,Value,CntValue)
+            reframe( AuthorName = commonest(AuthorName,na.rm=TRUE)
+                   , CntValue   = nl_table (Value)
+                   , Value      = sort_uniq(Value)                   ) %>%
+            select(c("AuthorName","NameOrig","Value","CntValue"))
          #---~---
 
 
@@ -4065,8 +5354,15 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
 
 
-      #--- Remove spurious characters.
+      #---~---
+      #   Many authors provide non-standard dates, date range, or season information without
+      # providing dates.  We seek to standardise the dates to the extent possible (assuming that
+      # time of year is more critical than the exact date or exact year). But these cases, we 
+      # assign a specific time to keep the most critical information. In some cases, the 
+      # information is too generic and we really cannot use it, so we replace the dates with NA.
+      #---~---
       tmi_info = tidyr::tribble( ~replace     , ~pattern
+                               , NA_character_, "12/02/XX"
                                , NA_character_, "1966/67"
                                , NA_character_, "1980/81"
                                , NA_character_, "spet. 1981/April 1982"
@@ -4076,6 +5372,13 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                , NA_character_, "Jan2005 to Aug2006"
                                , NA_character_, "2006; pre-monsoon"
                                , NA_character_, "nov-dec 2007 and 2009; april-may 2009"
+                               , "1901-05-26" , "510"
+                               , "1904-01-19" , "1478"
+                               , "1907-01-11" , "2566"
+                               , "1907-01-12" , "2567"
+                               , "1913-09-10" , "5000"
+                               , "1915-01-02" , "5479"
+                               , "1918-12-06" , "6913"
                                , "1974-05-31" , "May-June 1974"
                                , "1974-08-15" , "May-Nov. 1974"
                                , "1983-07-01" , "juni-juli 1983"
@@ -4101,6 +5404,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                , "2003-08-15" , "july; aug. 2002; july; aug.; sept. 2003"
                                , "2004-05-01" , "April may 2004"
                                , "2005-06-21" , "spring/summer 2005"
+                               , "2005-08-06" , "Summer 2015"
+                               , "2005-08-06" , "summer 2015"
                                , "2006-07-16" , "june; july august  2005 and 2006"
                                , "2006-07-31" , "July-August; 2005-2007"
                                , "2006-08-06" , "summer 2006-2007"
@@ -4128,8 +5433,19 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                , "2013-07-16" , "May to August of 2012; May to September of 2013"
                                , "2013-06-10" , "2/06/2013-18/06/2013"
                                , "2014-11-02" , "02/112014"
+                               , "2015-07-01" , "May-August 2014/2015"
+                               , "2015-07-01" , "2014-2015 growing seasons"
                                , "2015-12-16" , "November 2015- January 2016"
+                               , "2015-12-18" , "2015-12-17/2015-12-20"
+                               , "2016-06-08" , "26/05/2016 - 21/06/2016"
+                               , "2016-06-22" , "08/06/2016- 05/07/2016"
                                , "2016-07-21" , "June-July 2016"
+                               , "2016-07-22" , "11/07/2016 - 03/08/2016"
+                               , "2016-08-08" , "21/07/2016 - 26/08/2016"
+                               , "2017-08-06" , "summer 2017"
+                               , "2017-07-16" , "2016/17"
+                               , "2018-08-06" , "summer 2018"
+                               , "2019-04-17" , "13-21.04.2019"
                                , "2099-07-22" , "19-25 July"
                                , "2099-09-28" , "Sept - Oct."
                                )#end tidyr::tribble
@@ -4194,11 +5510,15 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
       IsAuthor        = AuthorName %in% c( "Daniel Hornstein"
                                          , "Jeffrey Chambers"
+                                         , "Maowei Liang"
                                          , "Yan-Shih Lin"
                                          , "Emily Rollinson"
+                                         , "Christian Rossi"
+                                         , "Rob Salguero-Gomez"
                                          , "Michael Scherer-Lorenzen"
                                          , "Frank Schurr"
                                          , "Fritz Schweingruber"
+                                         , "Ruben Tarifa"
                                          , "Fons van der Plas"
                                          )#end c
       Value[IsAuthor] = gsub(pattern=";"     ,replacement="-",x=Value[IsAuthor])
@@ -4245,7 +5565,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
       #   Standardise separators to be dashes instead of slashes.
       #---~---
-      Value = gsub(pattern="\\/",replacement="-",x=Value)
+      Value = gsub(pattern="\\/\\/",replacement="-",x=Value)
+      Value = gsub(pattern="\\/"   ,replacement="-",x=Value)
       #---~---
 
 
@@ -4318,6 +5639,24 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                          )#end gsub
       #---~---
 
+
+      #---~---
+      #   Remove remarks of uncertainty.
+      #---~---
+      IsAuthor        = AuthorName %in% c( "David Tng")
+      Value[IsAuthor] = gsub( pattern     = "^about\\ "
+                            , replacement = ""
+                            , x           = Value[IsAuthor]
+                            , ignore.case = TRUE
+                            )#end gsub
+      #---~---
+
+
+      #---~---
+      #   Remove semi-colons following numbers (e.g., June 15; 2023)
+      #---~---
+      Value = gsub(pattern="(^.*[0-9]);",replacement="\\1",x=Value)
+      #---~---
 
       #---~---
       #   Remove month names and qualitative text.
@@ -4397,7 +5736,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    #   Coordinates
    AncilCoord      = DataID %in% c(59L,60L,4704L,4705L,4706L,4707L)
    #   Temperature
-   AncilTemp       = DataID %in% c(62L,1665L,1666L,6932L,6936L,6692L,6693L)
+   AncilTemp       = DataID %in% c(62L,1665L,1666L,6692L,6693L,6932L,6936L)
    #   Water flux (precipitation, PET, etc).
    AncilWater      = DataID %in% c(80L,92L)
    #   CO2 variables.
@@ -4412,7 +5751,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    AncilDate       = DataID %in% c(212L,241L,595L,696L,6601L)
    #   Time (elapsed time)
    AncilTime       = DataID %in% c(413L,1414L,1832L,3031L,3885L,4696L)
-   #   Raditation
+   #   Radiation
    AncilRad        = DataID %in% c( 321L,340L)
    #   Relative humidity
    AncilHumid      = DataID %in% c(326L)
@@ -4455,11 +5794,46 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    }else if (AncilTemp){
       #---~---
       #   Air temperature during measurement (Tair)
+      #   Leaf temperature at Asat measurement (saturating light and ambient  CO2)
+      #   Leaf temperature at Amax measurement (saturating light and saturating CO2)
+      #   Leaf temperature during measurement (Tleaf)
+      #   Leaf temperature for photosynthetic measurements
+      #   Leaf temperature for respiration measurements
       #   Mean annual temperature (MAT)
+      #---~---
+
+      #--- Identify variables for editing some entries.
+      IsTAir  = DataID %in% 1665L
+      IsTLeaf = DataID %in% c(1666L,6692L,6693L,6932L,6936L)
+      IsMAT   = DataID %in% 62L
       #---~---
 
       #--- Remove spurious characters.
       #---~---
+
+
+
+      #---~---
+      #   Some authors did not provide units, but the values are unequivocally degC.
+      #---~---
+      IsAuthor             = 
+         AuthorName %in% c("Courtney Campany","nicolas fanin","Pengcheng He", "Chris Lusk"
+                          , "Adam Martin")
+      AssumeDegC           = IsAuthor & IsMAT
+      UnitOrig[AssumeDegC] = "degC"
+      #---~---
+      IsAuthor             = 
+         AuthorName %in% c("Adam Martin")
+      AssumeDegC           = IsAuthor & IsTLeaf
+      UnitOrig[AssumeDegC] = "degC"
+      #---~---
+      IsAuthor             = 
+         AuthorName %in% c("Mark van Kleunen")
+      AssumeDegC           = IsAuthor & IsTAir
+      UnitOrig[AssumeDegC] = "degC"
+      #---~---
+
+
 
       #--- Remove spurious characters (but track those with units in the value).
       has_degC = ( grepl(pattern="oC$"     ,x=Value)
@@ -4492,8 +5866,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                            )#end c
       Author_degC10     = c( "Chris Baraloto"
                            )#end c
-      degC_sel          = UnitOrig %in% c("C","deg C","degrees celcius","oC","(oC)"
-                                         ,"deg","degC","degrees_C")
+      degC_sel          = UnitOrig %in% c( "C", "deg" , "deg C", "degC", "degrees C"
+                                         , "degrees celcius", "degrees_C", "oC", "(oC)"
+                                         , "?C" )
       degC_sel          = ( has_degC
                           | degC_sel
                           | ( unmiss_sel & all(AuthorName[unmiss_sel] %in% Author_degC) )
@@ -4502,6 +5877,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                           & all(AuthorName[unmiss_sel] %in% Author_degC10)
                           & all(! grepl(pattern="\\.",x=Value[unmiss_sel]))
                           )#end degC10_sel
+      degC10_sel        = degC10_sel | ( UnitOrig %in% "C*10" )
       Value[degC10_sel] = as.character( 0.1 * (as.numeric(Value[degC10_sel])) )
       #---~---
 
@@ -4526,11 +5902,22 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
       #   Some data have too little information to unambiguously identify units.
       #---~---
-      IsAuthor       = AuthorName %in% "Michelle Leishman"
+      IsAuthor       = 
+         AuthorName %in% c( "Michelle Leishman", "nicolas fanin", "Chris Lusk"
+                          , "Adam Martin" )
       bad_sel        = IsAuthor & IsMAP
       Value[bad_sel] = NA_character_
       Valid[bad_sel] = FALSE
       VName[bad_sel] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Some authors did not provide units, but the values are unequivocally mm.
+      #---~---
+      IsAuthor           = AuthorName %in% "Courtney Campany"
+      AssumeMM           = IsAuthor & IsMAP
+      UnitOrig[AssumeMM] = "mm"
       #---~---
 
 
@@ -4586,8 +5973,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #--- Make sure all data have the same units (mm/yr). Discard percent data
-      mmoyr_sel        = has_mm | ( UnitOrig %in% c("(mm)","mm","mm ?","mm/y","mm/yr"
-                                                   ,"mm/year","mm / yr","mm yr-1")    )
+      mmoyr_sel        = 
+         has_mm | ( UnitOrig %in% c("(mm)","mm","mm ?","mm/y","mm/yr","mm/year"
+                                   ,"mm / yr","mm yr-1","mm a-1")    )
       cmoyr_sel        = has_cm | ( UnitOrig %in% c("cm") )
       mmomo_sel        = UnitOrig %in% c("mm month-1")
       Value[cmoyr_sel] = as.character( cm.2.mm * (as.numeric(Value[cmoyr_sel])) )
@@ -4607,6 +5995,16 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
 
+      #---~---
+      #   Some authors did not provide units, but the values are unequivocally umol mol-1.
+      #---~---
+      IsAuthor                 = AuthorName %in% c("Adam Martin", "Mark van Kleunen")
+      AssumeuMoloMol           = IsAuthor & (! is.na(Value) ) & is.na(UnitOrig)
+      UnitOrig[AssumeuMoloMol] = "umol mol-1"
+      #---~---
+
+
+
       #--- Remove spurious characters (but track those with units in the value).
       has_umolomol = grepl(pattern="umolmol-1$"               ,x=Value)
       Value        = gsub (pattern="umolmol-1$",replacement="",x=Value)
@@ -4617,33 +6015,19 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
 
 
-      #--- Flag missing units
-      unmiss_sel = (! is.na(Value) ) & is.na(UnitOrig)
-      #---~---
-
-
       #--- Turn inequality and range values into numbers (albeit highly uncertain).
       Value = TRY_Fix_Uncertain_Str(Value)
       #---~---
 
 
-      #--- Assume likely units based on value range.
-      Author_umolomol        = c( "Adam Martin"
-                                )#end c
-      umolomol_sel           = ( unmiss_sel
-                               & all(AuthorName[unmiss_sel] %in% Author_umolomol)
-                               )#end sel
-      UnitOrig[umolomol_sel] = "umol mol-1"
-      #---~---
-
-
       #--- Make sure all data have the same units (umol mol-1).
-      umolomol_sel     = ( has_umolomol
-                         | ( UnitOrig %in% c("?mol mol-1","micromol CO2 m-1"
-                                            ,"micromol CO2 mol-1","micromol mol-1","ppm"
-                                            ,"umol mol-1")
-                           )#end UnitOrig
-                         )#end umolomol_sel
+      umolomol_sel     =
+         ( has_umolomol
+         | ( UnitOrig %in% c( "?mol mol-1", "micromol CO2 m-1", "micromol CO2 mol-1"
+                            , "micro mol mol-1", "micromol mol-1", "ppm", "umol mol-1"
+                            , "umol mol-1 also the same as CO2 sample" )
+           )#end UnitOrig
+         )#end umolomol_sel
       #---~---
 
 
@@ -4683,8 +6067,25 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
    }else if (AncilLength){
       #---~---
+      #   Soil depth
       #   Ecosystem rooting depth
       #---~---
+
+
+      #---~---
+      #   Some data have values but no units. Assign units based on references whenever possible.
+      #---~---
+      IsUnitMiss         = is.na(UnitOrig)
+      IsSoilDepth        = DataID %in% c(274L)
+      IsRootDepth        = DataID %in% c(7042L)
+      AssumeCm           = ( IsUnitMiss
+                           & ( IsSoilDepth & (AuthorName %in% "Coline Boonman"  ) )
+                           )#end UnitMiss
+      UnitOrig[AssumeCm] = "cm"
+      #---~---
+
+
+
       #--- Remove spurious characters (but track those with cm in the value).
       has_cm = ( grepl(pattern="cm$"     ,x=Value)
                | grepl(pattern="cm.$"    ,x=Value)
@@ -4734,7 +6135,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #--- Assume likely units based on value range.
-      Author_m2om2        = c( "Angela Moles"
+      Author_m2om2        = c( "Kevin Karbstein"
+                             , "Angela Moles"
                              , "Lawren Sack"
                              , "Christian Wirth"
                              )#end c
@@ -4787,6 +6189,30 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #---~---
+      #   Moises Mendez Toribio. The data have trait dates into the future, likely a result
+      # of dragging Excel cells to fill in multiple rows. Considering the information 
+      # available in the publication, we assume that the dates were supposed to be 
+      # Sep-Nov 2012--2013
+      #---~---
+      IsAuthor       = AuthorName %in% "Moises Mendez Toribio"
+      IsExcel        = IsAuthor & grepl(pattern="^sep-nov; 2012-",x=AncilOrig)
+      Value[IsExcel] = "2013-10-16"
+      #---~---
+
+
+      #---~---
+      #   Mark van Kleunen. The data have trait dates into the future, likely a result
+      # of dragging Excel cells to fill in multiple rows. Considering the information 
+      # available in the publication, we assume that the dates were supposed to be 
+      # 2012-09-25 through 2012-10-01
+      #---~---
+      IsAuthor       = AuthorName %in% "Mark van Kleunen"
+      IsExcel        = IsAuthor & grepl(pattern="^25\\/09\\/2012\\ -\\ 01\\/10",x=AncilOrig)
+      Value[IsExcel] = "2012-09-28"
+      #---~---
+
+
+      #---~---
       #   Some dates have numbers that are too cryptic, but mixed with values that can be
       # used. Discard the cryptic data before proceeding.
       #---~---
@@ -4795,6 +6221,19 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsCryptic] = NA_character_
       Valid[IsCryptic] = FALSE
       VName[IsCryptic] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Some authors provided dates mixed with facility names. Remove facility names.
+      #---~---
+      IsAuthor    = AuthorName %in% "Samantha Munroe"
+      IsFacility  = IsAuthor & ( NameOrig %in% "facility-year" )
+      ByePatterns = c( "CSIRO-", "University of Adelaide-", "University of Adelaide-"
+                     , "Univeristy of Adelaide ", "University of Adeliade-")
+      for (Pattern in ByePatterns){
+         Value[IsFacility] = gsub(pattern=Pattern,replacement="",x=Value[IsFacility])
+      }#end for (Pattern in ByePatterns)
       #---~---
 
 
@@ -4813,14 +6252,18 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       # be useful for seasonal analyses.
       #---~---
       #--- Data in year-month-day format
-      IsAuthor          = AuthorName %in% c( "Greg Guerin"
+      IsAuthor          = AuthorName %in% c( "Gregoire Freschet"
+                                           , "Greg Guerin"
+                                           , "Mason Heberling"
                                            , "Colleen Iversen"
                                            , "Jens Kattge"
                                            , "Kim La Pierre"
+                                           , "Maowei Liang"
                                            , "Juliana Medeiros"
                                            , "Patrick Meir"
                                            , "Bill Shipley"
                                            , "Christian Wirth"
+                                           , "Kasia Ziemi&#324;ska"
                                            )#end c
       dmiss_sel         = ( (nchar(Value) %in% c(6L,7L))
                           & IsAuthor
@@ -4843,12 +6286,27 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                           )#end dmiss_sel
       Value[dmiss_sel]  = paste0(Value[dmiss_sel],"15")
       #--- Data in day-month-year format (day is missing)
-      IsAuthor          = AuthorName %in% c( "Jitka Klimesova"
+      IsAuthor          = AuthorName %in% c( "Carolyn Anderson"
+                                           , "Courtney Campany"
+                                           , "Emmanuele Farris"
+                                           , "Rodolfo Gentili"
+                                           , "Enqing Hou"
+                                           , "Daniel Laughlin"
+                                           , "Justin Luong"
+                                           , "Jitka Klimesova"
+                                           , "Michela Marignani"
+                                           , "Ian McFadden"
                                            , "Akira Mori"
                                            , "Rachael Nolan"
+                                           , "Valerie Raevel"
+                                           , "Dina Ronzhina"
+                                           , "Rob Salguero-Gomez"
+                                           , "Ivan Simko"
+                                           , "Linnea Smith"
                                            , "Alexandre Souza"
                                            , "Kris Verheyen"
                                            , "Han Wang"
+                                           , "Nikolai Yankov"
                                            )#end c
       dmiss_sel         = ( IsAuthor
                           & ( CntDash %in% c(1L) )
@@ -4941,9 +6399,11 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       # 1900-01-01. Assume this for the time being.
       #---~---
       IsAuthor         = AuthorName %in% c( "Dennis Baldocchi"
+                                          , "Joseph Hawes"
                                           , "Jens Kattge"
                                           , "Jan Pisek"
                                           , "Fritz Schweingruber"
+                                          , "Mateus Silva"
                                           , "Nick Smith"
                                           , "Christian Wirth"
                                           )#end c
@@ -4985,9 +6445,47 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #---~---
-      #   Some data sets have a mix of mm/dd/yyyy and dd/mm/yyyy. 
-      #   We try our best to retain as much information as possible
-      #   We can identify most of them by checking the original values.
+      #   Some data sets have a mix of mm/dd/yyyy and dd/mm/yyyy, or became a mix after
+      # standardisation.  We try our best to retain as much information as possible, using
+      # the original reference, original values, or additional information retrieved from
+      # the metadata.
+      #---~---
+      #---~---
+      #   Joseph Hawes. Mix of date formats. Most of them are in dd-mm-yyyy but some dates 
+      # are zero.
+      #---~---
+      IsAuthor        = AuthorName %in% "Joseph Hawes"
+      LengthTen       = ( ( nchar(Value)         %in% 10L )
+                        & ( substring(Value,3,3) %in% "-" )
+                        & ( substring(Value,6,6) %in% "-" )
+                        )#end LengthTen
+      swap_sel        = IsAuthor & LengthTen
+      DaySwap         = substring(Value[swap_sel], 1, 2)
+      MonthSwap       = substring(Value[swap_sel], 4, 5)
+      YearSwap        = substring(Value[swap_sel], 7,10)
+      DaySwap         = ifelse( test = DaySwap   %in% "00", yes = "15", no = DaySwap )
+      DateSwap        = ifelse( test = MonthSwap %in% "00"
+                              , yes  = NA_character_
+                              , no   = paste(YearSwap,MonthSwap,DaySwap,sep="-")
+                              )#end ifelse
+      Value[swap_sel] = DateSwap
+      Valid[swap_sel] = ! is.na(DateSwap)
+      VName[swap_sel] = ifelse( test = is.na(DateSwap)
+                              , yes  = NA_character_
+                              , no   = VName[swap_sel]
+                              )#end ifelse
+      #---~---
+      #   Karen Holl
+      #---~---
+      IsAuthor        = AuthorName %in% c( "Karen Holl" )
+      swap_sel        = IsAuthor & ( AncilOrig %in% c("1 July; 2014") )
+      Value[swap_sel] = paste( substring(Value[swap_sel], 4, 5)
+                             , substring(Value[swap_sel], 1, 2)
+                             , substring(Value[swap_sel], 7,10)
+                             , sep = "-"
+                             )#end paste0
+      #---~---
+      #   Yan-Shih Lin. Data are truly mixed, using the best associations we can infer...
       #---~---
       IsAuthor  = AuthorName %in% c( "Yan-Shih Lin" )
       MonthOrig = IsAuthor & FALSE
@@ -5036,12 +6534,28 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                , sep = "-"
                                )#end paste0
       #---~---
-
-
+      #   Dushan Kumarathunge. Original data had a mix of formats. Most of the data are in
+      # dd-mm-yyyy, but a few are in other formats. We manually replace the non-standard
+      # ones so everything is dd-mm-yyyy.
       #---~---
-      #   Some data sets have a mix of mm/dd/yyyy and dd/mm/yyyy. 
-      #   We try our best to retain as much information as possible
-      #   We can identify most of them by checking the original values.
+      IsAuthor        = AuthorName %in% c( "Dushan Kumarathunge" )
+      Value[IsAuthor & ( AncilOrig %in% "Jun-sep-2009"  )] = "31-07-2009"
+      Value[IsAuthor & ( AncilOrig %in% "Apr-May/1999"  )] = "01-05-1999"
+      Value[IsAuthor & ( AncilOrig %in% "July-Aug/2011" )] = "31-07-2011"
+      Value[IsAuthor & ( AncilOrig %in% "08/22/1995"    )] = "22-08-1995"
+      #---~---
+      #   Justin Luong. Original data had a mix of formats, and we swapped some of them to
+      # be dd-mm-yyyy. Swap data originally provided in mm/dd/yyyy to the same format.
+      #---~---
+      IsAuthor        = AuthorName %in% c( "Justin Luong" )
+      swap_sel        = IsAuthor & ( AncilOrig %in% c("04/01/2019") )
+      Value[swap_sel] = paste( substring(Value[swap_sel], 4, 5)
+                             , substring(Value[swap_sel], 1, 2)
+                             , substring(Value[swap_sel], 7,10)
+                             , sep = "-"
+                             )#end paste0
+      #---~---
+      #   Arthur Vinicius Rodrigues
       #---~---
       IsAuthor        = AuthorName %in% c( "Arthur Vinicius Rodrigues" )
       swap_sel        = IsAuthor & ( Value %in% c("09-20-2017") )
@@ -5051,6 +6565,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                              , sep = "-"
                              )#end paste0
       #---~---
+      #   Fritz Schweingruber
+      #---~---
       IsAuthor        = AuthorName %in% c( "Fritz Schweingruber" )
       swap_sel        = IsAuthor & ( Value %in% c("23-05-2011") )
       Value[swap_sel] = paste( substring(Value[swap_sel], 4, 5)
@@ -5059,14 +6575,20 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                              , sep = "-"
                              )#end paste0
       #---~---
-      IsAuthor        = AuthorName %in% c( "Karen Holl" )
-      swap_sel        = IsAuthor & ( AncilOrig %in% c("1 July; 2014") )
+      #   Nikolai Yankov. Original data had a mix of formats, and we appended dates for
+      # those containing only mm-yyyy. Swap the filled data so everything is in mm-dd-yyyy
+      #---~---
+      IsAuthor        = AuthorName %in% c( "Nikolai Yankov" )
+      swap_sel        = IsAuthor & ( nchar(AncilOrig) %eq% 7L )
       Value[swap_sel] = paste( substring(Value[swap_sel], 4, 5)
                              , substring(Value[swap_sel], 1, 2)
                              , substring(Value[swap_sel], 7,10)
                              , sep = "-"
                              )#end paste0
       #---~---
+
+
+
 
       #--- Flag valid entries
       fine_sel = ! is.na(Value)
@@ -5101,7 +6623,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       dmy4_sl_sel = ( y4_sl_last
                     & all( as.integer(substring(Value[y4_sl_last], 1, 2)) %in% sequence(31L) )
                     & all( as.integer(substring(Value[y4_sl_last], 4, 5)) %in% sequence(12L) )
-                    & all( as.integer(substring(Value[y4_sl_last], 7,10)) %gt% 1800L)
+                    & all( as.integer(substring(Value[y4_sl_last], 7,10)) %gt% 1700L)
                     )#end dmy4_sl_sel
       mdy2_sl_sel = ( y2_sl_last
                     & all( as.integer(substring(Value[y2_sl_last], 1, 2)) %in% sequence(12L) )
@@ -5110,15 +6632,15 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       mdy4_sl_sel = ( y4_sl_last
                     & all( as.integer(substring(Value[y4_sl_last], 1, 2)) %in% sequence(12L) )
                     & all( as.integer(substring(Value[y4_sl_last], 4, 5)) %in% sequence(31L) )
-                    & all( as.integer(substring(Value[y4_sl_last], 7,10)) %gt% 1800L )
+                    & all( as.integer(substring(Value[y4_sl_last], 7,10)) %gt% 1700L )
                     )#end mdy4_sl_sel
       y4md_sl_sel = ( y4_sl_first
-                    & all( as.integer(substring(Value[y4_sl_first], 1, 4)) %gt% 1800L )
+                    & all( as.integer(substring(Value[y4_sl_first], 1, 4)) %gt% 1700L )
                     & all( as.integer(substring(Value[y4_sl_first], 6, 7)) %in% sequence(12L) )
                     & all( as.integer(substring(Value[y4_sl_first], 9,10)) %in% sequence(31L) )
                     )#end y4md_sl_sel
       y4md_ns_sel = ( y4_ns_first
-                    & all( as.integer(substring(Value[y4_ns_first],1,4)) %gt% 1800L )
+                    & all( as.integer(substring(Value[y4_ns_first],1,4)) %gt% 1700L )
                     & all( as.integer(substring(Value[y4_ns_first],5,6)) %in% sequence(12L) )
                     & all( as.integer(substring(Value[y4_ns_first],7,8)) %in% sequence(31L) )
                     )#end y4md_ns_sel
@@ -5134,34 +6656,55 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
       #--- Keep mm-dd-yyyy
       IsAuthor              = AuthorName %in% c( "Mehdi Abedi"
+                                               , "Deborah Apgaua"
                                                , "Michael Belluau"
+                                               , "Federico Brumnich"
                                                , "Chaeho Byun"
                                                , "Fatih Fazlioglu"
                                                , "Jane Catford"
                                                , "Gregoire Freschet"
+                                               , "Tucker Gilman"
                                                , "Andres Gonzalez-Melo"
                                                , "Melanie Harze"
                                                , "Karen Holl"
+                                               , "Marney Isaac"
+                                               , "Gianalberto Losapio"
                                                , "Jens Kattge"
                                                , "Tamir Klein"
                                                , "Zia Mehrabi"
                                                , "Sean Michaletz"
+                                               , "Chrysanthi Michelaki"
                                                , "Begona Peco"
                                                , "Lourens Poorter"
+                                               , "Fiona Soper"
+                                               , "Tsvetelina Terziyska"
+                                               , "Jose M. Torres-Ruiz"
                                                , "Alexia Totte"
+                                               , "Harry Watkins"
                                                , "Benjamin Yguel"
+                                               , "Nikolai Yankov"
                                                )#end c
       dmy2_sl_sel[IsAuthor] = FALSE
       dmy4_sl_sel[IsAuthor] = FALSE
       #--- Keep dd-mm-yyyy
-      IsAuthor              = AuthorName %in% c( "Greg Guerin"
+      IsAuthor              = AuthorName %in% c( "Michele Carbognani"
+                                               , "Han Chen"
+                                               , "Greg Guerin"
                                                , "Nate Hough-Snee"
+                                               , "Dushan Kumarathunge"
+                                               , "Daniel Laughlin"
+                                               , "Justin Luong"
+                                               , "Benjamin Jackson"
+                                               , "Kevin Karbstein"
+                                               , "Vamsi Krishna Kommineni"
+                                               , "Ian McFadden"
+                                               , "Christian Rossi"
+                                               , "Rob Salguero-Gomez"
                                                , "Enio Sosinski"
                                                )#end c
       mdy2_sl_sel[IsAuthor] = FALSE
       mdy4_sl_sel[IsAuthor] = FALSE
       #---~---
-
 
       #---~---
       #   Set day
@@ -5231,7 +6774,10 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #   Check for ambiguous cases
       #---~---
       IsAmbiguous = ( (dmy2_sl_sel & mdy2_sl_sel) | (dmy4_sl_sel & mdy4_sl_sel) )
-      if (any(IsAmbiguous)) browser()
+      if (any(IsAmbiguous)){
+         cat0(" ----- Check ambiguous dates...")
+         browser()
+      }#end if (any(IsAmbiguous))
       # Mess = Valid & ( is.na(ValueDay) | is.na(ValueMonth) | is.na(ValueYear) )
       # if (any(Mess)) browser()
       #---~---
@@ -5275,6 +6821,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       AssumeYear = ( IsUnitMiss
                    & ( ( IsTimeFire & (AuthorName %in% "Isabelle Aubin"  ) )
                      | ( IsPlantDev & (AuthorName %in% "Maxime Cailleret") )
+                     | ( IsPlantDev & (AuthorName %in% "Herve Jactel"    ) )
                      | ( IsPlantAge & (AuthorName %in% "Eric Lamb"       ) )
                      | ( IsPlantAge & (AuthorName %in% "Christian Wirth" ) )
 
@@ -5286,9 +6833,77 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #---~---
+      #   Some authors provided information with text. Manually fix the information.
+      #---~---
+      #--- Coline Boonman
+      IsAuthor              = AuthorName %in% c("Coline Boonman")
+      AssumeMonth           = IsAuthor & IsPlantDev & ( Value %in% "seedlings.6monthold" )
+      Value   [AssumeMonth] = "6"
+      UnitOrig[AssumeMonth] = "month"
+      #--- Peter Manning
+      IsAuthor              = AuthorName %in% c("Peter Manning")
+      AssumeWeek            = IsAuthor & IsPlantDev & ( Value %in% "11weeks-peakbiomass" )
+      Value   [AssumeWeek ] = "11"
+      UnitOrig[AssumeWeek ] = "week"
+      #--- Giacomo Puglielli
+      IsAuthor              = AuthorName %in% c("Giacomo Puglielli")
+      AssumeYear            = IsAuthor & IsPlantDev & ( Value %in% "?3years" )
+      Value   [AssumeYear ] = "3"
+      UnitOrig[AssumeYear ] = "year"
+      #---~---
+
+
+
+      #---~---
+      #   Some authors did not provide units but data are likely in years.
+      #---~---
+      IsAuthor             = AuthorName %in% c("Enqing Hou")
+      AssumeYear           = IsAuthor & IsStandAge
+      UnitOrig[AssumeYear] = "year"
+      #---~---
+
+
+
+      #---~---
+      #   Some authors listed units in the original name, not in the units.
+      #---~---
+      IsAuthor              = AuthorName %in% c("Tarin Toledo-Aceves")
+      AssumeMonth           = 
+         IsAuthor & IsPlantAge & ( NameOrig %in% "individual age (months)" )
+      UnitOrig[AssumeMonth] = "month"
+      #---~---
+
+
+
+      #---~---
+      #   Some authors did not provide units but data are likely in years.
+      #---~---
+      IsAuthor             = AuthorName %in% c("Daijun Liu")
+      AssumeYear           = IsAuthor & IsPlantDev
+      UnitOrig[AssumeYear] = "year"
+      #---~---
+
+
+
+      #---~---
       #   Some data have too little information to unambiguously identify units.
       #---~---
       IsAuthor       = AuthorName %in% c( "Julie Messier")
+      bad_sel        = IsAuthor & IsPlantDev
+      Value[bad_sel] = NA_character_
+      Valid[bad_sel] = FALSE
+      VName[bad_sel] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Some authors provided reproductive stage as opposed to plant age to maturity.
+      #---~---
+      IsAuthor       = AuthorName %in% c( "Michael J. Aspinwall", "Mason Heberling"
+                                        , "Enqing Hou", "Ian McFadden"
+                                        , "Moises Mendez Toribio", "Jose M. Torres-Ruiz"
+                                        , "Mark van Kleunen" )
       bad_sel        = IsAuthor & IsPlantDev
       Value[bad_sel] = NA_character_
       Valid[bad_sel] = FALSE
@@ -5389,9 +7004,11 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
 
       #--- Make sure all data have the same units (year). Discard percent data
-      year_sel         = has_yr  | ( UnitOrig %in% c("a","y","year","years","yr","Year","Years") )
+      year_sel         = 
+         ( has_yr | ( UnitOrig %in% c( "a", "y", "year", "years", "years *see notes"
+                                     , "yr", "yrs", "Year", "Years" ) ) )
       month_sel        = has_mon | ( UnitOrig %in% c("month","months") )
-      week_sel         = has_wk  | ( UnitOrig %in% c("weeks") )
+      week_sel         = has_wk  | ( UnitOrig %in% c("week","weeks") )
       day_sel          = has_day | ( UnitOrig %in% c("d","day","days") )
       Value[month_sel] = as.character( 1. / yr.mon  * (as.numeric(Value[month_sel])) )
       Value[week_sel ] = as.character( 1. / yr.week * (as.numeric(Value[week_sel ])) )
@@ -5441,19 +7058,24 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
       #--- Make sure all data have the same units (W/m2).
       umolom2os_sel        = UnitOrig %in% c( "m;icromol/m2/s"
+                                            , "mico mol m-1 s-1"
                                             , "micro mol / m2 / s"
                                             , "micro mol m-2 s-1"
+                                            , "micro mol m2 s"
                                             , "micro mol m2 s-1"
                                             , "micro mol/m2/s"
                                             , "micro mol/m2/s1"
+                                            , "micro mols m-2 s-1"
                                             , "micromol CO2 m-2 leaf area s-1"
                                             , "micromol m-2 s-1"
+                                            , "micro mol photons m-2 s-1"
                                             , "micromol/m2/s"
                                             , "micromol/m2/s PAR"
                                             , "micromol/m2/s1 PAR"
                                             , "micromoles/m2/s"
                                             , "micromolm-2s-1"
                                             , "umol m-2 s-1"
+                                            , "umol/m2/s"
                                             , "umol photons / m2 / sec"
                                             )#end c
       Value[umolom2os_sel] = as.character( umol.2.mol * Ein.2.Watts
@@ -5844,7 +7466,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
    }else if (AncilDisturb){
       #---~---
-      #   Location Continent
+      #   Site disturbance
       #---~---
 
 
@@ -5866,13 +7488,11 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #---~---
-      #   Standardise continent names using the 7-continent approach; i.e., 
-      # distinguishing Europe from Asia, South America from North America (and assuming
-      # Central America as part of North America).  For simplicity, we group the Pacific
-      # Islands with the Australian continent as Oceania.
+      #   Standardise and simplify disturbance categories.
       #---~---
       IsIntact  = Value %in% c( "undisturbed")
-      IsGrazed  = Value %in% c( "cattle grazing", "levels of grazing and n-fertilizer")
+      IsGrazed  = Value %in% c( "cattle grazing", "levels of grazing and n-fertilizer"
+                              , "low grazing", "moderate grazing", "high grazing")
       IsBurnt   = Value %in% c( "recently burned"
                               , "excluded from cattle grazing and burning since 1993"
                               , "frequent fire in grassland; not inside forest"
@@ -5882,6 +7502,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsWind    = Value %in% c( "recent wind-throw")
       IsManaged = Value %in% c( "mechanical weed control", "recent precommercial thinning")
       IsCleared = Value %in% c( "recently clearcut")
+      IsMined   = Value %in% c( "gypsum mine")
       IsOther   = Value %in% c( "other disturbance")
       #---~---
 
@@ -5897,7 +7518,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsWind   ] = "05 - Wind-throw"
       Value[IsManaged] = "06 - Thinned"
       Value[IsCleared] = "07 - Clear-cut"
-      Value[IsOther  ] = "08 - Other"
+      Value[IsMined  ] = "08 - Mining"
+      Value[IsOther  ] = "09 - Other"
       #---~---
 
       #---~---
@@ -5905,7 +7527,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       # so the code crashes and we can identify the missing classes.
       #---~---
       IsValid          = Valid & ( IsIntact  | IsGrazed  | IsBurnt   | IsFlooded | IsWind
-                                 | IsManaged | IsCleared | IsOther   )
+                                 | IsManaged | IsCleared | IsMined   | IsOther   )
       Value[! IsValid] = NA_character_
       #---~---
 
@@ -5942,6 +7564,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsTMI = ( ( ( AuthorName %in% "Jens Kattge"    ) & ( NameOrig %in% "treeposition" ) )
               | ( ( AuthorName %in% "Jens Kattge"    ) & ( NameOrig %in% "leafposition" ) )
               | ( ( AuthorName %in% "Belinda Medlyn" ) & ( NameOrig %in% "understory"   ) )
+              | ( ( AuthorName %in% "Han Chen"       ) & ( NameOrig %in% "mspos$"       ) )
               )#end IsTMI
       Value[IsTMI] = NA_character_
       Valid[IsTMI] = FALSE
@@ -5957,6 +7580,40 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsAuthor = ( AuthorName %in% "Benjamin Blonder" ) & ( NameOrig %in% "sunleavesonly")
       Value[IsAuthor & (Value %in% "0")] = "partial shade"
       Value[IsAuthor & (Value %in% "1")] = "sun exposed"
+      #---~---
+      #   Chris Baraloto | S. Joseph Wright: canopy exposure index based on plant position
+      # in the canopy.
+      #---~---
+      IsAuthor = ( ( ( AuthorName %in% "Chris Baraloto" )
+                   & ( NameOrig %in% c("id_arbre","id_ram") ) 
+                   )#end AuthorName
+                 | ( ( AuthorName %in% "S. Joseph Wright" )
+                   & ( NameOrig %in% "exposition: position of plant in the canopy")
+                   )#end AuthorName
+                 )#end IsAuthor
+      Value[IsAuthor & (Value %in% "1"       )] = "full shade"
+      Value[IsAuthor & (Value %in% c("2","3"))] = "partial shade"
+      Value[IsAuthor & (Value %in% c("4","5"))] = "sun exposed"
+      Discard = IsAuthor & (Value %in% "-9")
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+      #   Johannes Cornelissen. Yes/no flag for sun/shade.
+      #---~---
+      IsAuthor = ( ( AuthorName %in% "Johannes Cornelissen" )
+                 & ( NameOrig %in% "shade.y.or.n")
+                 )#end IsAuthor
+      Value[IsAuthor & (Value %in% "y")] = "full shade"
+      Value[IsAuthor & (Value %in% "n")] = "sun exposed"
+      #---~---
+      #   Anh Tuan Dang-Le: Light environment: 
+      # h - high light (canopy openness 70%)
+      # l - low light (canopy openness 30%)"
+      #---~---
+      IsAuthor = ( AuthorName %in% "Anh Tuan Dang-Le" ) & ( NameOrig %in% "le")
+      Value[IsAuthor & (Value %in% "h")] = "sun exposed"
+      Value[IsAuthor & (Value %in% "l")] = "full shade"
       #---~---
       #   Daniel Falster: code system for canopy position
       # 0 - supressed
@@ -5977,11 +7634,12 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #   Daniel Falster / Isabelle Aubin: light levels
       #   For continuous levels, use 20 and 80% thresholds for exposure
       #---~---
-      IsAuthor = ( ( ( AuthorName %in% "Daniel Falster" ) & ( NameOrig %in% "light") )
-                 | ( ( AuthorName %in% "Isabelle Aubin" )
-                   & ( NameOrig %in% "exposition light / irradiance")
-                   )#end AuthorName
-                 )#end IsAuthor
+      IsAuthor = 
+         ( ( ( AuthorName %in% "Daniel Falster" ) & ( NameOrig %in% "light") )
+         | ( ( AuthorName %in% "Isabelle Aubin" )
+           & ( NameOrig %in% "exposition light / irradiance")
+           )#end AuthorName
+         )#end IsAuthor
       suppressWarnings({
          IsShade   = IsAuthor & ( as.numeric(Value) %lt% 20      )
          IsPartial = IsAuthor & ( as.numeric(Value) %wr% c(20,80))
@@ -5991,20 +7649,40 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsPartial] = "partial shade"
       Value[IsSun    ] = "sun exposed"
       #---~---
-      IsAuthor = ( ( ( AuthorName %in% "Chris Baraloto" )
-                   & ( NameOrig %in% c("id_arbre","id_ram") ) 
-                   )#end AuthorName
-                 | ( ( AuthorName %in% "S. Joseph Wright" )
-                   & ( NameOrig %in% "exposition: position of plant in the canopy")
-                   )#end AuthorName
-                 )#end IsAuthor
-      Value[IsAuthor & (Value %in% "1"       )] = "full shade"
-      Value[IsAuthor & (Value %in% c("2","3"))] = "partial shade"
-      Value[IsAuthor & (Value %in% c("4","5"))] = "sun exposed"
-      Discard = IsAuthor & (Value %in% "-9")
+      #   Aaron Kamoske: canopy position. Only first letter is provided.  The description
+      # is truncated, using the most likely definition...
+      #---~---
+      IsAuthor = ( AuthorName %in% "Aaron Kamoske" ) & ( NameOrig %in% "canopy position")
+      Value[IsAuthor & (Value %in% "b")] = "lower canopy"
+      Value[IsAuthor & (Value %in% "m")] = "middle canopy"
+      Value[IsAuthor & (Value %in% "t")] = "upper canopy"
+      #---~---
+      #   Jeremy Lichstein: canopy position. Most of the classes are generic, but we ought
+      # to invalidate the data with "unknown".
+      #---~---
+      IsAuthor = ( AuthorName %in% "Jeremy Lichstein" ) & ( NameOrig %in% "lflight")
+      Value[IsAuthor & (Value %in% "gap"  )] = "sun exposed"
+      Value[IsAuthor & (Value %in% "shade")] = "full shade"
+      Value[IsAuthor & (Value %in% "sun"  )] = "sun exposed"
+      Discard  = IsAuthor & (Value %in% "unknown" )
       Value[Discard] = NA_character_
       Valid[Discard] = FALSE
       VName[Discard] = NA_character_
+      #---~---
+      #   Jon Lloyd: canopy position. Only first letter is provided, using best guess.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Jon Lloyd" ) & ( NameOrig %in% "leafposition")
+      Value[IsAuthor & (Value %in% "l")] = "lower canopy"
+      Value[IsAuthor & (Value %in% "m")] = "middle canopy"
+      Value[IsAuthor & (Value %in% "u")] = "upper canopy"
+      #---~---
+      #   Aristotelis C. Papageorgiou: they used light/shade flags. No partial shade
+      # was provided, so we assume either full sun exposure or full shade.
+      #---~---
+      IsAuthor = 
+         ( AuthorName %in% "Aristotelis C. Papageorgiou" ) & ( NameOrig %in% "shading")
+      Value[IsAuthor & (Value %in% "shade")] = "full shade"
+      Value[IsAuthor & (Value %in% "light")] = "sun exposed"
       #---~---
       #   Enio Sosinski: canopy index, but values are continuous rather than categorical.
       #   1 - under storey tree, fully shaded.
@@ -6023,28 +7701,11 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsPartial] = "partial shade"
       Value[IsSun    ] = "sun exposed"
       #---~---
-      #   Johannes Cornelissen. Yes/no flag for sun/shade.
+      #   Elisa Van Cleemput: data were obtained for vegetation consisting of mostly
+      # herbs and forbs, assume that "little shade" means fully exposed
       #---~---
-      IsAuthor = ( ( AuthorName %in% "Johannes Cornelissen" )
-                 & ( NameOrig %in% "shade.y.or.n")
-                 )#end IsAuthor
-      Value[IsAuthor & (Value %in% "y")] = "full shade"
-      Value[IsAuthor & (Value %in% "n")] = "sun exposed"
-      #---~---
-      #   Jon Lloyd: canopy position. Only first letter is provided, using best guess.
-      #---~---
-      IsAuthor = ( AuthorName %in% "Jon Lloyd" ) & ( NameOrig %in% "leafposition")
-      Value[IsAuthor & (Value %in% "l")] = "lower canopy"
-      Value[IsAuthor & (Value %in% "m")] = "middle canopy"
-      Value[IsAuthor & (Value %in% "u")] = "upper canopy"
-      #---~---
-      #   Anh Tuan Dang-Le: Light environment: 
-      # h - high light (canopy openness 70%)
-      # l - low light (canopy openness 30%)"
-      #---~---
-      IsAuthor = ( AuthorName %in% "Anh Tuan Dang-Le" ) & ( NameOrig %in% "le")
-      Value[IsAuthor & (Value %in% "h")] = "sun exposed"
-      Value[IsAuthor & (Value %in% "l")] = "full shade"
+      IsAuthor = ( AuthorName %in% "Elisa Van Cleemput" ) & ( NameOrig %in% "shading")
+      Value[IsAuthor & ( Value %in% "little shade" )] = "sun exposed"
       #---~---
 
 
@@ -6088,15 +7749,16 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      , "partial shade/full shade", "sun&shade", "sun and shade"
                      )#end c
       IsSun     =
-         Value %in% c( "100% of par", "basal-exterior canopy leaves", "canopy", "full"
-                     , "full light (bare ground)", "not shaded/partial shade"
+         Value %in% c( "100% of par", "basal-exterior canopy leaves", "canopy", "edge"
+                     , "full", "full light (bare ground)", "not shaded/partial shade"
                      , "full overhead light along logging road or in tree fall gap"
-                     , "full-sun", "fully sunlit", "gap", "not shaded", "mid-upper"
-                     , "open condition (road side)", "overstory", "sun", "sun exposed"
-                     , "sun leaves", "sun-lit", "sun only", "top", "top - flag leaf"
-                     , "top canopy", "top canopy leaves", "top canopy; sun exposed"
-                     , "top sunlit", "top_leaf u01", "top_leaf u02", "top_leaf u03"
-                     , "top_leaf u04", "upper", "upper canopy"
+                     , "fullsun", "full-sun", "fully sunlit", "gap", "not shaded"
+                     , "mid-upper", "open", "open condition (road side)", "overstory", "sun"
+                     , "sun exposed", "sun leaves", "sun-lit", "sun only", "top"
+                     , "top - flag leaf", "top canopy", "top canopy leaves"
+                     , "top canopy; sun exposed", "top sunlit", "top_leaf u01"
+                     , "top_leaf u02", "top_leaf u03", "top_leaf u04", "upper"
+                     , "upper canopy", "uppermost branch"
                      )#end c
       #---~---
 
@@ -6133,17 +7795,20 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #---~---
 
 
-
       #---~---
       #   Some authors provide additional information or information not exactly linked to
-      # biomes, skip them.
+      # biomes, or too generic description that could be misleading, skip them.
       #---~---
       IsTMI = 
-         ( ( ( AuthorName %in% "Robert Jackson"      ) & ( NameOrig %in% "k_ppen_cc" ) )
-         | ( ( AuthorName %in% "Yusuke Onoda"        ) & (NameOrig %in% "biome"     ) )
-         | ( ( AuthorName %in% "Peter Reich"         ) & (NameOrig %in% "newbiomes" ) )
+         ( ( ( AuthorName %in% "Anh Tuan Dang-Le"    ) & ( NameOrig %in% "vegtype"   ) )
+         | ( ( AuthorName %in% "Robert Jackson"      ) & ( NameOrig %in% "k_ppen_cc" ) )
+         | ( ( AuthorName %in% "Yusuke Onoda"        ) & ( NameOrig %in% "biome"     ) )
+         | ( ( AuthorName %in% "Peter Reich"         ) & ( NameOrig %in% "newbiomes" ) )
+         | ( ( AuthorName %in% "Andrew Cunliffe"     )
+             & ( NameOrig %in% "igbp_class_long"     )
+             )#end AuthorName
          | ( ( AuthorName %in% "Fritz Schweingruber" )
-             & ( NameOrig %in% "vegetation zone" )
+             & ( NameOrig %in% "vegetation zone"     )
              )#end AuthorName
          | ( ( AuthorName %in% "Serge Sheremetev"    )
            & ( NameOrig   %in% c( "community", "biome") )
@@ -6230,12 +7895,43 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsAuthor = ( AuthorName %in% "William Bond" ) & ( NameOrig %in% "habitat" )
       Value[IsAuthor & ( Value %in% "forest")] = "subtropical forest"
       #---~---
+      #   Hans Henrik Bruun.  Contributed data are for sub-arctic
+      #---~---
+      IsAuthor = ( AuthorName %in% "Hans Henrik Bruun" ) & ( NameOrig %in% "vegetation type" )
+      Value[IsAuthor & ( Value %in% "boreal river bank"                    )] = "boreal forest"
+      Value[IsAuthor & ( Value %in% "low alpine dry rich heath"            )] = "boreal grassland"
+      Value[IsAuthor & ( Value %in% "low alpine mesic heath"               )] = "boreal grassland"
+      Value[IsAuthor & ( Value %in% "low alpine poor heath"                )] = "boreal grassland"
+      Value[IsAuthor & ( Value %in% "middle alpine grass heath"            )] = "boreal grassland"
+      Value[IsAuthor & ( Value %in% "subalpine birch forest of heath type" )] = "boreal forest"
+      Value[IsAuthor & ( Value %in% "subalpine birch forest of meadow type")] = "boreal forest"
+      #---~---
       #   Johannes Cornelissen.  Contributed data are for sub-arctic
       #---~---
       IsAuthor = ( AuthorName %in% "Johannes Cornelissen" ) & ( NameOrig %in% "habitat" )
       Value[IsAuthor & ( Value %in% "forest"   )] = "boreal forest"
       Value[IsAuthor & ( Value %in% "grassland")] = "boreal grassland"
       Value[IsAuthor & ( Value %in% "woodland" )] = "boreal woodland"
+      #---~---
+      #   Joseph Hawes.  Generic names in Portuguese, but all data came from the Amazon.
+      #                  Assume tropical.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Joseph Hawes" ) & ( NameOrig %in% "vegetation_type" )
+      IsTropMoFor  = 
+         ( IsAuthor
+         & ( Value %in% c( "capoeira", "capoeira velha", "floresta de terra firme"
+                         , "floresta primaria", "floresta primaria alterada"
+                         , "floresta primaria de terra firme", "floresta secundaria"
+                         , "floresta secundaria de terra firme", "vegetacao remanescente"
+                         )#end c
+           )#end Value
+         )#end IsTropMoFor
+      IsWetlands   = 
+         IsAuthor & ( Value %in% c( "capoeira grossa em igapo", "igapo", "varzea") )
+      IsPlantation = IsAuthor & ( Value %in% c("vegetacao cultivada") )
+      Value[IsTropMoFor ] = "tropical moist forest"
+      Value[IsWetlands  ] = "swamp forest"
+      Value[IsPlantation] = "plantation"
       #---~---
       #   Tianhua He.  Contributed data are for western Australia. Assume Mediterranean.
       #---~---
@@ -6250,6 +7946,21 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       IsTempScrub        = IsAuthor & ( Value %in% "grassland / shrubland" )
       Value[IsTempScrub] = "temperate scrubland"
       #---~---
+      #   Robert Jackson. Rename ambiguous entries based on inspecting the data base.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Robert Jackson" ) & ( NameOrig   %in% c("vegetation") )
+      Value[IsAuthor & ( Value %in% "broad-leaved evergreen forest" )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "coniferous evergreen forest"   )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "deciduous broad-leaved forests")] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "deciduous forest"              )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "dry deciduous forest"          )] = "sub-tropical dry forest"
+      Value[IsAuthor & ( Value %in% "forest"                        )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "montane rainforest"            )] = "tropical moist forest"
+      Value[IsAuthor & ( Value %in% "natural oak forest"            )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "rain forest"                   )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "semi-decid rain forest"        )] = "tropical moist forest"
+      Value[IsAuthor & ( Value %in% "shrubland"                     )] = "temperate scrubland"
+      #---~---
       #   Steven Jansen.  Some classes have short names. Make longer names to avoid ambiguity.
       #---~---
       IsAuthor = ( AuthorName %in% "Steven Jansen" ) & ( NameOrig   %in% "biome" )
@@ -6261,11 +7972,25 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & (Value %in% "des")] = "desert"
       Value[IsAuthor & (Value %in% "bot")] = "boreal-tundra"
       #---~---
-      #   Steven Jansen.  Meadows, assume temperate.
+      #   Dushan Kumarathunge. Most data came from forests, but there were Mediterranean and
+      # non-forest ecosystems. Keep tundra but discard the others.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Dushan Kumarathunge" ) & ( NameOrig   %in% "tregion" )
+      Discard  = IsAuthor & Value %in% c("boreal","temperate_n","temperate_s","tropical")
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+      #   Vojtech Lanta.  Meadows, assume temperate.
       #---~---
       IsAuthor = ( AuthorName %in% "Vojtech Lanta" ) & ( NameOrig %in% "description" )
       Value[IsAuthor & ( Value %in% "dry meadow" )] = "temperate meadow"
       Value[IsAuthor & ( Value %in% "wet meadow" )] = "wet meadow"
+      #---~---
+      #   Maowei Liang.  Temperate, semi-arid range lands. Assume temperate grasslands.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Maowei Liang" ) & ( NameOrig %in% "biome_types" )
+      Value[IsAuthor & ( Value %in% "grasslands" )] = "temperate grassland"
       #---~---
       #   Adam Martin.  The data repository mentions forests. Assume forests.
       #---~---
@@ -6275,6 +8000,12 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & ( Value %in% "tropical"                  )] = "tropical forest"
       Value[IsAuthor & ( Value %in% "temperate"                 )] = "temperate forest"
       Value[IsAuthor & ( Value %in% "boreal"                    )] = "boreal forest"
+      #---~---
+      #   Angela Moles. Rename ambiguous entries based on inspecting the data base.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Angela Moles" ) & ( NameOrig   %in% c("vegetation") )
+      Value[IsAuthor & ( Value %in% "sub-tropical and temperate rainforest")] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tropical and subtropical grasslands"  )] = "sub-tropical grassland"
       #---~---
       #   Ulo Niinemets.  The data repository mentions forests. Assume Mediterranean.
       #---~---
@@ -6298,6 +8029,95 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & ( Value %in% "valley"                     )] = "temperate forest"
       Value[IsAuthor & ( Value %in% "valley floor forest"        )] = "temperate forest"
       Value[IsAuthor & ( Value %in% "woodland"                   )] = "temperate woodland"
+      #---~---
+      #   Juli Pausas.  They provide multiple classes, sometimes with multiple biomes in
+      # the same entry. We only keep the unequivocal ones.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Juli Pausas" ) & ( NameOrig %in% "biome" )
+      IsTMI    = IsAuthor & 
+         ( Value %in% c( "desert; med", "desert; med; tempbroad", "desert; med; trdry"
+                       , "desert; tempbroad; med"
+                       , "desert; tempconif; med", "desert; tempgrass"
+                       , "desert; trconif", "desert; trconif; trdry", "desert; trgrass"
+                       , "flgrass; tempconif", "flgrass; trgrass", "med; desert"
+                       , "med; desert; tempbroad", "med; desert; tempconif; tempgrass"
+                       , "med; desert; tempgrass"
+                       , "med; desert; tempgrass; tempconif; trconif", "med; montgrass"
+                       , "med; montgrass; trgrass", "med; tempbroad"
+                       , "med; tempbroad; desert", "med; tempbroad; trmoist"
+                       , "med; tempconif", "med; tempgrass", "med; trconif", "med; trgrass"
+                       , "med; trmoist", "montgrass", "montgrass; desert"
+                       , "montgrass; med; desert", "montgrass; tempbroad"
+                       , "montgrass; trgrass", "montgrass; trgrass; trmoist"
+                       , "montgrass; trgrass; trmoist; desert", "montgrass; trmoist"
+                       , "montgrass; trmoist; trgrass", "montgrass;trgrass; trmoist"
+                       , "several", "taiga; tempbroad", "taiga; tempconif"
+                       , "taiga; tempgrass; tempconif", "taiga; tundra; trconif; med"
+                       , "tempbroad; desert", "tempbroad; desert; med"
+                       , "tempbroad; desert; montgrass", "tempbroad; med"
+                       , "tempbroad; med; desert", "tempbroad; med; tempgrass; montgrass"
+                       , "tempbroad; montgrass", "tempbroad; taiga"
+                       , "tempbroad; taiga; tempconif", "tempbroad; taiga; tempgrass"
+                       , "tempbroad; taiga; tundra", "tempbroad; tempconif; med"
+                       , "tempbroad; tempconif; tempgrass", "tempbroad; tempconif; trmoist"
+                       , "tempbroad; tempconif; trmoist; trconif", "tempbroad; tempgrass"
+                       , "tempbroad; tempgrass; med", "tempbroad; tempgrass; montgrass"
+                       , "tempbroad; tempgrass; taiga", "tempbroad; tempgrass; tempconif"
+                       , "tempbroad; tempgrass; trgrass", "tempbroad; trgrass"
+                       , "tempbroad; trmoist", "tempbroad; trmoist; trgrass"
+                       , "tempbroad; tundra; taiga", "tempconif; desert"
+                       , "tempconif; desert; tempgrass", "tempconif; med"
+                       , "tempconif; med; tempbroad", "tempconif; taiga"
+                       , "tempconif; taiga; med; desert", "tempconif; taiga; tempbroad"
+                       , "tempconif; taiga; tempgrass", "tempconif; tempbroad; med"
+                       , "tempconif; tempbroad; tempgrass", "tempconif; tempgrass; desert"
+                       , "tempconif; tempgrass; med; desert"
+                       , "tempconif; tempgrass; trconif", "tempconif; trconif"
+                       , "tempgrass; desert", "tempgrass; desert; tempconif"
+                       , "tempgrass; montgrass; tempbroad", "tempgrass; tempbroad"
+                       , "tempgrass; tempbroad; desert", "tempgrass; tempbroad; taiga"
+                       , "tempgrass; tempbroad; tempconif"
+                       , "tempgrass; tempbroad; trconif", "tempgrass; tempconif"
+                       , "tempgrass; tempconif; desert", "tempgrass; trgrass"
+                       , "tempgrass; trgrass; tempbroad", "trconif; desert"
+                       , "trconif; med", "trconif; med; desert"
+                       , "trconif; trmoist; desert; trdry", "trdry; flgrass"
+                       , "trdry; trconif; tempconif; trmoist", "trdry; trgrass"
+                       , "trdry; trmoist", "trdry; trmoist; desert"
+                       , "trdry; trmoist; trgrass", "trgrass; desert", "trgrass; montgrass"
+                       , "trgrass; montgrass; trmoist", "trgrass; tempbroad; trmoist"
+                       , "trgrass; tempgrass", "trgrass; tempgrass; med"
+                       , "trgrass; tempgrass; tempbroad", "trgrass; trdry"
+                       , "trgrass; trmoist", "trgrass; trmoist; montgrass"
+                       , "trmoist; desert", "trmoist; montgrass"
+                       , "trmoist; montgrass; trgrass"
+                       , "trmoist; montgrass; trgrass; tempgrass", "trmoist; tempconif"
+                       , "trmoist; trconif; tempconif", "trmoist; trdry"
+                       , "trmoist; trdry; trconif", "trmoist; trdry; trgrass"
+                       , "trmoist; trgrass", "trmoist; trgrass; trdry"
+                       )#end c
+         )#end Value
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #--- Retain unambiguous classes (list all for completedness)
+      Value[IsAuthor & ( Value %in% "desert"               )] = "desert"
+      Value[IsAuthor & ( Value %in% "flgrass"              )] = "floodplain"
+      Value[IsAuthor & ( Value %in% "mangrove"             )] = "mangrove"
+      Value[IsAuthor & ( Value %in% "med"                  )] = "mediterranean"
+      Value[IsAuthor & ( Value %in% "taiga; tundra"        )] = "tundra"
+      Value[IsAuthor & ( Value %in% "tempbroad"            )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tempbroad; tempconif" )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tempconif"            )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tempconif; tempbroad" )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tempgrass"            )] = "temperate grassland"
+      Value[IsAuthor & ( Value %in% "trbroad; trconif"     )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "trconif"              )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "trdry"                )] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "trgrass"              )] = "tropical grassland"
+      Value[IsAuthor & ( Value %in% "trmoist"              )] = "tropical moist forest"
+      Value[IsAuthor & ( Value %in% "trmoist; trconif"     )] = "sub-tropical moist forest"
+      Value[IsAuthor & ( Value %in% "tundra"               )] = "tundra"
       #---~---
       #   Valerio Pillar.  The data repository is from subtropical South America.
       #---~---
@@ -6325,6 +8145,15 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & ( Value %in% "trrh"   )] = "tropical rain forest"
       Value[IsAuthor & ( Value %in% "tun"    )] = "tundra"
       Value[IsAuthor & ( Value %in% "wol"    )] = "tropical savannah"
+      #---~---
+      #   Peter Reich. Rename short entries based on reference paper.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Peter Reich" ) & ( NameOrig   %in% c("biome") )
+      Value[IsAuthor & ( Value %in% "b"    )] = "boreal forest"
+      Value[IsAuthor & ( Value %in% "medi" )] = "mediterranean"
+      Value[IsAuthor & ( Value %in% "te"   )] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "tr"   )] = "tropical forest"
+      Value[IsAuthor & ( Value %in% "trsav")] = "tropical savannah"
       #---~---
       #   Fritz Schweingruber.  Replace short names with unambiguous ones.
       #---~---
@@ -6383,6 +8212,96 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & ( Value %in% "shrubland"            )] = "temperate scrubland"
       Value[IsAuthor & ( Value %in% "tall herb meadow"     )] = "temperate meadow"
       #---~---
+      #   Evert Thomas. They provided "bioregions", but the study is focussed on 
+      # tropical dry forests in Colombia.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Evert Thomas" ) & ( NameOrig   %in% c("bioregion") )
+      Value[IsAuthor & ( Value %in% "valle del cauca"    )] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "caribe"             )] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "chicamocha"         )] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "tatacoa"            )] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "valle del magdalena")] = "tropical dry forest"
+      Value[IsAuthor & ( Value %in% "valle del patia"    )] = "tropical dry forest"
+      #---~---
+      #   David Tng. Trait data from this study were collected for testing whether 
+      # Eucalyptus forests in Australia were evolutionarily closer to savannahs or 
+      # forests, hence the specific classes. The study found Eucalyptus forest to be
+      # more akin to moist forests, hence the classification adopted.
+      #---~---
+      IsAuthor = ( AuthorName %in% "David Tng" ) & ( NameOrig   %in% c("vegetation type") )
+      Value[IsAuthor & ( Value %in% "tropical eucalipt forest" )] = "tropical moist forest"
+      Value[IsAuthor & ( Value %in% "tropical eucalypt forest" )] = "tropical moist forest"
+      Value[IsAuthor & ( Value %in% "temperate eucalypt forest")] = "temperate forest"
+      Value[IsAuthor & ( Value %in% "temperate savanna"        )] = "temperate woodland"
+      #---~---
+      #   Oscar Valverde-Barrantes. Meta data base, we try to assign biomes to the best
+      # of our knowledge (using the original class names, species, and/or the original 
+      # references).
+      #---~---
+      IsAuthor = AuthorName %in% "Oscar Valverde-Barrantes"
+      IsEcos   = IsAuthor & ( NameOrig   %in% "ecosystem" )
+      IsBiome  = IsAuthor & ( NameOrig   %in% "biome"     )
+      #--- Root data (original name is "Ecosystem")
+      Value[IsBiome & ( Value %in%  "boreal"                   )] = "boreal scrubland"
+      Value[IsBiome & ( Value %in%  "grassland"                )] = "temperate grassland"
+      Value[IsBiome & ( Value %in%  "mediterranean"            )] = "mediterranean"
+      Value[IsBiome & ( Value %in%  "subalpine"                )] = "temperate grassland"
+      Value[IsBiome & ( Value %in%  "subtropical forest"       )] = "sub-tropical forest"
+      Value[IsBiome & ( Value %in%  "temperate forest"         )] = "temperate forest"
+      Value[IsBiome & ( Value %in%  "tropical forest"          )] = "tropical forest"
+      #--- Leaf vein data (original name is "Biome")
+      Value[IsEcos  & ( Value %in% "aerial_leaves"             )] = "aquatic"
+      Value[IsEcos  & ( Value %in% "alpine__shrub"             )] = "boreal scrubland"
+      Value[IsEcos  & ( Value %in% "alpine_herb"               )] = "temperate grassland"
+      Value[IsEcos  & ( Value %in% "alpine_herb_"              )] = "temperate grassland"
+      Value[IsEcos  & ( Value %in% "aquatic_c_herb"            )] = "aquatic"
+      Value[IsEcos  & ( Value %in% "canopy_y_tree"             )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "cloud_forest"              )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "cloud_orests"              )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "coastal_forest"            )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "deciduous_forest"          )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "desert__shrub"             )] = "desert"
+      Value[IsEcos  & ( Value %in% "dry_forest"                )] = "tropical dry forest"
+      Value[IsEcos  & ( Value %in% "evergreen__shrub"          )] = "sub-tropical scrubland"
+      Value[IsEcos  & ( Value %in% "evergreen_forest"          )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "floating_leaves"           )] = "aquatic"
+      Value[IsEcos  & ( Value %in% "grasslands"                )] = "temperate grassland"
+      Value[IsEcos  & ( Value %in% "lowland_forest"            )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "mediterranean"             )] = "mediterranean"
+      Value[IsEcos  & ( Value %in% "mesic_forest"              )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "montane_forest"            )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "premontane_forest"         )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "premontanetropical_forest" )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "rainforest_t_tree"         )] = "tropical moist forest"
+      Value[IsEcos  & ( Value %in% "sclerophyll_forest"        )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "semi-desert"               )] = "sub-tropical scrubland"
+      Value[IsEcos  & ( Value %in% "subtropical_forest"        )] = "subtropical forest"
+      Value[IsEcos  & ( Value %in% "subtropical_orests"        )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "succulent"                 )] = "desert"
+      Value[IsEcos  & ( Value %in% "temperate"                 )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "temperate_e_zone"          )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "temperate_forest"          )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "temperate_orests"          )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "tropical_desert"           )] = "desert"
+      Value[IsEcos  & ( Value %in% "tropical_dry"              )] = "tropical dry forest"
+      Value[IsEcos  & ( Value %in% "tropical_forest"           )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "tropical_montane"          )] = "tropical forest"
+      Value[IsEcos  & ( Value %in% "tropical_orests"           )] = "tropical moist forest"
+      Value[IsEcos  & ( Value %in% "tropical_wet"              )] = "tropical moist forest"
+      Value[IsEcos  & ( Value %in% "understory_treams"         )] = "temperate forest"
+      Value[IsEcos  & ( Value %in% "wet_forest"                )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "wet_orests"                )] = "sub-tropical forest"
+      Value[IsEcos  & ( Value %in% "wetland"                   )] = "wetland"
+      Value[IsEcos  & ( Value %in% "wetlands"                  )] = "wetland"
+      #---~---
+      #   Stephni van der Merwe. Their measurements took place in Marion Island and 
+      # mainland South Africa
+      #---~---
+      IsAuthor = ( AuthorName %in% "Stephni van der Merwe" ) & ( NameOrig   %in% "biome" )
+      Value[IsAuthor & ( Value %in% "grassland"            )] = "sub-tropical grassland"
+      Value[IsAuthor & ( Value %in% "sub-antarctic tundra" )] = "tundra"
+
+      #---~---
       #   Ian Wright.  Data provided are mostly from Australia and New Zealand.
       #   Rename ambiguous entries based on inspecting the data base.
       #---~---
@@ -6397,36 +8316,6 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       Value[IsAuthor & ( Value %in% "wet sclerophyll forest;")] = "sub-tropical moist forest"
       Value[IsAuthor & ( Value %in% "woodland;"              )] = "sub-tropical savannah"
       #---~---
-      #   Robert Jackson. Rename ambiguous entries based on inspecting the data base.
-      #---~---
-      IsAuthor = ( AuthorName %in% "Robert Jackson" ) & ( NameOrig   %in% c("vegetation") )
-      Value[IsAuthor & ( Value %in% "broad-leaved evergreen forest" )] = "sub-tropical moist forest"
-      Value[IsAuthor & ( Value %in% "coniferous evergreen forest"   )] = "sub-tropical moist forest"
-      Value[IsAuthor & ( Value %in% "deciduous broad-leaved forests")] = "sub-tropical moist forest"
-      Value[IsAuthor & ( Value %in% "deciduous forest"              )] = "temperate forest"
-      Value[IsAuthor & ( Value %in% "dry deciduous forest"          )] = "sub-tropical dry forest"
-      Value[IsAuthor & ( Value %in% "forest"                        )] = "temperate forest"
-      Value[IsAuthor & ( Value %in% "montane rainforest"            )] = "tropical moist forest"
-      Value[IsAuthor & ( Value %in% "natural oak forest"            )] = "sub-tropical moist forest"
-      Value[IsAuthor & ( Value %in% "rain forest"                   )] = "temperate forest"
-      Value[IsAuthor & ( Value %in% "semi-decid rain forest"        )] = "tropical moist forest"
-      Value[IsAuthor & ( Value %in% "shrubland"                     )] = "temperate scrubland"
-      #---~---
-      #   Angela Moles. Rename ambiguous entries based on inspecting the data base.
-      #---~---
-      IsAuthor = ( AuthorName %in% "Angela Moles" ) & ( NameOrig   %in% c("vegetation") )
-      Value[IsAuthor & ( Value %in% "sub-tropical and temperate rainforest")] = "temperate forest"
-      Value[IsAuthor & ( Value %in% "tropical and subtropical grasslands"  )] = "sub-tropical grassland"
-      #---~---
-      #   Peter Reich. Rename short entries based on reference paper.
-      #---~---
-      IsAuthor = ( AuthorName %in% "Peter Reich" ) & ( NameOrig   %in% c("biome") )
-      Value[IsAuthor & ( Value %in% "b"    )] = "boreal forest"
-      Value[IsAuthor & ( Value %in% "medi" )] = "mediterranean"
-      Value[IsAuthor & ( Value %in% "te"   )] = "temperate forest"
-      Value[IsAuthor & ( Value %in% "tr"   )] = "tropical forest"
-      Value[IsAuthor & ( Value %in% "trsav")] = "tropical savannah"
-      #---~---
 
 
       #---~---
@@ -6438,13 +8327,14 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                          , "arable fields and gardens"
                          , "arable; broad-leaved woodland; coniferous plantation; grassland; heathland; wetland"
                          , "arable; riverine habitats; xerophytic shrubland; xerophytic woodland"
+                         , "boreal river bank"
                          , "broad-leaved woodland or montane grassland or montane dwarf scrub"
                          , "coastal districts/river valleys", "coastal forest?"
                          , "dune grasslands plus a hay meadow", "fallow lands"
                          , "forest clearing", "forest community"
                          , "forest edges and related ecotones", "gravel-slide community"
-                         , "half graval-slide community", "ns", "other"
-                         , "riparian corridor amist prairie grass", "riparian forest"
+                         , "half graval-slide community", "low alpine moderate snowbed", "ns"
+                         , "other", "riparian corridor amist prairie grass", "riparian forest"
                          , "riparian meadow", "sandhills subclimax", "sea-shores"
                          , "secondary deciduous broad-leaved forest"
                          , "subalpine communities", "temperate disturbed"
@@ -6480,7 +8370,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      , "regenerated pinus sylvestris stands", "wide-boreal"
                      )#end c
       IsBorealScrub =
-         Value %in% c( "scrubs; alpine", "steppe; alpine", "open subnival vegetation"
+         Value %in% c( "boreal scrubland", "scrubs; alpine", "steppe; alpine"
+                     , "open subnival vegetation"
                      , "tundra with evergreen dwarf-shrub and moss on high mountains in temperate zone"
                      )#end c
       IsBorealGrass =
@@ -6658,6 +8549,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      , "subtropical evergreen broad-leaved forest"
                      , "subtropic evergreen forest", "subtropical everg broad-leaved forest"
                      , "subtropical evergreen broadleaf forest"
+                     , "subtropical evergreen monsoon forest"
                      , "subtropical evergreen needleleaf forest"
                      , "subtropical floodplain forest", "subtropical forest"
                      , "subtropical forest in a context of forest-grassland mosaic"
@@ -6672,9 +8564,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      , "subtropical deciduous broadleaf forest"
                      , "subtropical eucalypt forest", "sub-tropical dry forest"
                      )#end c
-
       IsMediterran   =
-         Value %in% c( "broadleaf evergreen hemi-sclerophyllous thicket (shrubland) on mountiains in subtropical zone"
+         Value %in% c( "apennine high ecosystems"
+                     , "broadleaf evergreen hemi-sclerophyllous thicket (shrubland) on mountiains in subtropical zone"
                      , "broad-sclerophyll forest", "california chaparral", "chaparral"
                      , "dehsa (wald-weide)", "dry mediterranean"
                      , "dry mediterranean shrub steppe", "fynbos shrubland", "garigue"
@@ -6738,8 +8630,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      , "tropical lowland evergreen and semi-evergreen forest (schmid; 1974; in blanc; 1998)"
                      , "tropical mixed hardwood forest", "tropical moist forest"
                      , "tropical mosit forest", "tropical montane forest"
-                     , "tropical montane rain forest", "tropical mountain rain forest"
-                     , "tropical premontane wet forest", "tropical rain forest"
+                     , "tropical montane rain forest", "tropical mountain forest"
+                     , "tropical mountain rain forest", "tropical premontane wet forest"
+                     , "tropical rain forest"
                      , "tropical rain forest (premontane wet forest)"
                      , "tropical rain-forest", "tropical rainfores", "tropical rainforest"
                      , "tropical rainforest; ne queensland", "tropical secondary forest"
@@ -6833,7 +8726,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      )#end c
       IsPasture      =
          Value %in% c( "commercial grasslands", "managed pasture", "pasture"
-                     , "pasture (1565 m)"
+                     , "pasture (1565 m)", "subalpine mountain pasture"
                      )#end c
       IsCropland     =
          Value %in% c( "agricultural", "crop land", "cropland"
@@ -6850,7 +8743,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                      )#end c
       #---~---
 
-      #---~---
+
+
+     #---~---
       #   Assign classes
       #---~---
       Value[IsDesert      ] = "01 - Desert/Semi-arid"
@@ -7055,12 +8950,13 @@ TRY_Fix_Uncertain_Str <<- function(x,OffFactor=0.25){
    #---~---
    HasRange         = ( grepl( pattern="[0-9]\\-[0-9]"   ,x=Answer)
                       | grepl( pattern="[0-9]\\-\\-[0-9]",x=Answer) )
-   Answer[HasRange] = mapply( FUN      = TRY_Fix_MeanRange_Scalar
-                            , x        = as.list(Answer[HasRange])
-                            , SIMPLIFY = TRUE
-                            )#end mapply
+   if (any(HasRange)){
+      Answer[HasRange] = mapply( FUN      = TRY_Fix_MeanRange_Scalar
+                               , x        = as.list(Answer[HasRange])
+                               , SIMPLIFY = TRUE
+                               )#end mapply
+   }#end if (any(HasRange))
    #---~---
-
 
    return(Answer)
 }#end TRY_Fix_Uncertain_Str

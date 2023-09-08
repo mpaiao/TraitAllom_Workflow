@@ -254,7 +254,7 @@ SelectNeoTropical <<- function(x){
 
 
    #---~---
-   #   Add list of sites known to be located in Neotropical forests in the tropicsdddddddddd
+   #   Add list of sites known to be located in Neotropical forests in the tropics
    #---~---
    NeotropSites = c( "10?26'N_83?59'W", "10?28'N_84?02'W"
                    , "35km S. of Brasilia; Brazil", "429_La Selva; Costa Rica"
@@ -744,8 +744,8 @@ TRY_Harmonise_Photosynthesis <<- function(x,am_fac=1.){
 
 #---~---
 #     This function fills in leaf density and leaf thickness when SLA and
-# one of the bases are provided. This will respect the input data, even if they are
-# not consistent.
+# one of the bases are provided. This will respect the original input data, even if they 
+# are not self-consistent.
 #
 # Input variables:
 # x      - tibble object with traits with standard names.
@@ -758,6 +758,79 @@ TRY_Harmonise_LeafArchitecture <<- function(x,td_fac=1.){
             )#end mutate
    return(Answer)
 }#end function TRY_Harmonise_LeafArchitecture
+#---~---
+
+
+
+
+
+#---~---
+#     This function fills in mass- and area-based component concentration traits when SLA
+# and one of the bases are provided. This will respect the original input data, even if they 
+# are not self-consistent.
+#
+# Input variables:
+# x      - tibble object with traits with standard names.
+# am_fac - additional area-mass conversion factor (in case units are inconsistent)
+#---~---
+TRY_Harmonise_AreaMassConc <<- function(x,a2m_fac=1.){
+   Answer = x %>%
+      mutate( leaf_m_carbon = ifelse(test=leaf_m_carbon %gt% 0.,yes=leaf_m_carbon,no=NA_real_)
+            , leaf_a_carbon = ifelse(test=leaf_a_carbon %gt% 0.,yes=leaf_a_carbon,no=NA_real_)
+            , leaf_m_nitro  = ifelse(test=leaf_m_nitro  %gt% 0.,yes=leaf_m_nitro ,no=NA_real_)
+            , leaf_a_nitro  = ifelse(test=leaf_a_nitro  %gt% 0.,yes=leaf_a_nitro ,no=NA_real_)
+            , leaf_m_phosph = ifelse(test=leaf_m_phosph %gt% 0.,yes=leaf_m_phosph,no=NA_real_)
+            , leaf_a_phosph = ifelse(test=leaf_a_phosph %gt% 0.,yes=leaf_a_phosph,no=NA_real_)
+            , leaf_m_chloro = ifelse(test=leaf_m_chloro %gt% 0.,yes=leaf_m_chloro,no=NA_real_)
+            , leaf_a_chloro = ifelse(test=leaf_a_chloro %gt% 0.,yes=leaf_a_chloro,no=NA_real_)
+            , leaf_m_carot  = ifelse(test=leaf_m_carot  %gt% 0.,yes=leaf_m_carot ,no=NA_real_)
+            , leaf_a_carot  = ifelse(test=leaf_a_carot  %gt% 0.,yes=leaf_a_carot ,no=NA_real_)
+            , leaf_m_carbon = ifelse( test = is.finite(leaf_m_carbon)
+                                    , yes  = leaf_m_carbon
+                                    , no   = leaf_a_carbon * SLA * a2m_fac
+                                    )#end ifelse
+            , leaf_a_carbon = ifelse( test = is.finite(leaf_a_carbon)
+                                    , yes  = leaf_a_carbon
+                                    , no   = leaf_m_carbon / SLA / a2m_fac
+                                    )#end ifelse
+            , leaf_m_nitro  = ifelse( test = is.finite(leaf_m_nitro )
+                                    , yes  = leaf_m_nitro 
+                                    , no   = leaf_a_nitro  * SLA * a2m_fac
+                                    )#end ifelse
+            , leaf_a_nitro  = ifelse( test = is.finite(leaf_a_nitro )
+                                    , yes  = leaf_a_nitro 
+                                    , no   = leaf_m_nitro  / SLA / a2m_fac
+                                    )#end ifelse
+            , leaf_m_phosph = ifelse( test = is.finite(leaf_m_phosph)
+                                    , yes  = leaf_m_phosph
+                                    , no   = leaf_a_phosph * SLA * a2m_fac
+                                    )#end ifelse
+            , leaf_a_phosph = ifelse( test = is.finite(leaf_a_phosph)
+                                    , yes  = leaf_a_phosph
+                                    , no   = leaf_m_phosph / SLA / a2m_fac
+                                    )#end ifelse
+            , leaf_m_chloro = ifelse( test = is.finite(leaf_m_chloro)
+                                    , yes  = leaf_m_chloro
+                                    , no   = leaf_a_chloro * SLA * a2m_fac
+                                    )#end ifelse
+            , leaf_a_chloro = ifelse( test = is.finite(leaf_a_chloro)
+                                    , yes  = leaf_a_chloro
+                                    , no   = leaf_m_chloro / SLA / a2m_fac
+                                    )#end ifelse
+            , leaf_m_carot  = ifelse( test = is.finite(leaf_m_carot )
+                                    , yes  = leaf_m_carot 
+                                    , no   = leaf_a_carot  * SLA * a2m_fac
+                                    )#end ifelse
+            , leaf_a_carot  = ifelse( test = is.finite(leaf_a_carot )
+                                    , yes  = leaf_a_carot 
+                                    , no   = leaf_m_carot  / SLA / a2m_fac
+                                    )#end ifelse
+            )#end mutate
+
+
+
+   return(Answer)
+}#end function TRY_Harmonise_AreaMassConc
 #---~---
 
 
@@ -854,4 +927,81 @@ TRY_Harmonise_LeafBioArea <<- function(x,am_fac=1.){
             )#end mutate
    return(Answer)
 }#end function TRY_Harmonise_LeafBioArea
+#---~---
+
+
+
+
+
+#---~---
+#     This function fills in crown area and crown diameter when both are included in the
+# trait search but only one of them is provided for an observation. This will respect the 
+# input data, even if they are not consistent.
+#
+# Input variables:
+# x         - tibble object with traits with standard names.
+# cd2ca_fac - additional conversion factor (in case units are inconsistent)
+#---~---
+TRY_Harmonise_CrownSize <<- function(x,cd2ca_fac=1.){
+   Answer = x %>%
+      mutate( crown_area = ifelse( test = is.finite(crown_area)
+                                 , yes  = crown_area
+                                 , no   = 0.25 * pi * crown_diam^2 * cd2ca_fac
+                                 )#end ifelse
+            , crown_diam = ifelse( test = is.finite(crown_diam)
+                                 , yes  = crown_diam
+                                 , no   = 2. * sqrt( crown_area / pi / cd2ca_fac )
+                                 )#end ifelse
+            )#end mutate
+   return(Answer)
+}#end function TRY_Harmonise_CrownSize
+#---~---
+
+
+
+
+
+#---~---
+#     This function fills in leaf texture (toughness) measurements when leaf thickness
+# is provided (or finds leaf thickness when both are provided).
+#
+# Input variables:
+# x        - tibble object with traits with standard names.
+# thtx_fac - additional conversion factor between leaf thickness and texture
+#            (in case units are inconsistent)
+#---~---
+TRY_Harmonise_LeafTexture <<- function(x,thtx_fac=1.){
+   Answer = x %>%
+      mutate( leaf_thick   = ifelse(test=leaf_thick   %gt% 0.,yes=leaf_thick  ,no=NA_real_)
+            , leaf_f_tear  = ifelse(test=leaf_f_tear  %gt% 0.,yes=leaf_f_tear ,no=NA_real_)
+            , leaf_f_punct = ifelse(test=leaf_f_punct %gt% 0.,yes=leaf_f_punct,no=NA_real_)
+            , leaf_t_tear  = ifelse(test=leaf_t_tear  %gt% 0.,yes=leaf_t_tear ,no=NA_real_)
+            , leaf_t_punct = ifelse(test=leaf_t_punct %gt% 0.,yes=leaf_t_punct,no=NA_real_)
+            , leaf_f_tear  = ifelse( test = is.finite(leaf_f_tear)
+                                   , yes  = leaf_f_tear
+                                   , no   = leaf_t_tear   * leaf_thick   * thtx_fac
+                                   )#end ifelse
+            , leaf_f_punct = ifelse( test = is.finite(leaf_f_punct)
+                                   , yes  = leaf_f_punct
+                                   , no   = leaf_t_punct  * leaf_thick   * thtx_fac
+                                   )#end ifelse
+            , leaf_t_tear  = ifelse( test = is.finite(leaf_t_tear)
+                                   , yes  = leaf_t_tear
+                                   , no   = leaf_f_tear   / leaf_thick   / thtx_fac
+                                   )#end ifelse
+            , leaf_t_punct = ifelse( test = is.finite(leaf_t_punct)
+                                   , yes  = leaf_t_punct
+                                   , no   = leaf_f_punct  / leaf_thick   / thtx_fac
+                                   )#end ifelse
+            , leaf_thick   = ifelse( test = is.finite(leaf_thick)
+                                   , yes  = leaf_thick
+                                   , no   = leaf_f_tear  / leaf_t_tear   / thtx_fac
+                                   )#end ifelse
+            , leaf_thick   = ifelse( test = is.finite(leaf_thick)
+                                   , yes  = leaf_thick
+                                   , no   = leaf_f_punct / leaf_t_punct / thtx_fac
+                                   )#end ifelse
+            )#end mutate
+   return(Answer)
+}#end function TRY_Harmonise_LeafTexture
 #---~---

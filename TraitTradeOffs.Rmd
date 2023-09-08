@@ -1,7 +1,7 @@
 ---
 title: "TRY traits trade-offs"
 author: "Marcos Longo"
-date: "2022-12-06"
+date: "2022-04-25"
 output: html_document
 ---
 
@@ -27,8 +27,8 @@ This script seeks to establish trait trade-off relationships for different plant
 Set paths and file names for input and output.
 
 -   **home_path**. The user home path.
--   **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
 -   **main_path**. Main working directory
+-   **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
 -   **summ_path**. Path for summaries for each species and genus.
 -   **plot_path**. The main output path for the simulation plots.
 -   **rdata_path**. Output path for R objects (so we can use it for comparisons.)
@@ -86,7 +86,7 @@ The following block defines some settings for the standardised major axis for mo
 
 -   **n_boot**. Number of bootstrap iterations for building confidence bands for SMA models.
 
--   **RangeKeep**. Range of values to be considered valid. For example, if `RangeKeep = 0.95` values outside the 2.5-97.5% confidence range will be removed. This is intended to be a temporary outlier removal, but the QAQC should be eventually incorporated in the TidyTRY.Rmd script. To keep all data, set `RangeKeep=NA_real_`.
+-   **RangeKeep**. Range of values to be considered valid. For example, if `RangeKeep = 0.95` values outside the 2.5-97.5% confidence range will be removed. This is intended to be a temporary outlier removal, but the QAQC should be eventually incorporated in the TidyTraitAllomDB.Rmd script. To keep all data, set `RangeKeep=NA_real_`.
 
 -   **SMA_ConfInt**. Confidence range for the SMA models.
 
@@ -119,7 +119,7 @@ The following block defines some settings for the standardised major axis for mo
 
 ```{r, label='set-sma-options',message=FALSE,results='hide',warning=FALSE}
 # Variable to use as X axis for trait SMA analyses?
-xsma_TraitID    = c(wood_dens=4L,SLA=3117L)[2L]
+xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_turnover=12L,leaf_f_punct=2L)[2L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
 xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
@@ -178,6 +178,8 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 -   **cluster_kmax**. Maximum number of clusters to consider (when seeking the optimum number of clusters)
 -   **cluster_kfix**. A number of clusters to be saved regardless of the optimum (for visualisation purposes). It must be between `cluster_kmin` and `cluster_kmax`
 -   **min_weight_cluster**. Weighting threshold below which traits are ignored in the cluster analysis
+-   **n_mcarlo_cluster**. Number of Monte Carlo iterations to produce standard error for the gap statistics. Higher numbers yield to more robust estimates, but this step takes a lot of time. 
+-   **method_gap_maxSE**. Which method to use for selecting the maximum gap statistics. This must be one of the options for argument `method` in function `clusGap::maxSE`.
 -   **cluster_method**. Which method to use for selecting the optimum number of clusters. Current options are "sil" (for silhouette) and "gap" (for gap statistics). The script always calculates both, but the default method is the one applied for subsequent analyses.
 -   **n_pca_min**. This is the minimum number of valid points for running a PCA (after imputation).
 
@@ -186,7 +188,7 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 n_row_numtrait_impute = 2L
 
 # Minimum fraction of complete observations (relative to the most abundant trait) for being considered in the imputation
-f_col_trait_impute = 0.25
+f_col_trait_impute = 0.20
 
 # Select the minimum and maximum number of clusters to consider.
 cluster_kmin = 2L
@@ -196,8 +198,11 @@ cluster_kfix = 6L
 # Minimum weight (first guess) below which the traits will be disregarded for cluster analysis
 min_weight_cluster = 0.20
 
-# Trait IDs of variables that should be excluded from cluster analysis
-exclude_traitID_cluster = c(22L,197L,825L)
+# Number of Monte Carlo iterations (for gap statistics standard error)
+n_mcarlo_cluster = 100L
+
+# Method for maximum gap statistics whilst accounting for standard error. See maxSE help for details.
+method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "globalmax")[3L]
 
 # Method to be used for selecting the optimum number of clusters.
 cluster_method = c("sil","gap")[2L]
@@ -210,23 +215,23 @@ The following tibble object sets colours and shapes for categorical traits that 
 
 -   **TraitID**. The trait ID to which the categories correspond to. This must be the same ID used by TRY. Additionally, you should include two rows with TraitID set no `NA_integer_`. These rows will have special settings for unknown classes and for the global model.
 -   **Class**. This is the new simplified class for plots and analyses. In case you want to direct multiple original classes to fewer simplified classes, use the same name in this column multiple times. For the special rows, set one of them to "UKN" and the other to "ALL", for entries that could not be classified and one for the full model.
--   **TRYClass**. The input class categories from TRY, after the primary harmonisation by script TidyTRY.Rmd.
+-   **TRYClass**. The input class categories from TRY, after the primary harmonisation by script TidyTraitAllomDB.Rmd.
 -   **Colour**. Colour to be used for this class. If multiple `TRYClass` entries point to the same `Class` for a given trait ID, only the first value of `Colour` for that `Class` will be considered.
 -   **Symbol**. Symbol to be used for this class. If multiple `TRYClass` entries point to the same `Class` for a given trait ID, only the first value of `Symbol` for that `Class` will be considered.
 -   **XYUse**. Which column to use for scatter plots. Options are `"Colour"`, `"Symbol"`, or `NA_character_`. Make sure the values are the same for all rows belonging to the same TraitID, and that both `"Colour"` and `"Symbol"` are not used for two or more traits.
 
 ```{r, label='categ-settings',message=FALSE,results='hide',warning=FALSE}
 # Phenology information
-CategInfo = tidyr::tribble( ~TraitID, ~Class, ~TRYClass                  ,   ~Colour, ~Symbol, ~XYUse
+CategInfo = tidyr::tribble( ~TraitID, ~Class, ~TRYClass                     ,   ~Colour, ~Symbol, ~XYUse
                           ,         22L,   "C3", "C3"                       , "#007E89",     17L, NA_character_
                           ,         22L,   "C4", "C4"                       , "#FCA2AE",      5L, NA_character_
                           ,         22L,  "CAM", "CAM"                      , "#B6899C",      8L, NA_character_
-                          ,         28L,  "ANM", "Animal"                   , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "ANM", "Animal/Birds"             , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "ANM", "Animal/Other Mammals"     , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "SLF", "Self/Other Abiotic"       , "#FCA2AE",     13L, NA_character_
-                          ,         28L,  "H2O", "Water"                    , "#008B96",     18L, NA_character_
-                          ,         28L,  "WND", "Wind"                     , "#E72521",     16L, NA_character_
+                          ,         28L,  "ZOO", "Zoochory"                 , "#AED5E3",      9L, NA_character_
+                          ,         28L,  "ZOO", "Ornithochory"             , "#AED5E3",      9L, NA_character_
+                          ,         28L,  "ZOO", "Mammalochory"             , "#AED5E3",      9L, NA_character_
+                          ,         28L,  "AUT", "Autochory"                , "#FCA2AE",     13L, NA_character_
+                          ,         28L,  "HYD", "Hydrochory"               , "#008B96",     18L, NA_character_
+                          ,         28L,  "ANE", "Anemochory"               , "#E72521",     16L, NA_character_
                           ,         37L,  "EVG", "Evergreen"                , "#008B96",     18L, "Colour"
                           ,         37L,  "SMD", "Brevi-deciduous"          , "#FDBF6F",      9L, "Colour"
                           ,         37L,  "SMD", "Semi-deciduous"           , "#FDBF6F",      9L, "Colour"
@@ -295,6 +300,8 @@ map_colour = "viridis"     # Colour palette, it must be compatible with scale_fi
 map_range  = c(10L,10000L) # Fixed ranged for map counts (Vector with minimum and maximum). For unbounded counts, set minimum, maximum or both to NA_real_
 ```
 
+
+
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
 <!-- =================================================================================== -->
@@ -330,7 +337,7 @@ br_states     = sf::st_as_sf(st_read(br_state_shp))
 
 ```
 
-Load the harmonised trait data set, stored in file `rdata_TidyTRY`. This is the output of script `TidyTRY.Rmd` so make sure to run that pre-processing first.
+Load the harmonised trait data set, stored in file `rdata_TidyTRY`. This is the output of script `TidyTraitAllomDB.Rmd` so make sure to run that pre-processing first.
 
 ```{r, label='tidy-loader',message=FALSE,results='hide',warning=FALSE}
 # Set subset of TRY entries.
@@ -348,7 +355,7 @@ if (file.exists(rdata_TidyTRY)){
    # File not found, stop the script
    cat0(" + File ",basename(rdata_TidyTRY)," not found!")
    cat0("   This script requires pre-processing and subsetting TRY observations.")
-   cat0(" - Run script \"TidyTRY.Rmd\" before running this script, and set: ")
+   cat0(" - Run script \"TidyTraitAllomDB.Rmd\" before running this script, and set: ")
    cat0("      use_realm     = \"",use_realm    ,"\"")
    cat0("      use_lifeclass = \"",use_lifeclass,"\"")
    cat0("   in the TidyTRY preamble.")
@@ -359,8 +366,14 @@ if (file.exists(rdata_TidyTRY)){
 Define which variables are used for the X axis
 
 ```{r, label='xsma-xphoto-set',message=FALSE,results='hide',warning=FALSE}
-# Find the local trait name consistent with the TidyTRY object
-xsma_idx   = match(xsma_TraitID,try_trait$TraitID)
+#    Find the local trait name consistent with the TidyTRY object. For most traits, we use 
+# the trait ID, however for leaf texture and xylem loss of conductivity, we use the names
+# because the same ID is split into multiple variables.
+if (xsma_TraitID %in% c(2L,719L,3479L)){
+   xsma_idx   = match(names(xsma_TraitID),try_trait$Name)
+}else{
+   xsma_idx   = match(xsma_TraitID,try_trait$TraitID)
+}#end if (xsma_TraitID %in% c(2L,719L,3479L))
 xphoto_idx = match(xphoto_TraitID,try_trait$TraitID)
 
 # Make sure the indices are valid
@@ -400,9 +413,12 @@ rdata_SMA_photo   = file.path(rdata_path,paste0("SMA_Photo_"  ,photo_suffix,".RD
 rdata_corr_trait  = file.path(rdata_path,paste0("Corr_Trait_" ,photo_suffix,".RData"))
 rdata_distr       = file.path(rdata_path,paste0("Distr_Trait_",trait_suffix,".RData"))
 
-# Build file name for summaries by genus and species.
-species_summ = file.path(summ_path,paste0("TRY_SpeciesSumm_",use_suffix,".csv"))
-genus_summ   = file.path(summ_path,paste0("TRY_GenusSumm_"  ,use_suffix,".csv"))
+# Build file name for summaries by genus and species, and summary distribution.
+species_summ    = file.path(summ_path,paste0("TRY_SpeciesSumm_"   ,use_suffix,".csv"))
+genus_summ      = file.path(summ_path,paste0("TRY_GenusSumm_"     ,use_suffix,".csv"))
+distr_summ      = file.path(summ_path,paste0("TRY_InfoDistr_"     ,use_suffix,".csv"))
+cluster_medoid  = file.path(summ_path,paste0("TRY_ClusterMedoid_" ,use_suffix,".csv"))
+cluster_medians = file.path(summ_path,paste0("TRY_ClusterMedians_",use_suffix,".csv"))
 
 
 # Build output directory for trait, allometry, and photosynthesis fits.
@@ -813,8 +829,10 @@ if (update_impute){
    TaxonImpute = TaxonAll[-1L]
    TaxonID     = TaxonAll[1L]
 
-   # Pre-select traits that can be used for PFT attribution and PCA.
-   TraitCandidate = unique(c(TaxonImpute,names(DataTRY)[names(DataTRY) %in% try_trait$Name[! try_trait$Allom]]))
+   # Pre-select traits that can be used for imputation and cluster analysis. Traits listed as candidates for
+   # cluster analysis will be also imputed.
+   WhichCandidate = with( try_trait, which( ( Impute | Cluster ) & ( ! Allom ) ) )
+   TraitCandidate = unique(c(TaxonImpute,names(DataTRY)[names(DataTRY) %in% try_trait$Name[WhichCandidate]]))
    TraitNumeric   = names(DataTRY)[names(DataTRY) %in% try_trait$Name[try_trait$Type %in% "numeric"]]
    TraitNumeric   = intersect(TraitNumeric,TraitCandidate)
 
@@ -862,7 +880,7 @@ if (update_impute){
    ImputedTRY = ImputedTRY %>%
       select_at(all_of(c(TaxonID,TraitImpute))) %>%
       arrange_at(all_of(c(TaxonID)))
- 
+
    # Save imputed data
    cat0(" + Save imputed data models to ",basename(rdata_impute))
    dummy = save( list              = c( "ImputeAnswer","ImputedTRY", "TaxonID", "TallyTRY" )
@@ -890,8 +908,9 @@ if (update_cluster){
    source(file.path(util_path,"clusGapFlex.r"),chdir=TRUE)
 
    # List names to exclude from the cluster analysis
-   ExcludeName = names(ImputedTRY) %in% try_trait$Name[try_trait$TraitID %in% exclude_traitID_cluster]
-   ExcludeName = names(ImputedTRY)[ExcludeName]
+   ExcludeTraitID = try_trait$TraitID[! try_trait$Cluster]
+   ExcludeName    = names(ImputedTRY) %in% try_trait$Name[try_trait$TraitID %in% ExcludeTraitID]
+   ExcludeName    = names(ImputedTRY)[ExcludeName]
       
    # Select the columns that will participate in the cluster analysis
    FilledTRY = ImputedTRY              %>%
@@ -1050,8 +1069,8 @@ if (update_cluster){
                            , weights     = DataInfo$Weight
                            , K_max       = cluster_kmax
                            , d_power     = 2
-                           , n_mcarlo    = 100L
-                           , mc_verb     = 10L
+                           , n_mcarlo    = n_mcarlo_cluster
+                           , mc_verb     = round(0.1 * n_mcarlo_cluster)
                            , verbose     = TRUE
                            , do.swap     = FALSE
                            , pamonce     = 6L
@@ -1070,7 +1089,7 @@ if (update_cluster){
    # Find the optimal number of PFTs based on the silhouette and gap statistics. 
    cat0(" + Save best cluster based on silhouette and gap statistics.")
    k_opt_sil = 1L + which.max(ClusterInfo$sil_width[-1L])
-   k_opt_gap = 1L + maxSE(f=ClusterInfo$gap[-1L],SE.f=ClusterInfo$gapSE[-1L],SE.factor=1)
+   k_opt_gap = 1L + maxSE(f=ClusterInfo$gap[-1L],SE.f=ClusterInfo$gapSE[-1L],SE.factor=1,method="globalSEmax")
    ClusterOpt = list(sil=ClusterList[[k_opt_sil]],gap=ClusterList[[k_opt_gap]],fix=ClusterList[[cluster_kfix]])
 
    # Create tibble containing the cluster information
@@ -1088,7 +1107,8 @@ if (update_cluster){
                                   , labels = ImputedTRY[[TaxonID]][ClusterOpt$fix$id.med]
                                   )#end factor
             )#end mutate
-      
+   
+
    # Save data to some R object
    cat0(" + Save cluster analysis to ",basename(rdata_cluster),".")
    dummy = save( list              = c("FilledTRY","DataInfo","ScaledTRY","DissimilarTRY"
@@ -1114,6 +1134,7 @@ Here we append a column in all data sets to include the Cluster PFT. We always d
 
 ```{r,label='try-add-cluster',message=FALSE,results='hide',warning=FALSE}
 update_tidy_cluster = update_cluster || (! file.exists(rdata_TidyCluster))
+update_tidy_cluster = TRUE
 
 if (update_tidy_cluster){
 
@@ -1131,8 +1152,7 @@ if (update_tidy_cluster){
    AbbrCluster             = abbreviate(levels(TidyTRY$Cluster))
    levels(TidyTRY$Cluster) = AbbrCluster
    TidyTRY$Cluster         = as.character(TidyTRY$Cluster)
-   
-   
+
    
    # Aggregate cluster classification to species.
    cat0(" + Aggregate clusters to species.")
@@ -1180,10 +1200,30 @@ if (update_tidy_cluster){
    ClusterColours = RColorBrewer::brewer.pal(n=max(3L,CntCluster),name=BrewFunction)[sequence(CntCluster)]
    ClusterSymbols = c(16L,4L,13L,17L,6L,7L,0L,5L,2L,3L,1L,14L,10L,18L,9L,8L,12L,15L,11L)[sequence(CntCluster)]
 
+
+   # Define the order of the clusters for output based on their wood density and leaf phenology   
+   WoodDens    = try_trait$Name[try_trait$TraitID %in%                   c(   4L)][1L]
+   LeafPhen    = try_trait$Name[try_trait$TraitID %in%             c(  37L,1251L)][1L]
+   SLA         = try_trait$Name[try_trait$TraitID %in% c(3086L,3115L,3116L,3117L)][1L]
+   
+   SummCluster = TidyTRY %>%
+      select(all_of(c("Cluster",LeafPhen,WoodDens,SLA))) %>%
+      filter(! is.na(Cluster))                           %>%
+      mutate(across(all_of(SLA), ~ -1*.x))               %>%
+      group_by(Cluster) %>%
+      summarise( across(where(is.character), ~ commonest(.x,na.rm=TRUE) )
+               , across(where(is.double   ), ~ mean     (.x,na.rm=TRUE) ) ) %>%
+      ungroup() %>%
+      arrange(across(all_of(LeafPhen),desc),across(all_of(c(WoodDens,SLA)))) %>% 
+      mutate(across(all_of(SLA), ~ -1*.x))
+
+   # Re-order the cluster
+   ClusterIdx = match(SummCluster$Cluster,AbbrCluster)
+   
    # Define settings for plotting data by cluster
    CategCluster = tibble( TraitID  = 0L
-                        , Class    = AbbrCluster
-                        , TRYClass = levels(ClusterTRY[[v_cluster]])
+                        , Class    = AbbrCluster[ClusterIdx]
+                        , TRYClass = levels(ClusterTRY[[v_cluster]])[ClusterIdx]
                         , Colour   = ClusterColours
                         , Symbol   = ClusterSymbols
                         , XYUse    = NA_character_
@@ -1213,7 +1253,56 @@ dummy = write_csv( x = SpeciesTRY, file = species_summ, na = "")
 dummy = write_csv( x = GenusTRY  , file = genus_summ  , na = "")
 ```
 
+# Summary of all traits by cluster
 
+Here we create two files with cluster summaries. The first is a list of traits for the medoid taxa (only those that participated in the cluster analysis). The other contains the median (numeric) or commonest (categorical) of all traits.
+
+
+```{r, label='try-cluster-summ',message=FALSE,results='hide',warning=FALSE}
+cat0(" + Retrieve data for the medoid species.")
+# Select medoids of the cluster analysis.
+iMed              = ClusterOpt[[cluster_method]]$id.med
+MedoidTRY         = ClusterTRY[iMed,]
+
+# Add the summarised Cluster name to the output, and order the medoids following the cluster analysis
+MedoidTRY$Cluster = CategCluster$Class[match(MedoidTRY$ScientificName,CategCluster$TRYClass)]
+MedoidTRY         = MedoidTRY[match(CategCluster$Class,MedoidTRY$Cluster),]
+
+# Arrange output so it's in the same order as the main data.
+ArrangeNames = names(TidyTRY)[names(TidyTRY) %in% names(MedoidTRY)]
+MedoidTRY    = MedoidTRY %>% select_at(vars(ArrangeNames))
+
+
+
+# Select the appropriate taxonomic level before Creating the median data set using all traits.
+cat0(" + Find median values across clusters based on the entire data set:")
+DataTRY   = switch( EXPR       = fit_taxon
+                  , Individual = TidyTRY
+                  , Species    = SpeciesTRY
+                  , Genus      = GenusTRY
+                  , stop("Invalid settings for variable \"fit_taxon\".")
+                  )#end switch
+
+# Find the median value (or the commonest value) for all traits.
+MedianTRY = DataTRY                                                                     %>%
+   filter( ! is.na(Cluster))                                                            %>%
+   mutate( Cluster = factor(Cluster,levels=CategCluster$Class))                         %>%
+   group_by(Cluster)                                                                    %>%
+   summarise( across(where(is.double )  , ~ median   (.x,na.rm=TRUE))
+            , across(where(is.integer)  , ~ median   (.x,na.rm=TRUE))
+            , across(where(is.logical)  , ~ commonest(.x,na.rm=TRUE))
+            , across(where(is.character), ~ commonest(.x,na.rm=TRUE)) )                 %>%
+   ungroup()                                                                            %>%
+   mutate( Cluster = as.character(Cluster))                                             %>%
+   mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                         %>%
+   select_at(vars(names(DataTRY)))
+
+# Write CSV files with trait summaries
+cat0(" + Write CSV files with summaries by species and genus:")
+dummy = write_csv( x = MedoidTRY, file = cluster_medoid , na = "")
+dummy = write_csv( x = MedianTRY, file = cluster_medians, na = "")
+
+```
 
 
 # Trait distribution
@@ -1364,6 +1453,11 @@ if (reload_SMA_trait && file.exists(rdata_distr)){
                , compression_level = 9
                )#end save
 }#end if (reload_SMA_trait && file.exists(rdata_distr))
+
+# Write CSV files with trait summaries
+cat0(" + Write CSV file with trait distribution information:")
+dummy = write_csv( x = InfoDistr, file = distr_summ, na = "")
+
 ```
 
 
@@ -2682,7 +2776,7 @@ Here we run a principal component analysis (PCA) with the traits that are numeri
 
 ```{r,label='try-set-princomp',message=FALSE,results='hide',warning=FALSE,fig.width=8, fig.height=6}
 cat0(" + Run the principal component analysis.")
-selTrait  = (try_trait$Type %in% "numeric") & (try_trait$Name %in% names(ClusterTRY))
+selTrait  = (try_trait$Type %in% "numeric") & try_trait$Cluster & (try_trait$Name %in% names(ClusterTRY))
 TraitUse  = names(ClusterTRY)[names(ClusterTRY)   %in% try_trait$Name[selTrait]]
 TraitSkip = names(ClusterTRY)[! names(ClusterTRY) %in% TraitUse]
 WhichUse  = match(TraitUse,try_trait$Name)
@@ -2722,9 +2816,9 @@ for (v in WhichUse){
                 )#end switch
    # Decide whether the distribution needs two or three parameters
    if (zDistr %in% "skew-normal"){
-      p_vName = zFun(FilledTRY[[vName]],zFirst,zSecond,zThird)
+      p_vName = zFun(ClusterTRY[[vName]],zFirst,zSecond,zThird)
    }else if (! is.na(zDistr)){
-      p_vName = zFun(FilledTRY[[vName]],zFirst,zSecond)
+      p_vName = zFun(ClusterTRY[[vName]],zFirst,zSecond)
    }#end if (zDistr %in% "skew-normal")
       
    # Find the normal distribution equivalent of the value
@@ -2783,8 +2877,12 @@ for (cc in pca_cluster_loop){
       names(colClasses) = CategPCA$Class
    }else{
       # Use clusters
-      cName             = c("cluster_gap","cluster_sil","cluster_fix")[cc-1L]
+      cType             = c("gap","sil","fix")[cc-1L]
+      cName             = paste0("cluster_",cType)
       cDesc             = paste0("Clustered PFT: ",c("Gap statistic","Silhouette","Fixed"))[cc-1L]
+      if ( ( cType == cluster_method ) && ( "CategCluster" %in% ls(envir=.GlobalEnv) ) ){
+         DataUse[[cName]] = factor(x=as.character(DataUse[[cName]]),levels=CategCluster$TRYClass)
+      }#end if
       cUniq             = levels(DataUse[[cName]])
       cSize             = nlevels(DataUse[[cName]])
       cPalette          = if(cSize %gt% 6L){"Paired"}else{"Dark2"}
@@ -2801,7 +2899,7 @@ for (cc in pca_cluster_loop){
                     , size                  = 1.0
                     , loadings              = TRUE
                     , loadings.colour       = "grey40"
-                    , loadings.label        = FALSE
+                    , loadings.label        = TRUE
                     , loadings.label.size   = 4
                     , loadings.label.colour = "black"
                     , loadings.label.family = "Helvetica"
