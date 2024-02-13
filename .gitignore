@@ -29,3 +29,6 @@ docs/SplitAuthor.f90
 docs/TaxonSummary
 docs/UniqueAncil
 docs/UniqueTrait
+AdditionalData/NGEE-Tropics.csv
+AdditionalData/Panama_Extra.csv
+.Rhistory

@@ -90,11 +90,14 @@ discreet.require <<- function(...){
 #--- Load all packages needed.
 loaded.package = list()
 loaded.package[["agricolae"     ]] = discreet.require(agricolae     )
+loaded.package[["cowplot"       ]] = discreet.require(cowplot       )
 loaded.package[["cluster"       ]] = discreet.require(cluster       )
 loaded.package[["data.table"    ]] = discreet.require(data.table    )
+loaded.package[["extrafont "    ]] = discreet.require(extrafont     )
 loaded.package[["FactoMineR"    ]] = discreet.require(FactoMineR    )
 loaded.package[["fields"        ]] = discreet.require(fields        )
-loaded.package[["geobr"         ]] = discreet.require(geobr         )
+loaded.package[["geojsonsf"     ]] = discreet.require(geojsonsf     )
+loaded.package[["geomtextpath"  ]] = discreet.require(geomtextpath  )
 loaded.package[["hexbin"        ]] = discreet.require(hexbin        )
 loaded.package[["lubridate"     ]] = discreet.require(lubridate     )
 loaded.package[["missMDA"       ]] = discreet.require(missMDA       )
@@ -106,15 +109,13 @@ loaded.package[["raster"        ]] = discreet.require(raster        )
 loaded.package[["RColorBrewer"  ]] = discreet.require(RColorBrewer  )
 loaded.package[["reshape2"      ]] = discreet.require(reshape2      )
 loaded.package[["rgbif"         ]] = discreet.require(rgbif         )
-loaded.package[["rgdal"         ]] = discreet.require(rgdal         )
-loaded.package[["rgeoboundaries"]] = discreet.require(rgeoboundaries)
 loaded.package[["rworldmap"     ]] = discreet.require(rworldmap     )
 loaded.package[["scales"        ]] = discreet.require(scales        )
 loaded.package[["sf"            ]] = discreet.require(sf            )
 loaded.package[["smatr"         ]] = discreet.require(smatr         )
-loaded.package[["sp"            ]] = discreet.require(sp            )
 loaded.package[["stringr"       ]] = discreet.require(stringr       )
 loaded.package[["tabularaster"  ]] = discreet.require(tabularaster  )
+loaded.package[["terra"         ]] = discreet.require(terra         )
 loaded.package[["tidyverse"     ]] = discreet.require(tidyverse     )
 loaded.package[["viridis"       ]] = discreet.require(viridis       )
 #--- Packages that must be loaded at the end.
@@ -236,6 +237,11 @@ options(locatorBell=FALSE,dplyr.summarise.inform=FALSE)
 
 #--- Assume time zone to be GMT.
 Sys.setenv(TZ="GMT")
+#---~---
+
+
+#--- Load GhostScript fonts.
+extrafont::loadfonts(device="postscript")
 #---~---
 
 

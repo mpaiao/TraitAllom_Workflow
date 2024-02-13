@@ -16,22 +16,122 @@
 #     This function converts longitude/latitude into country names.
 #
 # Input variables:
-# lon     - vector with longitudes (degrees, negative means west)
-# lat     - vector with latitudes (degrees, negative means south)
+# lon           - vector with longitudes (degrees, negative means west)
+# lat           - vector with latitudes (degrees, negative means south)
+# geo_adm1_path - path where the GeoBoundaries administrative 1 GeoJSON files are located.
+# simplified    - which large countries (i.e., Australia, Brazil, Canada, China, Russia
+#                 and United States) should use the simplified boundaries for sub-national
+#                 administrative regions? This can be either a logical variable (TRUE 
+#                 meaning all, FALSE meaning none) or the list of countries using the 
+#                 ISO-3 country codes (i.e., AUS, BRA, CAN, CHN, RUS and/or USA, case
+#                 insensitive).
 #---~---
-TRY_LonLatToGeoInfo <<- function(lon,lat){
+TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
+
+
+   #---~---
+   #   Standardise the simplified names.
+   #---~---
+   simple_lookup = c( AUS = "Australia"
+                    , BRA = "Brazil"
+                    , CAN = "Canada"
+                    , CHN = "China"
+                    , RUS = "Russia"
+                    , USA = "United States"
+                    )#end simple_lookup
+   if (is.logical(simplified)){
+      #---~---
+      #   Set countries
+      #---~---
+      if (simplified){
+         simplified = simple_lookup
+      }else{
+         simplified = character(0)
+      }#end if (simplified)
+      #---~---
+   }else{
+      #---~---
+      #   Make sure the names are valid.
+      #---~---
+      simplified = stringr::str_to_upper(simplified)
+      simplified = simple_lookup[simplified %in% names(simple_lookup)]
+      #---~---
+   }#end if (is.logical(simplified))
+   #---~---
+
+
+
+   #---~---
+   #   Make sure the input path and the required files exist.
+   #---~---
+   if (! dir.exists(geo_adm1_path)){
+      stop(paste0(" Path geo_adm1_path=\"",geo_adm1_path,"\" is not valid."))
+   }else{
+      #---~---
+      #   Set file names
+      #---~---
+      Adm1GeoJSON = 
+         c( Australia    = file.path(geo_adm1_path,"geoBoundaries-AUS-ADM1.geojson")
+          , Brazil       = file.path(geo_adm1_path,"geoBoundaries-BRA-ADM1.geojson")
+          , Canada       = file.path(geo_adm1_path,"geoBoundaries-CAN-ADM1.geojson")
+          , China        = file.path(geo_adm1_path,"geoBoundaries-CHN-ADM1.geojson")
+          , Russia       = file.path(geo_adm1_path,"geoBoundaries-RUS-ADM1.geojson")
+          , UnitedStates = file.path(geo_adm1_path,"geoBoundaries-USA-ADM1.geojson")
+          )#end c
+      #---~---
+
+
+      #---~---
+      #   Replace files with simplified counterparts when needed.
+      #---~---
+      is_simple              = names(Adm1GeoJSON) %in% simplified
+      Adm1GeoJSON[is_simple] = gsub ( pattern     = "ADM1\\.geojson"
+                                    , replacement = "ADM1_simplified.geojson"
+                                    , x           = Adm1GeoJSON[is_simple]
+                                    )#end gsub
+      #---~---
+
+
+
+      #---~---
+      #   Check file names.
+      #---~---
+      is_fine = file.exists(Adm1GeoJSON)
+      if (any (! is_fine)){
+         cat0("---~---"                                        )
+         cat0("   FATAL ERROR!"                                )
+         cat0("---~---"                                        )
+         cat0(" In path geo_adm1_path = \"",geo_adm1_path,"\"" )
+         cat0(" The following adm1 files are missing:"         )
+         for (n in which(! is_fine)){
+            cat0(" ",names(Adm1GeoJSON)[n],"  -  ",basename(Adm1GeoJSON)[n])
+         }#end for (n in which(! is_fine))
+         cat0("---~---"                                        )
+         stop(" Download missing files from https://www.geoboundaries.org")
+      }#end if
+      #---~---
+   }#end if (! dir.exists(geo_adm1_path))
+   #---~---
+
+
 
    #---~---
    #   Retrieve spatial points for all countries and the sub-national boundaries for the 
    # countries larger than or equal to Australia.
    #---~---
-   CountriesSP    = getMap(resolution="low")
-   AustraliaSP    = gb_adm1("Australia")
-   BrazilSP       = gb_adm1("Brazil")
-   CanadaSP       = gb_adm1("Canada")
-   ChinaSP        = gb_adm1("China")
-   RussiaSP       = gb_adm1("Russia")
-   UnitedStatesSP = gb_adm1("United States")
+   CountriesSP    = rworldmap::getMap(resolution="low")
+   AustraliaSP    = geojsonsf::geojson_sf(Adm1GeoJSON["Australia"   ])
+   BrazilSP       = geojsonsf::geojson_sf(Adm1GeoJSON["Brazil"      ])
+   CanadaSP       = geojsonsf::geojson_sf(Adm1GeoJSON["Canada"      ])
+   ChinaSP        = geojsonsf::geojson_sf(Adm1GeoJSON["China"       ])
+   RussiaSP       = geojsonsf::geojson_sf(Adm1GeoJSON["Russia"      ])
+   UnitedStatesSP = geojsonsf::geojson_sf(Adm1GeoJSON["UnitedStates"])
+   AustraliaSP    = sf::st_cast(AustraliaSP   ,"MULTIPOLYGON")
+   BrazilSP       = sf::st_cast(BrazilSP      ,"MULTIPOLYGON")
+   CanadaSP       = sf::st_cast(CanadaSP      ,"MULTIPOLYGON")
+   ChinaSP        = sf::st_cast(ChinaSP       ,"MULTIPOLYGON")
+   RussiaSP       = sf::st_cast(RussiaSP      ,"MULTIPOLYGON")
+   UnitedStatesSP = sf::st_cast(UnitedStatesSP,"MULTIPOLYGON")
    #---~---
 
 
@@ -156,6 +256,7 @@ TRY_LonLatToGeoInfo <<- function(lon,lat){
    LargeCountries = c("Australia","Brazil","Canada","China","Russia","United States")
    LargeCountries = LargeCountries[LargeCountries %in% Country]
    for (Large in LargeCountries){
+      cat0("      > Assign sub-national region for data from ",Large,".")
       #---~---
       #   Select data from the large country
       #---~---
@@ -558,46 +659,50 @@ TRY_Harmonise_GrowthForm <<- function(x,MinDBH=10,MinHeight=5){
 
    #--- Some growth form entries are empty but not with NA. Turn them into NA
    x = x %>%
-      mutate( growth_form = ifelse( test = growth_form %in% ""
-                                  , yes  = NA_character_
-                                  , no   = growth_form
-                                  )#end ifelse
+      mutate( growth_form     = ifelse( test = growth_form %in% ""
+                                      , yes  = NA_character_
+                                      , no   = growth_form
+                                      )#end ifelse
+            , plant_woodiness = ifelse( test = plant_woodiness %in% ""
+                                      , yes  = NA_character_
+                                      , no   = plant_woodiness
+                                      )#end ifelse
             )#end mutate
    #---~---
 
    #--- Initialise tibble for unique growth forms, and append counter for likely trees
    UniqGrowth = x %>%
-      mutate( TreeScore = 0L )
+      mutate( TreeScore      = 0L
+            , ShrubScore     = 0L
+            , WoodyScore     = 0L
+            , SemiWoodyScore = 0L
+            , NonWoodyScore  = 0L
+            )#end mutate
    #---~---
 
    #---~---
    #   Try multiple wood traits.
    #---~---
-   if ("wood_dens" %in% names(x)){
-      UniqGrowth = UniqGrowth %>%
-         mutate(TreeScore = TreeScore + as.integer(is.finite(wood_dens)))
-   }#end if ("wood_dens" %in% names(x))
-   if ("bark_dens" %in% names(x)){
-      UniqGrowth = UniqGrowth %>%
-         mutate(TreeScore = TreeScore + as.integer(is.finite(bark_dens)))
-   }#end if ("wood_dens" %in% names(x))
-   if ("dbh" %in% names(x)){
-      UniqGrowth = UniqGrowth %>%
-         mutate(TreeScore = TreeScore + as.integer(dbh    %ge% MinDBH))
-   }#end if ("dbh" %in% names(x))
-   if ("height" %in% names(x)){
-      UniqGrowth = UniqGrowth %>%
-         mutate(TreeScore = TreeScore + as.integer(height %ge% MinHeight))
-   }#end if ("height" %in% names(x))
-   if ("raunkiaer" %in% names(x)){
-      UniqGrowth = UniqGrowth %>%
-         mutate( TreeScore = TreeScore
-                           + as.integer(raunkiaer %in% c( "Megaphanerophyte"
-                                                        , "Mesophanerophyte"
-                                                        )#end c
-                                       )#end as.integer
-               )#end mutate
-   }#end if ("height" %in% names(x))
+
+   TreeRaunkiaer      = c( "Megaphanerophyte" , "Mesophanerophyte")
+   ShrubRaunkiaer     = c( "Microphanerophyte", "Nanophanerophyte")
+   WoodyRaunkiaer     = c( TreeRaunkiaer, ShrubRaunkiaer )
+   SemiWoodyRaunkiaer = c( "Chamaephyte" )
+   NonWoodyRaunkiaer  = c( "Aerophyte", "Epiphyte"  ,"Hemicryptophyte", "Geophyte"
+                         , "Helophyte", "Hydrophyte", "Therophyte"    )
+   UniqGrowth    = UniqGrowth %>%
+       mutate( TreeScore      = ( TreeScore      + as.integer(dbh       %ge% MinDBH              )
+                                                 + as.integer(height    %ge% MinHeight           )
+                                                 + as.integer(raunkiaer %in% TreeRaunkiaer       ) )
+             , ShrubScore     = ( ShrubScore     + as.integer(raunkiaer %in% ShrubRaunkiaer      ) )
+             , WoodyScore     = ( WoodyScore     + as.integer(is.finite(wood_dens)               )
+                                                 + as.integer(is.finite(bark_dens)               )
+                                                 + as.integer(dbh       %ge% MinDBH              )
+                                                 + as.integer(height    %ge% MinHeight           )
+                                                 + as.integer(raunkiaer %in% WoodyRaunkiaer      ) )
+             , SemiWoodyScore = ( SemiWoodyScore + as.integer(raunkiaer %in% SemiWoodyRaunkiaer  ) )
+             , NonWoodyScore  = ( NonWoodyScore  + as.integer(raunkiaer %in% NonWoodyRaunkiaer   ) )
+             )#end mutate
    #---~---
 
 
@@ -606,23 +711,53 @@ TRY_Harmonise_GrowthForm <<- function(x,MinDBH=10,MinHeight=5){
    #---~---
    UniqGrowth = UniqGrowth %>%
       group_by(ScientificName) %>%
-      summarise( GrowthForm = commonest(growth_form,na.rm=TRUE) 
-               , TreeScore  = sum(TreeScore,na.rm=TRUE)
+      summarise( GrowthForm     = commonest(x=growth_form    ,na.rm=TRUE)
+               , Woodiness      = commonest(x=plant_woodiness,na.rm=TRUE)
+               , TreeScore      = sum      (x=TreeScore      ,na.rm=TRUE)
+               , ShrubScore     = sum      (x=ShrubScore     ,na.rm=TRUE)
+               , WoodyScore     = sum      (x=WoodyScore     ,na.rm=TRUE)
+               , SemiWoodyScore = sum      (x=SemiWoodyScore ,na.rm=TRUE)
+               , NonWoodyScore  = sum      (x=NonWoodyScore  ,na.rm=TRUE)
                ) %>% #end summarise
       ungroup() %>%
-      mutate( GrowthForm = ifelse( test = is.na(GrowthForm) & (TreeScore %gt% 0 )
+      mutate( GrowthForm = ifelse( test = is.na(GrowthForm) & (TreeScore     %gt% 0 )
                                  , yes  = "Tree"
                                  , no   = GrowthForm
                                  )#end ifelse
-            ) %>% #end mutate
-      select(ScientificName,GrowthForm,TreeScore)
+            , GrowthForm = ifelse( test = is.na(GrowthForm) & (ShrubScore    %gt% 0 )
+                                 , yes  = "Shrub"
+                                 , no   = GrowthForm
+                                 )#end ifelse
+            , Woodiness  = ifelse( test = is.na(Woodiness) & (WoodyScore     %gt% 0 )
+                                 , yes  = "Woody"
+                                 , no   = Woodiness
+                                 )#end ifelse
+            , Woodiness  = ifelse( test = is.na(Woodiness) & (SemiWoodyScore %gt% 0 )
+                                 , yes  = "Semi-woody"
+                                 , no   = Woodiness
+                                 )#end ifelse
+            , Woodiness  = ifelse( test = is.na(Woodiness) & (NonWoodyScore  %gt% 0 )
+                                 , yes  = "Non-woody"
+                                 , no   = Woodiness
+                                 )#end ifelse
+            )#end mutate
    #---~---
 
 
-   #--- Reassign species to the commonest life form identified
+   #---~---
+   #   Assign missing values to the commonest life form identified
+   #---~---
    idx    = match(x$ScientificName,UniqGrowth$ScientificName)
    Answer = x %>%
-      mutate( growth_form = UniqGrowth$GrowthForm[idx] )
+      mutate( growth_form     = ifelse( test = is.na(growth_form)
+                                      , yes  = UniqGrowth$GrowthForm[idx]
+                                      , no   = growth_form
+                                      )#end ifelse
+            , plant_woodiness = ifelse( test = is.na(plant_woodiness)
+                                      , yes  = UniqGrowth$Woodiness [idx]
+                                      , no   = plant_woodiness
+                                      )#end ifelse
+            )#end mutate
    #---~---
 
 

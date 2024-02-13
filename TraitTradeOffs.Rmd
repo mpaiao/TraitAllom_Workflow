@@ -29,7 +29,7 @@ Set paths and file names for input and output.
 -   **home_path**. The user home path.
 -   **main_path**. Main working directory
 -   **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
--   **summ_path**. Path for summaries for each species and genus.
+-   **summ_path**. Path for summaries by species, genus and cluster.
 -   **plot_path**. The main output path for the simulation plots.
 -   **rdata_path**. Output path for R objects (so we can use it for comparisons.)
 -   **br_state_shp**. Shapefile with Brazilian states.
@@ -66,10 +66,33 @@ This flag defines whether to exclude observations from traits that show high lig
 plastic_sun_only = c(FALSE,TRUE)[2L]
 ```
 
-This flag defines whether to keep only plants with woody or woody-like (i.e., palms) characteristics. This includes trees, shrubs, palms, woody lianas, and any species that has at least one observation of wood density.
+This flag defines the levels of experiments to be included (missing values are always assumed natural and thus included).
+- **0**. Control data sets (i.e., those without treatment in treatment experiments)
+- **1**. Minor treatments (i.e., fences or logging, where the changes in environment are unlikely to affect traits beyond what could normally occur in the landscape)
+- **2**. Temperature treatments (warming / cooling).
+- **3**. Water treatments (droughts, irrigation)
+- **4**. Light treatments (lamps, shades)
+- **5**. $\mathrm{CO}_2$ experiments (enhancement, removal).
+- **6**. Nutrient experiments (fertilisation, suppression).
+- **7**. Other experiments (ozone, pesticides, multiple factors).
+
+If `use_treat_level=integer(0L)`, then only data from non-treatment studies will be considered. We advise to include at least level 0, as they are often equivalent to non-treatment studies. If `use_treat_level=NA_integer_`, then the flag will be ignored, meaning that treatment data will be all considered.
+
+```{r,label='set-treatment',message=FALSE,results='hide',warning=FALSE}
+use_treat_level = c(0L,1L) # Which treatment levels to include in data analysis
+```
+
+This flag defines whether to keep only woody plants, and how strict we should be about it. Possible values are:
+
+- **tree_only**. Only trees (sensu stricto) are included. This will exclude shrubs, lianas, hemiepiphytes and tree-like forms (e.g., palms, yucca "trees").
+- **woody_ss_free**. All free-standing woody plants (sensu stricto) are included. This will include trees and shrubs, but exclude lianas, hemiepiphytes, and tree-like forms.
+- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.
+- **woody_sl_free**. All free-standing woody plants (sensu lato) are included. This will include trees, shrubs and tree-like forms, but exclude lianas and hemiepiphytes.
+- **woody_sl_all**. All woody plants (sensu lato) are included. This will include trees, lianas, shrubs, palms and hemiepiphytes.
+- **all_plants**. All plants will be retained.
 
 ```{r,label='set-woody',message=FALSE,results='hide',warning=FALSE}
-woody_only = c(FALSE,TRUE)[2L]
+use_woody_level = c("tree_only","woody_ss_free","woody_ss_all","woody_sl_free","woody_sl_all","all_plants")[2L]
 ```
 
 The following block defines some settings for the standardised major axis for most traits and photosynthesis traits:
@@ -85,8 +108,6 @@ The following block defines some settings for the standardised major axis for mo
 -   **n_predict**. Number of points used along the trait span to make the fitted curve.
 
 -   **n_boot**. Number of bootstrap iterations for building confidence bands for SMA models.
-
--   **RangeKeep**. Range of values to be considered valid. For example, if `RangeKeep = 0.95` values outside the 2.5-97.5% confidence range will be removed. This is intended to be a temporary outlier removal, but the QAQC should be eventually incorporated in the TidyTraitAllomDB.Rmd script. To keep all data, set `RangeKeep=NA_real_`.
 
 -   **SMA_ConfInt**. Confidence range for the SMA models.
 
@@ -119,13 +140,13 @@ The following block defines some settings for the standardised major axis for mo
 
 ```{r, label='set-sma-options',message=FALSE,results='hide',warning=FALSE}
 # Variable to use as X axis for trait SMA analyses?
-xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_turnover=12L,leaf_f_punct=2L)[2L]
+xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_c2n=146L,leaf_n_area=50L)[2L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
 xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
 
 # Minimum number for plotting violins
-n_violin_min    = 30L
+n_violin_min    = 10L
 
 # Minimum number of points for SMA fitting.
 n_fit_min       = 20L
@@ -135,9 +156,6 @@ n_predict       = 200L
 
 # Number of bootstrap iterations
 n_boot          = 1000L
-
-# Interval to retain from the original data (to remove outliers)
-RangeKeep       = 0.98
 
 # Confidence range for SMA models and correlation tests
 SMA_ConfInt     = 0.95
@@ -164,48 +182,66 @@ fit_taxon = c("Individual","Species","Genus")[2L]
 Settings for Kendall correlation table
 
 - **n_kendall_min**.  This is the minimum number of valid pairs of variables for computing correlation.
+- **pmax_kendall_show**. Maximum p-value for which correlations are written to the CSV file.
 ```{r, label='set-kendall',message=FALSE,results='hide',warning=FALSE}
-# Minimum number of data pairs for Kendall correlation.
-n_kendall_min = 30L
+n_kendall_min     = 30L   # Minimum number of data pairs for Kendall correlation.
+pmax_kendall_show = 0.001 # Maximum correlation reported in the CSV file.
 ```
 
 
 Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 
+-   **impute_cluster_test**. Flag to decide whether to run the code in test mode. If `TRUE`, this will reduce the number of Monte Carlo iterations to 10, halt the code after running the cluster analysis and skip saving the imputation and cluster analysis RData objects so the code can be tested again. When running the actual analyses, make sure this is set to `FALSE`.
 -   **n_row_numtrait_impute**. For each entry (row), we check whether the trait has a sufficient number of numeric (non-categorical) traits to be included in imputation, and analyses that depend upon the imputed table.
 -   **f_col_trait_impute**. For each column (trait), we check whether the trait has sufficient valid data relative to the most abundant numeric trait. Only those traits (numeric or categorical) that exceed this threshold will be considered for imputation and subsequent analyses (cluster analysis, PCA, etc.). This is provided as a fraction.
+-   **f_var_min_impute**. For each column (trait), we check whether the trait has sufficient variability to be included. For numeric traits, variability is defined as standard deviation divided by the mean of absolute values (to get the mean magnitude of trait values and not worry about the sign or when the mean is close to zero). For categorical traits, variability isd defined as evenness. 
+-   **rseed_impute**. This is used to define the seed for random numbers ahead of the imputation, to ensure reproducibility. If set to `NA_integer_`, the code will use time for setting the seed, making it truly random.
 -   **cluster_kmin**. Minimum number of clusters to consider (when seeking the optimum number of clusters)
 -   **cluster_kmax**. Maximum number of clusters to consider (when seeking the optimum number of clusters)
--   **cluster_kfix**. A number of clusters to be saved regardless of the optimum (for visualisation purposes). It must be between `cluster_kmin` and `cluster_kmax`
+-   **cluster_kfix**. A number of clusters to be saved regardless of the optimum. It must be between `cluster_kmin` and `cluster_kmax`. This is used depending on how `cluster_method` is set.
 -   **min_weight_cluster**. Weighting threshold below which traits are ignored in the cluster analysis
+-   **rseed_cluster**. This is used to define the seed for random numbers ahead of the cluster analysis standard error, to ensure reproducibility. If set to `NA_integer_`, the code will use time for setting the seed, making it truly random.
 -   **n_mcarlo_cluster**. Number of Monte Carlo iterations to produce standard error for the gap statistics. Higher numbers yield to more robust estimates, but this step takes a lot of time. 
 -   **method_gap_maxSE**. Which method to use for selecting the maximum gap statistics. This must be one of the options for argument `method` in function `clusGap::maxSE`.
--   **cluster_method**. Which method to use for selecting the optimum number of clusters. Current options are "sil" (for silhouette) and "gap" (for gap statistics). The script always calculates both, but the default method is the one applied for subsequent analyses.
+-   **cluster_method**. Which method to use for selecting the optimum number of clusters. Current options are "sil" (for silhouette), "gap" (for gap statistics) or "fix" for a fixed number of clusters (as set by `cluster_kfix`. The script always calculates both the silhouette and the gap stastitics, but the default method is the one applied for subsequent analyses.
 -   **n_pca_min**. This is the minimum number of valid points for running a PCA (after imputation).
 
 ```{r, label='set-pca',message=FALSE,results='hide',warning=FALSE}
-# Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have 
-n_row_numtrait_impute = 2L
+# Run imputation and cluster analyses in test mode?
+impute_cluster_test = c(FALSE,TRUE)[1L]
 
-# Minimum fraction of complete observations (relative to the most abundant trait) for being considered in the imputation
-f_col_trait_impute = 0.20
+# Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have a few traits
+n_row_numtrait_impute = 3L
+
+# Minimum fraction of complete observations (relative to the most abundant numeric trait) for being considered in the imputation
+f_col_trait_impute = 1./6.
+
+# Minimum variability of the variable to be included in the imputation. Variability is sd(x)/mean(abs(x)) for numeric traits and
+#    evenness for categorical traits (including ordered, integers, logical variables, and characters).
+f_var_min_impute = 0.01
+
+# Random seed for the imputation analysis (so results are reproducible)
+rseed_impute = 6L
 
 # Select the minimum and maximum number of clusters to consider.
-cluster_kmin = 2L
+cluster_kmin = 3L
 cluster_kmax = 20L
-cluster_kfix = 6L
+cluster_kfix = 4L
 
 # Minimum weight (first guess) below which the traits will be disregarded for cluster analysis
-min_weight_cluster = 0.20
+min_weight_cluster = 1./6.
+
+# Random seed for the cluster analysis (so results are reproducible)
+rseed_cluster = 12L
 
 # Number of Monte Carlo iterations (for gap statistics standard error)
 n_mcarlo_cluster = 100L
 
 # Method for maximum gap statistics whilst accounting for standard error. See maxSE help for details.
-method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "globalmax")[3L]
+method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "globalmax")[5L]
 
 # Method to be used for selecting the optimum number of clusters.
-cluster_method = c("sil","gap")[2L]
+cluster_method = c("sil","gap","fix")[2L]
 
 # Minimum number of valid points for running a PCA.
 n_pca_min = 500L
@@ -222,34 +258,37 @@ The following tibble object sets colours and shapes for categorical traits that 
 
 ```{r, label='categ-settings',message=FALSE,results='hide',warning=FALSE}
 # Phenology information
-CategInfo = tidyr::tribble( ~TraitID, ~Class, ~TRYClass                     ,   ~Colour, ~Symbol, ~XYUse
-                          ,         22L,   "C3", "C3"                       , "#007E89",     17L, NA_character_
-                          ,         22L,   "C4", "C4"                       , "#FCA2AE",      5L, NA_character_
-                          ,         22L,  "CAM", "CAM"                      , "#B6899C",      8L, NA_character_
-                          ,         28L,  "ZOO", "Zoochory"                 , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "ZOO", "Ornithochory"             , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "ZOO", "Mammalochory"             , "#AED5E3",      9L, NA_character_
-                          ,         28L,  "AUT", "Autochory"                , "#FCA2AE",     13L, NA_character_
-                          ,         28L,  "HYD", "Hydrochory"               , "#008B96",     18L, NA_character_
-                          ,         28L,  "ANE", "Anemochory"               , "#E72521",     16L, NA_character_
-                          ,         37L,  "EVG", "Evergreen"                , "#008B96",     18L, "Colour"
-                          ,         37L,  "SMD", "Brevi-deciduous"          , "#FDBF6F",      9L, "Colour"
-                          ,         37L,  "SMD", "Semi-deciduous"           , "#FDBF6F",      9L, "Colour"
-                          ,         37L,  "DRD", "Deciduous (not specified)", "#E72521",     16L, "Colour"
-                          ,         42L,  "HBG", "Grass-Herb"               , "#E6AB02",      4L, "Symbol"
-                          ,         42L,  "LIA", "Liana"                    , "#7570B3",     17L, "Symbol"
-                          ,         42L,  "PLM", "Palm"                     , "#66A61E",     18L, "Symbol"
-                          ,         42L,  "SHB", "Shrub"                    , "#D95F02",      8L, "Symbol"
-                          ,         42L,  "TRE", "Tree"                     , "#1B9E77",     16L, "Symbol"
-                          ,         42L,  "VNE", "Vine"                     , "#222222",     13L, "Symbol"
-                          ,         42L,  "XPH", "Xerophyte"                , "#E7298A",      6L, "Symbol"
-                          ,        197L,  "BDT", "Broadleaf Deciduous Tree" , "#1B9E77",     16L, NA_character_
-                          ,        197L,  "BET", "Broadleaf Evergreen Tree" , "#66C2A5",     10L, NA_character_
-                          ,        197L,  "C3G", "C3 Grass"                 , "#E6AB02",      3L, NA_character_
-                          ,        197L,  "C4G", "C4 Grass"                 , "#FC8D62",      4L, NA_character_
-                          ,        197L,  "ESH", "Evergreen Shrub"          , "#7570B3",      2L, NA_character_
-                          , NA_integer_,  "UKN", "Unknown"                  , "#AAAAAA",      0L, NA_character_
-                          , NA_integer_,  "ALL", "All data"                 , "#161616",     15L, NA_character_
+CategInfo = tidyr::tribble( ~TraitID, ~Class, ~TRYClass                     ,   ~Colour, ~Symbol, ~XYUse       , ~Order
+                          ,         22L,   "C3", "C3"                       , "#007E89",     17L, NA_character_, NA_integer_
+                          ,         22L,   "C4", "C4"                       , "#FCA2AE",      5L, NA_character_, NA_integer_
+                          ,         22L,  "CAM", "CAM"                      , "#B6899C",      8L, NA_character_, NA_integer_
+                          ,         28L,  "ZOO", "Zoochory"                 , "#AED5E3",      9L, NA_character_, NA_integer_
+                          ,         28L,  "ZOO", "Ornithochory"             , "#AED5E3",      9L, NA_character_, NA_integer_
+                          ,         28L,  "ZOO", "Mammalochory"             , "#AED5E3",      9L, NA_character_, NA_integer_
+                          ,         28L,  "AUT", "Autochory"                , "#FCA2AE",     13L, NA_character_, NA_integer_
+                          ,         28L,  "HYD", "Hydrochory"               , "#008B96",     18L, NA_character_, NA_integer_
+                          ,         28L,  "ANE", "Anemochory"               , "#E72521",     16L, NA_character_, NA_integer_
+                          ,         37L,  "EVG", "Evergreen"                , "#008B96",     18L, "Colour"     , 1L
+                          ,         37L,  "BVD", "Brevi-deciduous"          , "#AED5E3",     13L, "Colour"     , 2L
+                          ,         37L,  "SMD", "Semi-deciduous"           , "#FDBF6F",      9L, "Colour"     , 3L
+                          ,         37L,  "DRD", "Deciduous (not specified)", "#E72521",     16L, "Colour"     , 4L
+                          ,         38L,  "NWD", "Non-woody"                , "#008B96",     18L, NA_character_, 1L
+                          ,         38L,  "SWD", "Semi-woody"               , "#7570B3",      9L, NA_character_, 2L
+                          ,         38L,  "WDY", "Woody"                    , "#E72521",     16L, NA_character_, 3L
+                          ,         42L,  "HBG", "Grass-Herb"               , "#E6AB02",      4L, "Symbol"     , NA_integer_
+                          ,         42L,  "LIA", "Liana"                    , "#7570B3",     17L, "Symbol"     , NA_integer_
+                          ,         42L,  "PLM", "Palm"                     , "#66A61E",     18L, "Symbol"     , NA_integer_
+                          ,         42L,  "SHB", "Shrub"                    , "#D95F02",      8L, "Symbol"     , NA_integer_
+                          ,         42L,  "TRE", "Tree"                     , "#1B9E77",     16L, "Symbol"     , NA_integer_
+                          ,         42L,  "VNE", "Vine"                     , "#222222",     13L, "Symbol"     , NA_integer_
+                          ,         42L,  "XPH", "Xerophyte"                , "#E7298A",      6L, "Symbol"     , NA_integer_
+                          ,        197L,  "BDT", "Broadleaf Deciduous Tree" , "#1B9E77",     16L, NA_character_, NA_integer_
+                          ,        197L,  "BET", "Broadleaf Evergreen Tree" , "#66C2A5",     10L, NA_character_, NA_integer_
+                          ,        197L,  "C3G", "C3 Grass"                 , "#E6AB02",      3L, NA_character_, NA_integer_
+                          ,        197L,  "C4G", "C4 Grass"                 , "#FC8D62",      4L, NA_character_, NA_integer_
+                          ,        197L,  "ESH", "Evergreen Shrub"          , "#7570B3",      2L, NA_character_, NA_integer_
+                          , NA_integer_,  "UKN", "Unknown"                  , "#AAAAAA",      0L, NA_character_, NA_integer_
+                          , NA_integer_,  "ALL", "All data"                 , "#161616",     15L, NA_character_, NA_integer_
                           )#end tribble
 CntCategInfo = nrow(CategInfo)
 ```
@@ -262,6 +301,7 @@ plot_abund_map      = c(FALSE,TRUE)[2L] # Maps with trait abundance?
 plot_stat_cluster   = c(FALSE,TRUE)[2L] # Plot statistics for generating the optimal number of clusters?
 plot_wgt_cluster    = c(FALSE,TRUE)[2L] # Plot weights for cluster analysis?
 plot_pca_cluster    = c(FALSE,TRUE)[2L] # Plot PCA highlighting the clusters?
+plot_radar_cluster  = c(FALSE,TRUE)[2L] # Plot radar diagrams of all traits by cluster?
 plot_sma_trait      = c(FALSE,TRUE)[2L] # Plot SMA for photosynthesis traits?
 plot_sma_photo      = c(FALSE,TRUE)[2L] # Plot SMA for photosynthesis traits?
 plot_global_distrib = c(FALSE,TRUE)[2L] # Plot global trait distribution?
@@ -400,34 +440,37 @@ Define files and paths for input and output. We also create the output paths.
 ```{r, label='path-define',message=FALSE,results='hide',warning=FALSE}
 
 # Build suffix for model fittings.
-trait_suffix = paste(use_suffix,fit_taxon,xsma_name  ,sep="_")
-photo_suffix = paste(use_suffix,fit_taxon,xphoto_name,sep="_")
+base_suffix    = paste(use_suffix ,fit_taxon  ,sep="_")
+trait_suffix   = paste(base_suffix,xsma_name  ,sep="_")
+photo_suffix   = paste(base_suffix,xphoto_name,sep="_")
 
 # Build RData object file names for the imputed data, cluster analysis, the standardised major axis 
 # models using a reference trait and across photosynthesis parameters, and the fitted distributions.
-rdata_impute      = file.path(rdata_path,paste0("Imputed_"    ,trait_suffix,".RData"))
-rdata_cluster     = file.path(rdata_path,paste0("Cluster_"    ,trait_suffix,".RData"))
-rdata_TidyCluster = file.path(rdata_path,paste0("TidyCluster_",trait_suffix,".RData"))
+rdata_impute      = file.path(rdata_path,paste0("Imputed_"    ,base_suffix ,".RData"))
+rdata_cluster     = file.path(rdata_path,paste0("Cluster_"    ,base_suffix ,".RData"))
+rdata_TidyCluster = file.path(rdata_path,paste0("TidyCluster_",base_suffix ,".RData"))
 rdata_SMA_trait   = file.path(rdata_path,paste0("SMA_Trait_"  ,trait_suffix,".RData")) 
 rdata_SMA_photo   = file.path(rdata_path,paste0("SMA_Photo_"  ,photo_suffix,".RData"))
-rdata_corr_trait  = file.path(rdata_path,paste0("Corr_Trait_" ,photo_suffix,".RData"))
-rdata_distr       = file.path(rdata_path,paste0("Distr_Trait_",trait_suffix,".RData"))
+rdata_corr_trait  = file.path(rdata_path,paste0("Corr_Trait_" ,base_suffix ,".RData"))
+rdata_distr       = file.path(rdata_path,paste0("Distr_Trait_",base_suffix ,".RData"))
 
 # Build file name for summaries by genus and species, and summary distribution.
-species_summ    = file.path(summ_path,paste0("TRY_SpeciesSumm_"   ,use_suffix,".csv"))
-genus_summ      = file.path(summ_path,paste0("TRY_GenusSumm_"     ,use_suffix,".csv"))
-distr_summ      = file.path(summ_path,paste0("TRY_InfoDistr_"     ,use_suffix,".csv"))
-cluster_medoid  = file.path(summ_path,paste0("TRY_ClusterMedoid_" ,use_suffix,".csv"))
-cluster_medians = file.path(summ_path,paste0("TRY_ClusterMedians_",use_suffix,".csv"))
+species_summ    = file.path(summ_path,paste0("TRY_SpeciesSumm_"   ,use_suffix  ,".csv"))
+genus_summ      = file.path(summ_path,paste0("TRY_GenusSumm_"     ,use_suffix  ,".csv"))
+distr_summ      = file.path(summ_path,paste0("TRY_InfoDistr_"     ,base_suffix ,".csv"))
+SMA_summ        = file.path(summ_path,paste0("TRY_InfoSMA_"       ,trait_suffix,".csv"))
+corr_summ       = file.path(summ_path,paste0("TRY_InfoCorr_"      ,base_suffix ,".csv"))
+cluster_medoid  = file.path(summ_path,paste0("TRY_ClusterMedoid_" ,base_suffix ,".csv"))
+cluster_medians = file.path(summ_path,paste0("TRY_ClusterMedians_",base_suffix ,".csv"))
 
 
 # Build output directory for trait, allometry, and photosynthesis fits.
-violin_path  = file.path(plot_path,paste0("Trait_",trait_suffix),"ViolinPlot")
-abund_path   = file.path(plot_path,paste0("Trait_",trait_suffix),"AbundMap"  )
+violin_path  = file.path(plot_path,paste0("Trait_",base_suffix ),"ViolinPlot")
+abund_path   = file.path(plot_path,paste0("Trait_",base_suffix ),"AbundMap"  )
 trsma_path   = file.path(plot_path,paste0("Trait_",trait_suffix),"SMAPlot"   )
-trdist_path  = file.path(plot_path,paste0("Trait_",trait_suffix),"DistrPlot" )
-trridge_path = file.path(plot_path,paste0("Trait_",trait_suffix),"RidgePlot" )
-trpca_path   = file.path(plot_path,paste0("Trait_",trait_suffix),"PCAPlot"   )
+trdist_path  = file.path(plot_path,paste0("Trait_",base_suffix ),"DistrPlot" )
+trridge_path = file.path(plot_path,paste0("Trait_",base_suffix ),"RidgePlot" )
+trpca_path   = file.path(plot_path,paste0("Trait_",base_suffix ),"PCAPlot"   )
 photo_path   = file.path(plot_path,paste0("Photo_",photo_suffix),"SMAPlot"   )
 
 # Make sure directories are set.
@@ -493,115 +536,273 @@ For some plots, we use a square image so it looks nicer. Define the size as the 
 gg_square = sqrt(gg_width*gg_height)
 ```
 
-## Sanity check and additional quality control.
+Here we decide whether or not to eliminate traits that are known to be highly photo-plastic and may have not been collected from sunny leaves.  If filtering, we use the following logic:
 
-Here we eliminate entries that are not compatible with the expected variable transformation.
-
-```{r, label='sanity-check',message=FALSE,results='hide',warning=FALSE}
-cat0(" + Eliminate unrealistic variables")
-WhichTrait    = try_trait$TraitID[try_trait$Type %in% "numeric"]
-CntWhichTrait = length(WhichTrait)
-# Append trait variables in case they are not in the data base.
-for (w in sequence(CntWhichTrait)){
-   TraitIDNow = WhichTrait[w]
-   z          = match(TraitIDNow,try_trait$TraitID)
-   
-   # This should not happen...
-   if (! is.finite(z)) stop(paste0(" Unrecognised Trait ID: ",TraitIDNow,"."))
-   
-   # Handy aliases
-   NameNow       = try_trait$Name      [z]
-   DescNow       = try_trait$Desc      [z]
-   TransNow      = try_trait$Trans     [z]
-
-   # Identify values that work with transformation. 
-   if (TransNow %in% c("identity","cbrt")){
-      # Identity and cube root: any finite value is reasonable
-      GoodData = is.finite(TidyTRY[[NameNow]])
-   }else if (TransNow %in% c("sqrt")){
-      # Square root: non-negative values only
-      GoodData = TidyTRY[[NameNow]] %ge% 0.
-   }else if (TransNow %in% c("log")){
-      # Logarithm: positive values only
-      GoodData = TidyTRY[[NameNow]] %gt% 0.
-   }else if (TransNow %in% c("neglog")){
-      # Negative logarithm: negative values only
-      GoodData = TidyTRY[[NameNow]] %lt% 0.
-   }#end if (TransNow %in% c("identity","cbrt"))
-
-   # Eliminate trouble making values
-   TidyTRY[[NameNow]][! GoodData] = NA_real_
-   
-   
-   # Additionally, we restrict the data to exclude outliers. This may be revised later
-   if (RangeKeep %ir% c(0,1)){
-      FineLwr = quantile(TidyTRY[[NameNow]],probs=0.5-0.5*RangeKeep,names=FALSE,na.rm=TRUE)
-      FineUpr = quantile(TidyTRY[[NameNow]],probs=0.5+0.5*RangeKeep,names=FALSE,na.rm=TRUE)
-      Outlier = ! (TidyTRY[[NameNow]] %wr% c(FineLwr,FineUpr) )
-      TidyTRY[[NameNow]][Outlier] = NA_real_
-   }#end if (RangeKeep %ir% c(0,1))
-   
-}#end for (w in sequence(CntWhichTrait)){
-```
-
-Here we decide whether or not to eliminate traits that are known to be highly photo-plastic and were not unequivocally collected from sunny leaves.
+* If the measurement came from open-canopy biomes or anthromes and the sun/shade condition is not provided, we assume measurements are from sun leaves.
+* If the measurement came from closed-canopy biomes and the sun/shade condition is not provided, we assume measurements are from shade leaves.
+* If the measurement sun/shade condition is provided and is `03 - Mostly Sun-Exposed` or assumed from sun leaves, then the measurement is kept.
+* If the growth form is shrub and the biome is from closed-canopy biomes, we retain the measurements as these plants are likely under storey specialists, unlikely to be ever sun exposed.
 
 ```{r,label='remove-shaded',message=FALSE,results='hide',warning=FALSE}
 # Remove trait values from shaded individuals in case this is a sun trait.
 if (plastic_sun_only){
    cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
    PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
-   SunShade      = try_ancil$Name[try_ancil$DataID %in% c(210L,443L,766L,2111L)]
-   Biome         = try_ancil$Name[try_ancil$DataID %in% c(193L,202L)]
+   SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
+   Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
+   GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
+   Raunkiaer     = try_trait$Name[try_trait$TraitID %in% c( 343L)                  ]
+
    EmptyChar     = rep(NA_character_,nrow(TidyTRY))
-   if(length(SunShade) == 0L){SunShade = EmptyChar}else{SunShade = TidyTRY[[SunShade]]}
-   if(length(Biome   ) == 0L){Biome    = EmptyChar}else{Biome    = TidyTRY[[Biome   ]]}
-   IsSun  = SunShade %in% "03 - Mostly Sun-Exposed"
-   IsOpen = ( grepl(pattern="Desert"   ,x=Biome)
-            | grepl(pattern="Grassland",x=Biome)
-            | grepl(pattern="Scrubland",x=Biome)
-            | grepl(pattern="Savannah" ,x=Biome)
-            | grepl(pattern="Tundra"   ,x=Biome)
-            | grepl(pattern="Pastures" ,x=Biome)
-            )#end IsOpen
+   if(length(SunShade  ) == 0L){SunShade   = EmptyChar}else{SunShade   = TidyTRY[[SunShade  ]]}
+   if(length(Biome     ) == 0L){Biome      = EmptyChar}else{Biome      = TidyTRY[[Biome     ]]}
+   if(length(GrowthForm) == 0L){GrowthForm = EmptyChar}else{GrowthForm = TidyTRY[[GrowthForm]]}
+   if(length(Raunkiaer ) == 0L){Raunkiaer  = EmptyChar}else{Raunkiaer  = TidyTRY[[Raunkiaer ]]}
+
+   # Save logical variables that will help setting conditions for keeping/discarding data.
+   IsSun    = SunShade %in% "03 - Mostly Sun-Exposed"
+   IsShade  = SunShade %in% c("01 - Mostly Shaded","02 - Partially Shaded")
+   IsOpen   = ( grepl(pattern="Desert"   ,x=Biome)
+              | grepl(pattern="Grassland",x=Biome)
+              | grepl(pattern="Scrubland",x=Biome)
+              | grepl(pattern="Savannah" ,x=Biome)
+              | grepl(pattern="Tundra"   ,x=Biome)
+              | grepl(pattern="Pastures" ,x=Biome)
+              )#end IsOpen
+   IsClosed = grepl(pattern="Moist Forest",x=Biome)
+   IsShrub  = ( ( GrowthForm %in% c("SHB","Shrub") )
+              | ( Raunkiaer  %in% c("Microphanerophyte","Nanophanerophyte") )
+              )#end IsShrub
+
+   # Filter photo-plastic traits
    for (w in seq_along(PlasticTraits)){
       # Select trait
       PlasticNow            = PlasticTraits[w]
-      TidyTRY[[PlasticNow]] = ifelse(test=IsSun|IsOpen,yes=TidyTRY[[PlasticNow]],no=NA)
+      
+      # Remove observations that are not (presumably) from sun leaves.
+      Keep                  = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
+      TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA)
    }#end for (w in PlasticTraits)
 }#end if (plastic_sun_only)
 ```
+
+
+Here we decide whether or not to keep entries from treatments (and if so, which levels are still acceptable). Note that this filter is only applied to numerical traits, categorical and ordered traits may still be kept.
+```{r,label='remove-treatment',message=FALSE,results='hide',warning=FALSE}
+# Add dummy value that is not valid in case treatment level options is empty.
+if (length(use_treat_level) == 0L){UseTreatLevel = -1L}else{UseTreatLevel=use_treat_level}
+
+# Remove trait values from treatments that are considered too artificial.
+if (! all(is.na(use_treat_level))){
+   cat0("   - Keep only natural data and data from allowed treatments.")
+
+   # Find variable with treatment information
+   TreatmentID = c(238L, 308L, 319L, 324L, 363L, 490L, 4052L, 4695L)
+   Treatment   = try_ancil$Name[try_ancil$DataID %in% TreatmentID]
+   EmptyChar   = rep(NA_character_,nrow(TidyTRY))
+   if(length(Treatment) == 0L){TreatValue = EmptyChar}else{TreatValue = TidyTRY[[Treatment]]}
+
+   # Decide whether or not to keep the levels of each entry.
+   TreatLevel  = as.integer(gsub(pattern="\\ .*",replacement="",x=TreatValue))
+   KeepLevel   = is.na(TreatValue) | ( TreatLevel %in% UseTreatLevel)
+
+   # List numeric traits for removal.      
+   IsNumeric     = try_trait$Type %in% "numeric"
+   NumericTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[IsNumeric]]
+
+   # Loop through the numerical traits and delete information.   
+   for (w in seq_along(NumericTraits)){
+      # Select trait
+      NumericNow            = NumericTraits[w]
+      TidyTRY[[NumericNow]] = ifelse(test=KeepLevel,yes=TidyTRY[[NumericNow]],no=NA)
+   }#end for (w in PlasticTraits)
+}#end if (! any(is.na(use_treat_level)))
+```
+
 
 Here we decide whether or not to eliminate entries from plants that are unlikely to be woody (sensu latu)
 
 ```{r,label='remove-non-woody',message=FALSE,results='hide',warning=FALSE}
 # Remove trait values from shaded individuals in case this is a sun trait.
-if (woody_only){
+if (! use_woody_level %in% "all_plants"){
    cat0("   - Remove trait information for individuals that are non-woody.")
-   GrowthForm = try_trait$Name[try_trait$TraitID %in% 42L]
-   WoodDens   = try_trait$Name[try_trait$TraitID %in%  4L]
-   KeepGrowth = TidyTRY[[GrowthForm]] %in% c("Hemiepiphyte","Liana","Palm","Shrub","Tree")
-   KeepWood   = is.finite(TidyTRY[[WoodDens]])
-   TidyTRY    = TidyTRY[KeepGrowth | KeepWood,,drop=FALSE]
+   Woodiness     = try_trait$Name[try_trait$TraitID %in% 38L]
+   GrowthForm    = try_trait$Name[try_trait$TraitID %in% 42L]
+   WoodDens      = try_trait$Name[try_trait$TraitID %in%  4L]
+   AnyWoodiness  = length(Woodiness ) > 0L
+   AnyGrowthForm = length(GrowthForm) > 0L
+   AnyWoodDens   = length(WoodDens  ) > 0L
+   AllTrue       = rep(TRUE,times=nrow(TidyTRY))
+
+   WoodyLevels  = switch( EXPR          = use_woody_level
+                        , tree_only     = c("WDY","Woody")
+                        , woody_ss_free = c("WDY","Woody")
+                        , woody_ss_all  = c("WDY","Woody")
+                        , woody_sl_free = c("WDY","Woody","SWD","Semi-woody")
+                        , woody_sl_all  = c("WDY","Woody","SWD","Semi-woody")
+                        )#end switch
+   GrowthLevels = switch( EXPR          = use_woody_level
+                        , tree_only     = "Tree"
+                        , woody_ss_free = c("Tree","Shrub")
+                        , woody_ss_all  = c("Hemiepiphyte","Liana","Shrub","Tree")
+                        , woody_sl_free = c("Palm","Shrub","Tree")
+                        , woody_sl_all  = c("Hemiepiphyte","Liana","Palm","Shrub","Tree")
+                        )#end switch
+   ClassLevels  = switch( EXPR           = use_woody_level
+                        , tree_only      = c("Magnoliopsida")
+                        , woody_ss_free  = c("Magnoliopsida")
+                        , woody_ss_all   = c("Magnoliopsida")
+                        , woody_sl_free  = c("Magnoliopsida","Liliopsida")
+                        , woody_sl_all   = c("Magnoliopsida","Liliopsida")
+                        )#end switch
+
+   IsWoodiness   = if(AnyWoodiness ){TidyTRY[[Woodiness ]] %in% WoodyLevels }else{AllTrue}
+   IsGrowth      = if(AnyGrowthForm){TidyTRY[[GrowthForm]] %in% GrowthLevels}else{! AllTrue}
+   FineWoodDens  = if(AnyWoodDens  ){is.finite(TidyTRY[[WoodDens]])}else{! AllTrue}
+   KeepClass     = TidyTRY$Class %in% ClassLevels
+   MissWoodiness = if(AnyWoodiness ){is.na(TidyTRY[[Woodiness ]])}else{AllTrue}
+   MissGrowth    = if(AnyGrowthForm){is.na(TidyTRY[[GrowthForm]])}else{AllTrue}
+   AssumeWoody   = MissWoodiness & MissGrowth & FineWoodDens 
+   
+   KeepWoody     = IsWoodiness & ( IsGrowth | AssumeWoody ) 
+   TidyTRY       = TidyTRY[KeepClass & KeepWoody,,drop=FALSE]
 }#end if (plastic_sun_only)
 ```
 
-In this chunk, we eliminate data known to be suspicious. This should be eventually added to TidyTRY processing.
 
-```{r, label='manual-outlier',message=FALSE,results='hide',warning=FALSE}
 
-# Delete photosynthesis rate that looked modelled
-Country  = try_ancil$Name[try_ancil$DataID  %in% 1412L ]
-AreaAmax = try_trait$Name[try_trait$TraitID %in% 53L   ]
-MassAmax = try_trait$Name[try_trait$TraitID %in% 40L   ]
-IsOdd    = ( TidyTRY$Author %in% "Serge Sheremetev" ) & ( TidyTRY[[MassAmax]] %eq% 3.)
-TidyTRY[[AreaAmax]][IsOdd] = NA_real_
-TidyTRY[[MassAmax]][IsOdd] = NA_real_
+## Simplify categories for a few traits
+
+For some categorical traits, we further simplify the categories to reduce dimensionality and mitigate the variability in definition of some categories across authors.
+We also check whether or not to turn some of the categorical variables into ordered variables.
+
+```{r, label='categ-simplify',message=FALSE,results='hide',warning=FALSE}
+# List of traits considered categorical (the list may need updates/expansion.)
+CategTraitID    = sort(unique(CategInfo$TraitID))
+CategTraitID    = CategTraitID[CategTraitID %in% try_trait$TraitID]
+CntCategList    = length(CategTraitID)
+
+# Loop through categorical traits and assign all individuals from the same species to the commonest class
+for (w in sequence(CntCategList)){
+   # Select categorical trait
+   TraitIDNow = CategTraitID[w]
+   z          = match(TraitIDNow,try_trait$TraitID)
+      
+   # This should not happen...
+   if (! is.finite(z)) stop(paste0(" Unrecognised Trait ID: ",TraitIDNow,"."))
+   
+   # Handy aliases
+   NameNow       = try_trait$Name      [z]
+   DescNow       = try_trait$Desc      [z]
+   cat0(" + Simplify categorical trait: ",DescNow," (",NameNow,").")
+
+   # Select only the lines that are associated with this trait
+   InfoNow   = CategInfo %>% filter(TraitID %in% TraitIDNow)
+
+   # Map values to the new categories and discard data not associated with any category of interest
+   Index              = match(TidyTRY[[NameNow]],InfoNow$TRYClass)
+   Fine               = ! is.na(Index)
+   TidyTRY[[NameNow]] = ifelse( test = Fine, yes = InfoNow$Class[Index], no = NA_character_)
+
+   # If order has been provided for all categories, we turn the variable into ordered.
+   if (all(! is.na(InfoNow$Order))){
+      UseOrder           = order(InfoNow$Order)
+      UseLevels          = unique(InfoNow$Class[UseOrder])
+      TidyTRY[[NameNow]] = ordered(x=TidyTRY[[NameNow]],levels=UseLevels)
+   }#end if (all(is.finite(InfoNow$Order)))
+}#end for (z in sequence(CntCategList))
 ```
+
+
+## Aggregate data by species and genus
+
+Here we summarise data by species and genus, and create csv files with the summaries. We remove most ancillary variables as they are more related to observations than species.
+
+The aggregation is carried out differently depending on whether the trait is numeric or categorical:
+
+* **Numerical traits**. We weight observations by the number of counts, to ensure data reported as averages based on many individuals have a higher leverage in the species/genus averages. 
+* **Categorical traits**. We only allow one input for each species and each author. This is an imperfect solution to avoid giving too much leverage for an author that contributed with single observations of multiple individuals of the same species for things like leaf phenology or growth form (which are typically based on observing species behaviour as a whole).
+
+```{r, label='group-traits',message=FALSE,results='hide',warning=FALSE}
+# Load some files which will likely be updated as the code is developed.
+source(file.path(util_path,"numutils.r"),chdir=TRUE)
+
+# Summarise data sets by species
+cat0(" + Find traits by species and genus:")
+# List of variables to keep after merging
+Lon        = try_ancil$Name[try_ancil$DataID %in% c(60L,4705L,4707L)     ]
+Lat        = try_ancil$Name[try_ancil$DataID %in% c(59L,4704L,4706L)     ]
+Alt        = try_ancil$Name[try_ancil$DataID %in% c(61L)                 ]
+Country    = try_ancil$Name[try_ancil$DataID %in% c(1412L)               ]
+Continent  = try_ancil$Name[try_ancil$DataID %in% c(1413L)               ]
+Biome      = try_ancil$Name[try_ancil$DataID %in% c(193L,202L)           ]
+SunShade   = try_ancil$Name[try_ancil$DataID %in% c(210L,443L,766L,2111L)]
+TraitKeep  = try_trait$Name[! try_trait$Allom]
+AncilKeep  = try_ancil$Name[try_ancil$Impute | try_ancil$Cluster]
+VarKeep    = c("Author","ScientificName","Genus","Family","Order","Class","Phylum"
+              ,Lon,Lat,Alt,Country,Continent,TraitKeep,Biome,SunShade,AncilKeep)
+VarKeep    = VarKeep[! duplicated(VarKeep)]
+
+# Define some functions that will help handling duplicates and invalid numbers without changing the variable type.
+ignoreDuplicates = function(x){ans=x; ans[duplicated(ans)] = NA; return(ans)}
+replaceNaN       = function(x){ans=x; ans[is.nan    (ans)] = NA; return(ans)}
+
+
+# When we aggregate data by species, we use a different approach depending
+SpeciesTRY = TidyTRY %>%
+   filter( (! Genus %in% "Ignotum") & (! grepl(pattern="[0-9]",x=ScientificName)))                         %>%
+   group_by(Author,ScientificName)                                                                         %>%
+   mutate( across( where(is.ordered) | where(is.factor) | where(is.character), ~ ignoreDuplicates(x=.x)))  %>%
+   ungroup()                                                                                               %>%
+   mutate( ScientificName = factor(ScientificName,levels=sort(unique(ScientificName))))                    %>%
+   group_by(ScientificName)                                                                                %>%
+   summarise( across(where(is.double ) & ! Count, ~ weighted.mean (x=as.numeric(.x),w=Count,na.rm=TRUE))
+            , across(where(is.integer)          , ~ weightedMedian(x=.x            ,w=Count,na.rm=TRUE))
+            , across(where(is.ordered)          , ~ orderedMedian (x=.x                    ,na.rm=TRUE))
+            , across(where(is.factor )          , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.logical)          , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.Date)             , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.character)        , ~ commonest     (x=.x                    ,na.rm=TRUE))) %>%
+   ungroup()                                                                                               %>%
+   mutate( ScientificName = as.character(ScientificName))                                                  %>%
+   mutate( across( everything(), ~replaceNaN(x=.x) ) )                                                     %>%
+   mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                                            %>%
+   select_at(vars(VarKeep))                                                                                %>%
+   arrange(Family,Genus,ScientificName)                                                                    %>%
+   select(! Author)
+
+
+# Summarise data sets by genus
+cat0(" + Find traits by genus:")
+GenusTRY = TidyTRY                                                                                         %>%
+   filter( (! grepl(pattern="^Ignotum",x=Genus) ) )                                                        %>%
+   group_by(Author,ScientificName)                                                                         %>%
+   mutate( across( where(is.ordered) | where(is.factor) | where(is.character), ~ ignoreDuplicates(x=.x)))  %>%
+   ungroup()                                                                                               %>%
+   group_by(ScientificName)                                                                                %>%
+   mutate( Genus = factor(Genus,levels=sort(unique(Genus))))                                               %>%
+   group_by(Genus)                                                                                         %>%
+   summarise( across(where(is.double ) & ! Count, ~ weighted.mean (x=as.numeric(.x),w=Count,na.rm=TRUE))
+            , across(where(is.integer)          , ~ weightedMedian(x=.x            ,w=Count,na.rm=TRUE))
+            , across(where(is.ordered)          , ~ orderedMedian (x=.x                    ,na.rm=TRUE))
+            , across(where(is.factor )          , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.logical)          , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.Date)             , ~ commonest     (x=.x                    ,na.rm=TRUE))
+            , across(where(is.character)        , ~ commonest     (x=.x                    ,na.rm=TRUE)))  %>%
+   ungroup()                                                                                               %>%
+   mutate( Genus = as.character(Genus))                                                                    %>%
+   mutate( across( everything(), ~replaceNaN(x=.x) ) )                                                     %>%
+   mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                                            %>%
+   select_at(vars(VarKeep))                                                                                %>%
+   arrange(Family,Genus)                                                                                   %>%
+   select(! c(ScientificName))
+```
+
+
 
 ## Fill categorical information based on species
 
-For traits and ancillary variables that should be treated as categorical or intrinsic species characteristics, we fill in all observations with the commonest value for any species. This will help distinguishing data points, for example, between evergreen and deciduous.
+For traits and ancillary variables that should be treated as categorical or intrinsic species characteristics, we fill in all observations with the commonest value for any species. This will help distinguishing data points, for example, between evergreen and deciduous. Just to be very cautious, we run this step after aggregating by species to avoid any influence on which categories are assigned to species.
 
 ```{r, label='categ-species',message=FALSE,results='hide',warning=FALSE}
 # List of traits considered categorical (the list may need updates/expansion.)
@@ -621,16 +822,7 @@ for (w in sequence(CntCategList)){
    # Handy aliases
    NameNow       = try_trait$Name      [z]
    DescNow       = try_trait$Desc      [z]
-   cat0(" + Harmonise and simplify categorical trait: ",DescNow," (",NameNow,").")
-
-   # Select only the lines that are associated with this trait
-   InfoNow = CategInfo %>% filter(TraitID %in% TraitIDNow)
-
-   # Map values to the new categories and discard data not associated with any category of interest
-   cat0("   - Simplify classes.")
-   Index              = match(TidyTRY[[NameNow]],InfoNow$TRYClass)
-   Fine               = ! is.na(Index)
-   TidyTRY[[NameNow]] = ifelse( test = Fine, yes = InfoNow$Class[Index], no = NA_character_)
+   cat0(" + Harmonise categorical trait for all individuals of the same species: ",DescNow," (",NameNow,").")
 
    # Create a look-up table for the 
    CategLUT = TidyTRY %>%
@@ -646,71 +838,6 @@ for (w in sequence(CntCategList)){
    Miss                     = is.na(TidyTRY[[NameNow]])
    TidyTRY[[NameNow]][Miss] = CategLUT[[NameNow]][Index[Miss]]
 }#end for (z in sequence(CntCategList))
-```
-
-## Aggregate data by species and genus
-
-Here we summarise data by species and genus, and create csv files with the summaries. We remove most ancillary variables as they are more related to observations than species.
-
-```{r, label='group-traits',message=FALSE,results='hide',warning=FALSE}
-
-# Summarise data sets by species
-cat0(" + Find traits by species and genus:")
-# List of variables to keep after merging
-Lon        = try_ancil$Name[try_ancil$DataID %in% c(60L,4705L,4707L)     ]
-Lat        = try_ancil$Name[try_ancil$DataID %in% c(59L,4704L,4706L)     ]
-Alt        = try_ancil$Name[try_ancil$DataID %in% c(61L)                 ]
-Country    = try_ancil$Name[try_ancil$DataID %in% c(1412L)               ]
-Continent  = try_ancil$Name[try_ancil$DataID %in% c(1413L)               ]
-Biome      = try_ancil$Name[try_ancil$DataID %in% c(193L,202L)           ]
-SunShade   = try_ancil$Name[try_ancil$DataID %in% c(210L,443L,766L,2111L)]
-YmeanTemp  = try_ancil$Name[try_ancil$DataID %in% c(62L)                 ]
-YmeanMAP   = try_ancil$Name[try_ancil$DataID %in% c(80L)                 ]
-YmeanPET   = try_ancil$Name[try_ancil$DataID %in% c(92L)                 ] 
-VarKeep    = c("ScientificName","Genus","Family","Order","Class","Phylum"
-              ,Lon,Lat,Alt,Country,Continent,try_trait$Name,Biome,SunShade,YmeanTemp,YmeanMAP,YmeanPET)
-VarKeep    = VarKeep[! duplicated(VarKeep)]
-
-# List of date variables
-DateVars = c(try_trait$Name[try_trait$Type %in% "date"],try_ancil$Name[try_ancil$Type %in% "date"])
-
-
-
-SpeciesTRY = TidyTRY %>%
-   filter( (! Genus %in% "Ignotum") & (! grepl(pattern="[0-9]",x=ScientificName)))      %>%
-   mutate( ScientificName = factor(ScientificName,levels=sort(unique(ScientificName)))) %>%
-   group_by(ScientificName)                                                             %>%
-   summarise( across(where(is.double )  , ~ mean     (as.numeric(.x),na.rm=TRUE))
-            , across(where(is.integer)  , ~ median   (.x,na.rm=TRUE))
-            , across(where(is.logical)  , ~ commonest(.x,na.rm=TRUE))
-            , across(where(is.character), ~ commonest(.x,na.rm=TRUE)) )                 %>%
-   ungroup()                                                                            %>%
-   mutate( ScientificName = as.character(ScientificName))                               %>%
-   mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                         %>%
-   select_at(vars(VarKeep))                                                             %>%
-   arrange(Family,Genus,ScientificName)
-
-
-
-
-# Summarise data sets by genus
-cat0(" + Find traits by genus:")
-GenusTRY = TidyTRY                                                                      %>%
-   filter( (! grepl(pattern="^Ignotum",x=Genus) ) )                                     %>%
-   mutate( Genus = factor(Genus,levels=sort(unique(Genus))))                            %>%
-   group_by(Genus)                                                                      %>%
-   summarise( across(where(is.double )  , ~ mean     (as.numeric(.x),na.rm=TRUE))
-            , across(where(is.integer)  , ~ median   (.x            ,na.rm=TRUE))
-            , across(where(is.logical)  , ~ commonest(.x            ,na.rm=TRUE))
-            , across(where(is.Date)     , ~ commonest(.x            ,na.rm=TRUE))
-            , across(where(is.character), ~ commonest(.x            ,na.rm=TRUE)) )     %>%
-   ungroup()                                                                            %>%
-   mutate( Genus = as.character(Genus))                                                 %>%
-   mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                         %>%
-   select_at(vars(VarKeep))                                                             %>%
-   arrange(Family,Genus)                                                                %>%
-   select(! ScientificName)
-
 ```
 
 
@@ -733,13 +860,16 @@ DataTRY = switch( EXPR       = fit_taxon
    
 # Find out how many traits we will seek to fit a distribution
 cat0(" + Fit trait distribution")
-xFitDistr = which( (try_trait$Type %in% "numeric") & (! try_trait$Allom))
-CntDistr  = length(xFitDistr)
+xTraitDistr   = with(try_trait, which( (Type %in% "numeric") & (! Allom)          ) )
+xAncilDistr   = with(try_ancil, which( (Type %in% "numeric") & (Impute | Cluster) ) )
+CntTraitDistr = length(xTraitDistr)
+CntAncilDistr = length(xAncilDistr)
+CntDistr      = CntTraitDistr + CntAncilDistr 
    
 
 # Save objects for distribution plots:
 # GlobDistr is the tibble with the coefficients and goodness-of-fit metrics
-GlobDistr  = tibble( x          = try_trait$Name[xFitDistr]
+GlobDistr  = tibble( x          = c(try_trait$Name[xTraitDistr],try_ancil$Name[xAncilDistr])
                    , xLwr       = rep(NA_real_     ,times=CntDistr)
                    , xUpr       = rep(NA_real_     ,times=CntDistr)
                    , Class      = rep("ALL"        ,times=CntDistr)
@@ -758,24 +888,28 @@ GlobDistr  = tibble( x          = try_trait$Name[xFitDistr]
                    , Kurtosis   = rep(NA_real_     ,times=CntDistr)
                    , Median     = rep(NA_real_     ,times=CntDistr)
                    , LogLik     = rep(NA_real_     ,times=CntDistr)
+                   , AIC        = rep(NA_real_     ,times=CntDistr)
                    , BIC        = rep(NA_real_     ,times=CntDistr)
                    )#end c
 
 
-# Loop through the variables we will fit distributions
-for (x in seq_along(xFitDistr)){
+# Loop through the trait variables we will fit distributions
+for (x in sequence(CntDistr)){
    # Load settings for the y axis.
-   xIndex   = xFitDistr[x]
-   xTrait   = try_trait$TraitID[xIndex]
-   xName    = try_trait$Name   [xIndex]
-   xDesc    = try_trait$Desc   [xIndex]
-   xUnit    = try_trait$Unit   [xIndex]
-   xTrans   = try_trait$Trans  [xIndex]
+   if (x <= CntTraitDistr){
+      xIndex   = xTraitDistr[x]
+      xName    = try_trait$Name   [xIndex]
+      xDesc    = try_trait$Desc   [xIndex]
+   }else{
+      xIndex   = xAncilDistr[x-CntTraitDistr]
+      xName    = try_ancil$Name   [xIndex]
+      xDesc    = try_ancil$Desc   [xIndex]
+   }#end if (x <= CntTraitDistr)
    cat0(" + Fit the best distribution model for ",xDesc,".")
 
    # Select valid points 
    xSel = is.finite(DataTRY[[xName]])
-      
+
    # Select univariate data
    if (sum(xSel) > 0L){
       xData  = DataTRY[[xName]][xSel]
@@ -799,11 +933,12 @@ for (x in seq_along(xFitDistr)){
       GlobDistr$Skewness [xNow] = xDistr$Skewness
       GlobDistr$Kurtosis [xNow] = xDistr$Kurtosis
       GlobDistr$Median   [xNow] = xDistr$Median
+      GlobDistr$AIC      [xNow] = xDistr$AIC
       GlobDistr$BIC      [xNow] = xDistr$BIC
    }else{
       cat0("     * Too few valid points (n=",sum(xSel),"). Do not fit distribution.")
    }#end if (sum(xySel) >= n_fit_min)
-}#end for (x in seq_along(xFitDistr))
+}#end for (x in sequence(CntDistr))
 ```
 
 
@@ -813,8 +948,22 @@ for (x in seq_along(xFitDistr)){
 In this step, we use imputation to create a complete set of trait observations. Because imputation works best only when a small fraction of the data points are missing, we first tally the availability of each trait and restrict the imputation and analyses that depend on imputed data to the traits that are not too sparse.
 
 ```{r,label='try-impute',message=FALSE,results='hide',warning=FALSE}
-update_impute = ! (reload_impute && file.exists(rdata_impute))
+update_impute = (  (  ( ! (reload_impute  && file.exists(rdata_impute )) )
+                   && ( ! (reload_cluster && file.exists(rdata_cluster)) ) )
+                || impute_cluster_test                                     )
 if (update_impute){
+
+   # Load some files which will likely be updated as the code is developed.
+   source(file.path(util_path,"TRY_ImputeCluster_Utils.r"),chdir=TRUE)
+
+   # Set random seed
+   if (is.na(rseed_impute)){
+      SeedPrep     = Sys.time()
+      rseed_impute = 3600*hour(SeedPrep) + 60*minute(SeedPrep) + floor(second(SeedPrep))
+   }#end if (is.na(rseed_impute))
+   dummy = set.seed(rseed_impute)
+
+
    # Select reference data set for trade-off analysis
    DataTRY = switch( EXPR       = fit_taxon
                    , Individual = TidyTRY
@@ -831,63 +980,201 @@ if (update_impute){
 
    # Pre-select traits that can be used for imputation and cluster analysis. Traits listed as candidates for
    # cluster analysis will be also imputed.
-   WhichCandidate = with( try_trait, which( ( Impute | Cluster ) & ( ! Allom ) ) )
-   TraitCandidate = unique(c(TaxonImpute,names(DataTRY)[names(DataTRY) %in% try_trait$Name[WhichCandidate]]))
-   TraitNumeric   = names(DataTRY)[names(DataTRY) %in% try_trait$Name[try_trait$Type %in% "numeric"]]
-   TraitNumeric   = intersect(TraitNumeric,TraitCandidate)
+   WhichTraitUse   = c( with( try_trait, which( ( Impute | Cluster ) & ( ! Allom ) ) ) )
+   WhichAncilUse   = c( with( try_ancil, which( ( Impute | Cluster )               ) ) )
+   EveryCandidate  = unique( c( TaxonImpute
+                              , names(DataTRY)[names(DataTRY) %in% try_trait$Name[WhichTraitUse]]
+                              , names(DataTRY)[names(DataTRY) %in% try_ancil$Name[WhichAncilUse]]
+                              )#end c
+                           )#end unique
+   TraitNumeric    = names(DataTRY)[names(DataTRY) %in% try_trait$Name[try_trait$Type %in% "numeric"]]
+   TraitNumeric    = intersect(TraitNumeric,EveryCandidate)
+   AncilNumeric    = names(DataTRY)[names(DataTRY) %in% try_ancil$Name[try_ancil$Type %in% "numeric"]]
+   AncilNumeric    = intersect(AncilNumeric,EveryCandidate)
+   EveryNumeric    = unique(c(TraitNumeric,AncilNumeric))
+   TraitAnyKind    = names(DataTRY)[names(DataTRY) %in% try_trait$Name]
 
-   # Filter data to keep only those entries with more than the minimum number of numeric traits.
-   selKeep = DataTRY %>% 
-      select_at(all_of(TraitNumeric)) %>%
-      apply(MARGIN=1,FUN=function(x,n_min) sum(is.finite(x)) >= n_min,n_min=n_row_numtrait_impute)
+   # Iterate until we obtain a set of traits that have variability, and that all rows have enough observations.
+   cat0(" + Keep only rows with sufficient valid traits and traits with sufficient variability")
+   cat0("   - Initial number of data rows: ",nrow(DataTRY),".")
+   iterate = TRUE
+   itCnt   = 0L
+   while (iterate){
+      # Update iterate count
+      itCnt = itCnt + 1L
 
-   # Exclude data with too few points.
-   DataTRY = DataTRY %>% filter(selKeep)
+      # Count number of data points.
+      CntData = nrow(DataTRY)
+   
 
-   # Identify if there are any traits that do not vary (and thus should not participate in the imputation)
-   TraitVar = DataTRY %>% 
-      summarise( across(where(is.double)  , ~ sd(.x,na.rm=TRUE)          )
-               , across(! where(is.double), ~ max(0,length.unique(.x)-1) ) ) %>%
-      select_at(all_of(names(DataTRY))) %>%
-      unlist()
       
-   # Tally trait data availability and decide whether or not to impute traits
-   TallyTRY = DataTRY %>%
-      select_at(all_of(TraitCandidate))                %>%
-      summarise_all(~ sum(! is.na(.x)))                %>%
-      unlist()                                         %>%
-      sort(decreasing = TRUE)                          %>%
-      tibble(Name=names(.),Cnt=.)                      %>%
-      mutate( Numeric     = Name %in% TraitNumeric
-            , Frac        = pmin(1.,Cnt/max(Cnt[Numeric]))
-            , Variability = TraitVar[match(Name,names(TraitVar))]
-            , Impute      = ( Frac %ge% f_col_trait_impute )
-                          & ( Variability %gt% 0.          ) )
+      # Identify if there are any traits that do not vary (and thus should not participate in the imputation)
+      TraitVar = DataTRY %>% 
+         summarise( across(everything()  , ~ findVariability(.x,na.rm=TRUE) ) ) %>%
+         select_at(all_of(names(DataTRY))) %>%
+         unlist()
+            
+      # Tally trait data availability and decide whether or not to impute traits
+      TallyTRY = DataTRY %>%
+         select_at(all_of(EveryCandidate))                %>%
+         summarise_all(~ sum(! is.na(.x)))                %>%
+         unlist()                                         %>%
+         tibble(Name=names(.),Cnt=.)                      %>%
+         mutate( Numeric     = Name %in% EveryNumeric
+               , Trait       = Name %in% TraitAnyKind
+               , Frac        = pmin(1.,Cnt/max(Cnt[Trait & Numeric]))
+               , Variability = TraitVar[match(Name,names(TraitVar))]
+               , Impute      = ( Frac %ge% f_col_trait_impute      )
+                             & ( Variability %gt% f_var_min_impute ) ) %>%
+         mutate(Frac=-Frac,Variability=-Variability) %>%
+         arrange(Frac,Variability) %>%
+         mutate(Frac=-Frac,Variability=-Variability)
 
-   # Alias for traits tgat will go through imputation.
-   TraitImpute = TallyTRY$Name[TallyTRY$Impute]
+      # Alias for traits that will go through imputation.
+      EveryImpute = TallyTRY$Name[TallyTRY$Impute]
+
+      # Alias for numeric traits that will go through imputation and must be scaled. 
+      NumericImpute      = TallyTRY$Name[TallyTRY$Numeric & TallyTRY$Impute]
+      NumericTraitImpute = TallyTRY$Name[TallyTRY$Numeric & TallyTRY$Impute & TallyTRY$Trait]
+
+      # Filter data to keep only those entries with more than the minimum number of numeric traits.
+      # (note that we only check the trait, not ancillary variables).
+      selKeep = DataTRY %>% 
+         select_at(all_of(NumericTraitImpute)) %>%
+         apply(MARGIN=1,FUN=function(x,n_min) sum(is.finite(x)) >= n_min,n_min=n_row_numtrait_impute)
+
+      # Exclude data with too few points.
+      DataTRY = DataTRY %>% filter(selKeep)
+
+      # Decide whether to iterate or not.
+      iterate = (! ( nrow(DataTRY) %eq% CntData ) ) & (itCnt %lt% 10L)
+
+      # Report number of data rows remaining.
+      cat0("   - Iteration ",itCnt,". Number of data rows: ",nrow(DataTRY),".")
+   }#end while (iterate)
+
+   # Make sure the data set has converged.
+   if ( ! ( nrow(DataTRY) %eq% CntData ) ){
+      stop(" Data cleaning did not converge after 10 iterations.")
+   }#end if ( ! ( nrow(DataTRY) %eq% CntData ) )
+   
+      
+
+   
+   # Scale numeric data based on the cumulative distribution function of the fitted distribution
+   cat0(" + Scale numeric traits using the fitted distribution.")
+   ScaledTRY = DataTRY                                                         %>%
+      select_at(all_of(EveryImpute))                                           %>%
+      mutate(across(where(is_character), ~factor(.x,levels=sort(unique(.x)))))
+   for (vName in NumericImpute){
+      # Select the distribution information
+      z       = which(GlobDistr$x %in% vName)
+      zDistr  = GlobDistr$Distrib[z]
+      zFirst  = GlobDistr$First  [z]
+      zSecond = GlobDistr$Second [z]
+      zThird  = GlobDistr$Third  [z]
+      
+      # Use cumulative density function according to the fitted distribution.
+      zFun = switch( zDistr
+                   , "uniform"       = punif
+                   , "normal"        = pnorm
+                   , "logistic"      = plogis
+                   , "skew-normal"   = sn::psn
+                   , "log-normal"    = plnorm
+                   , "neglog-normal" = pnlnorm
+                   , "weibull"       = pweibull
+                   , "gamma"         = pgamma
+                   , NA_character_
+                   )#end switch
+      
+      # Decide whether the distribution needs two or three parameters
+      if (zDistr %in% "skew-normal"){
+         p_vName = zFun(ScaledTRY[[vName]],zFirst,zSecond,zThird)
+      }else if (! is.na(zDistr)){
+         p_vName = zFun(ScaledTRY[[vName]],zFirst,zSecond)
+      }#end if (zDistr %in% "skew-normal")
+      
+      # Find the normal distribution equivalent of the value
+      ScaledTRY[[vName]] = qnorm(p=p_vName,mean=0.,sd=1.)
+   }#end for (v in which(TallyTRY$Numeric & TallyTRY$Impute))
+
    
    # Subset TRY data set to keep only traits that will go through imputation.
-   ImputeAnswer = DataTRY                                                      %>%
-      select_at(all_of(TraitImpute))                                           %>%
-      mutate(across(where(is_character), ~factor(.x,levels=sort(unique(.x))))) %>%
-      imputeFAMD(threshold=1e-4,maxiter=10000)
+   cat0(" + Run the mixed data imputation algorithm.")
+   ImputeAnswer             = ScaledTRY %>% 
+      imputeFAMD(ncp=4L,threshold=1e-4,maxiter=10000)
    ImputeAnswer$originalObs = DataTRY
-   ImputedTRY = as_tibble(ImputeAnswer$completeObs)
+   ImputedTRY               = as_tibble(ImputeAnswer$completeObs)
+
+
+   # Go through the imputed tibble and convert it back to the original scale.
+   cat0(" + Scale back imputed numeric traits using the fitted distributions.")
+   for (vName in NumericImpute){
+      # Select the distribution information
+      z       = which(GlobDistr$x %in% vName)
+      zDistr  = GlobDistr$Distrib[z]
+      zFirst  = GlobDistr$First  [z]
+      zSecond = GlobDistr$Second [z]
+      zThird  = GlobDistr$Third  [z]
+
+      # Find the equivalent CDF of the normalised quantile.
+      p_vName = pnorm(q=ImputedTRY[[vName]],mean=0.,sd=1.)
+
+      # Use quantile function according to the distribution.
+      zFun = switch( zDistr
+                   , "uniform"       = qunif
+                   , "normal"        = qnorm
+                   , "logistic"      = qlogis
+                   , "skew-normal"   = sn::qsn
+                   , "log-normal"    = qlnorm
+                   , "neglog-normal" = qnlnorm
+                   , "weibull"       = qweibull
+                   , "gamma"         = qgamma
+                   , NA_character_
+                   )#end switch
+      
+      # Decide whether the distribution needs two or three parameters
+      if (zDistr %in% "skew-normal"){
+         q_vName = try(zFun(p_vName,zFirst,zSecond,zThird),silent=TRUE)
+         if ("try-error" %in% is(q_vName)){
+            ImputedTRY[[vName]] = zFun(p_vName,zFirst,zSecond,zThird,solver="RFB")
+         }else{
+            ImputedTRY[[vName]] = q_vName
+         }#end if ("try-error" %in% is(q_vName))
+      }else if (! is.na(zDistr)){
+         ImputedTRY[[vName]] = zFun(p_vName,zFirst,zSecond)
+      }#end if (zDistr %in% "skew-normal")
+   }#end for (v in which(TallyTRY$Numeric & TallyTRY$Impute))
+   
+   
+   
+   # If any variable was ordered or factor, make them ordered and factors again with the original
+   # levels.
+   cat0(" + Transform back ordered variables.")
+   WhichOrdered = DataTRY %>% summarise(across(everything(), ~is.ordered(.x))) %>% unlist()
+   WhichOrdered = names(WhichOrdered)[WhichOrdered & ( names(WhichOrdered) %in% names(ImputedTRY) )]
+
+   for (NameNow in WhichOrdered){
+      ImputedTRY[[NameNow]] = ordered(x=as.character(ImputedTRY[[NameNow]]),levels=levels(DataTRY[[NameNow]]))
+   }#end for (NameOrdered %in% WhichOrdered)
 
    # Remove imputed taxonomic information
+   cat0(" + Remove imputed taxonomic information.")
    ImputedTRY[[TaxonID]] = DataTRY[[TaxonID]]
-   ImputedTRY = ImputedTRY %>%
-      select_at(all_of(c(TaxonID,TraitImpute))) %>%
+   ImputedTRY = ImputedTRY                      %>%
+      select_at(all_of(c(TaxonID,EveryImpute))) %>%
       arrange_at(all_of(c(TaxonID)))
 
    # Save imputed data
-   cat0(" + Save imputed data models to ",basename(rdata_impute))
-   dummy = save( list              = c( "ImputeAnswer","ImputedTRY", "TaxonID", "TallyTRY" )
-               , file              = rdata_impute
-               , compress          = "xz"
-               , compression_level = 9
-               )#end save
+   if (! impute_cluster_test){
+      cat0(" + Save imputed data models to ",basename(rdata_impute))
+      dummy = save( list              = c( "ImputeAnswer","ImputedTRY", "TaxonID", "TallyTRY" )
+                  , file              = rdata_impute
+                  , compress          = "xz"
+                  , compression_level = 9
+                  )#end save
+      
+   }#end if (! impute_cluster_test)
 }else{
    # Reload data
    cat0(" + Reload imputed data.")
@@ -901,16 +1188,35 @@ if (update_impute){
 Here we perform a cluster analysis to seek a data-driven approach for defining tropical PFTs. Because we use a mix of continuous and categorical data, we opt for medoid-based cluster analysis.
 
 ```{r, label='fates-clusters',message=FALSE,results='hide',warning=FALSE}
-update_cluster = update_impute || (! (reload_cluster && file.exists(rdata_cluster)) )
+update_cluster = ( update_impute
+                 || (! (reload_cluster && file.exists(rdata_cluster)) )
+                 || impute_cluster_test                                 )
+
 if (update_cluster){
 
    # Load some files which will likely be updated as the code is developed.
-   source(file.path(util_path,"clusGapFlex.r"),chdir=TRUE)
+   source(file.path(util_path,"clusGapFlex.r"            ),chdir=TRUE)
+   source(file.path(util_path,"TRY_ImputeCluster_Utils.r"),chdir=TRUE)
 
+   # Set random seed
+   if (is.na(rseed_cluster)){
+      SeedPrep     = Sys.time()
+      rseed_impute = 3600*hour(SeedPrep) + 60*minute(SeedPred) + floor(second(SeedPrep))
+   }#end if (is.na(rseed_cluster))
+   dummy = set.seed(rseed_cluster)
+
+   # List taxonomy names. We will exclude them from the cluster analysis
+   TaxonAll    = c("ObservationID","ScientificName","Genus","Family","Order","Class","Phylum")
+
+   
    # List names to exclude from the cluster analysis
    ExcludeTraitID = try_trait$TraitID[! try_trait$Cluster]
-   ExcludeName    = names(ImputedTRY) %in% try_trait$Name[try_trait$TraitID %in% ExcludeTraitID]
-   ExcludeName    = names(ImputedTRY)[ExcludeName]
+   ExcludeAncilID = try_ancil$DataID [! try_ancil$Cluster]
+   ExcludeName    = c( try_trait$Name[try_trait$TraitID %in% ExcludeTraitID]
+                     , try_ancil$Name[try_ancil$DataID  %in% ExcludeAncilID]
+                     , TaxonAll
+                     )#end c
+   ExcludeName    = names(ImputedTRY)[names(ImputedTRY) %in% ExcludeName]
       
    # Select the columns that will participate in the cluster analysis
    FilledTRY = ImputedTRY              %>%
@@ -926,56 +1232,15 @@ if (update_cluster){
                       )#end switch
    OrigTRY = OrigTRY %>% select_at(c(names(FilledTRY)))
 
-   
-   #---~---
-   # A few functions that will help setting the dissimilarity matrix
-   #---~---
-   # Function that determines the fraction of observed (vs. imputed)
-   fracObserved = function(x){
-      ans = sum(! ( is.na(x) | is.nan(x) ) ) / length(x)
-      return(ans)
-   }#end function fracObserved
-   
-   # Function that determines the type of variable
-   findType     = function(x){
-      if (is.ordered(x) || is.integer(x)){
-         ans = "ordered"
-      }else if (is.factor(x) || is.character(x)){
-         ans = "factor"
-      }else if (is.logical(x)){
-         ans = "asymm"
-      }else{
-         ans = "numeric"
-      }#end if (is.ordered(x) || is.integer(x))
-      return(ans)
-   }#end function findType
-   
-   # Function to calculate the entropy of the categorical data (Shannon's Index)
-   findEntropy  = function(x){ 
-      if (is.factor(x)){
-         p   = table(x)/length(x)
-         ans = -sum(p*log(p))
-      }else{
-         ans = NA_real_
-      }#end if (is.factor(x))
-      return(ans)
-   }#end function findEntropy
-   
-   # Function to calculate the evenness of the categorical data
-   findEvenness = function(x){ 
-      if (is.factor(x)){
-         ans = findEntropy(x)/log(nlevels(x))
-      }else{
-         ans = NA_real_
-      }#end if (is.factor(x))
-      return(ans)
-   }#end function findEvenness
-   #---~---
+   # List of Taxonomic variables to use
+   TaxonAll    = c("ObservationID","ScientificName","Genus","Family","Order","Class","Phylum")
+   TaxonAll    = TaxonAll[TaxonAll %in% names(DataTRY)]
    
    
    # Decide the type of variable and weight for each column
    cat0(" + Find weighting factors for categorical variables.")
    DataInfo     = tibble( Name     = names(FilledTRY)
+                        , Trait    = Name %in% try_trait$Name
                         , Type     = sapply(X=FilledTRY,FUN=findType    )
                         , FracObs  = sapply(X=OrigTRY  ,FUN=fracObserved)
                         , Nlevels  = sapply(X=FilledTRY,FUN=nlevels     )
@@ -983,12 +1248,18 @@ if (update_cluster){
                         , Evenness = sapply(X=FilledTRY,FUN=findEvenness)
                         )#end tibble
    DataInfo     = DataInfo %>%
-      mutate( Weight   = ifelse( test = Type %in% "factor"
-                               , yes  = FracObs * sqrt(Evenness / (Nlevels-1L))
-                               , no   = FracObs
-                               )#end ifelse
-            , Weight   = Weight / max(Weight)
-            )#end mutate
+      mutate( ObsWeight = pmin(1.,FracObs / max(FracObs[Trait & (Type %in% "numeric")]))
+            , Weight    = ifelse( test = Type %in% c("factor")
+                                , yes  = ObsWeight * sqrt(Evenness/ (Nlevels-1L))
+                                , no   = ifelse( test = Type %in% c("ordered")
+                                               , yes  = sqrt(Evenness)
+                                               , no   = ObsWeight
+                                               )#end ifelse
+                                )#end ifelse
+            , Weight    = Weight / max(Weight)                                   ) %>%
+      select(c(Name,Trait,Type,FracObs,ObsWeight,Nlevels,Entropy,Evenness,Weight)) %>%
+      arrange(-Weight)
+
 
    # Exclude a few other traits that may have very low weight
    ExcludeName = DataInfo$Name[! (DataInfo$Weight %ge% min_weight_cluster)]
@@ -1053,11 +1324,14 @@ if (update_cluster){
    # Set up list with cluster analysis attempts
    cluster_kdigits    = 1L + round(log10(cluster_kmax))
    cluster_kfmt       = paste0("K_%",cluster_kdigits,".",cluster_kdigits,"i")
-   cluster_ktry       = seq(from=cluster_kmin,to=cluster_kmax,by=1L)
    cluster_klabel     = sprintf(fmt=cluster_kfmt,sequence(cluster_kmax))
    ClusterList        = replicate(n=cluster_kmax,list())
    names(ClusterList) = cluster_klabel
    ClusterInfo        = tibble( k = sequence(cluster_kmax), sil_width = NA_real_, gap = NA_real_, gapSE = NA_real_)
+   
+   # Set the actual number of Monte Carlo iterations (small number if testing)
+   n_mcarlo_cluster_use = if(impute_cluster_test){10L}else{n_mcarlo_cluster}
+
    
    # Find the optimal number of clusters using the gap statistic.
    cat0(" + Find the optimal number of clusters based on the gap statistic.")
@@ -1069,28 +1343,34 @@ if (update_cluster){
                            , weights     = DataInfo$Weight
                            , K_max       = cluster_kmax
                            , d_power     = 2
-                           , n_mcarlo    = n_mcarlo_cluster
-                           , mc_verb     = round(0.1 * n_mcarlo_cluster)
+                           , n_mcarlo    = n_mcarlo_cluster_use
+                           , mc_verb     = round(0.1 * n_mcarlo_cluster_use)
                            , verbose     = TRUE
                            , do.swap     = FALSE
                            , pamonce     = 6L
                            )#end clusGapFlex
    ClusterInfo$gap   = ClusterGap$Tab[,"gap"   ]
    ClusterInfo$gapSE = ClusterGap$Tab[,"SE.sim"]
-   
+
+
    # Loop through number of clusters and calculate statistics
    cat0(" + Run cluster analysis for multiple number of clusters.")
-   for (k in cluster_ktry){
+   for (k in sequence(cluster_kmax)[-1L]){
       cat0("   - Seek ",k," clusters.")
       ClusterList[[k]]         = cluster::pam(x=DissimilarTRY,k=k,do.swap=FALSE,pamonce=6L)
       ClusterInfo$sil_width[k] = ClusterList[[k]]$silinfo$avg.width
    }#end for (ik in sequence(cluster_nk))
 
+
    # Find the optimal number of PFTs based on the silhouette and gap statistics. 
    cat0(" + Save best cluster based on silhouette and gap statistics.")
-   k_opt_sil = 1L + which.max(ClusterInfo$sil_width[-1L])
-   k_opt_gap = 1L + maxSE(f=ClusterInfo$gap[-1L],SE.f=ClusterInfo$gapSE[-1L],SE.factor=1,method="globalSEmax")
-   ClusterOpt = list(sil=ClusterList[[k_opt_sil]],gap=ClusterList[[k_opt_gap]],fix=ClusterList[[cluster_kfix]])
+   k_use      = ClusterInfo$k >= cluster_kmin
+   k_off      = cluster_kmin - 1L 
+   k_opt_sil  = k_off + which.max(ClusterInfo$sil_width[k_use])
+   k_opt_gap  = k_off + maxSE(f=ClusterInfo$gap[k_use],SE.f=ClusterInfo$gapSE[k_use],SE.factor=1,method=method_gap_maxSE)
+   ClusterOpt = list( sil = ClusterList[[k_opt_sil   ]]
+                    , gap = ClusterList[[k_opt_gap   ]]
+                    , fix = ClusterList[[cluster_kfix]] )
 
    # Create tibble containing the cluster information
    ClusterTRY = ImputedTRY %>%
@@ -1107,17 +1387,18 @@ if (update_cluster){
                                   , labels = ImputedTRY[[TaxonID]][ClusterOpt$fix$id.med]
                                   )#end factor
             )#end mutate
-   
 
    # Save data to some R object
-   cat0(" + Save cluster analysis to ",basename(rdata_cluster),".")
-   dummy = save( list              = c("FilledTRY","DataInfo","ScaledTRY","DissimilarTRY"
-                                      ,"ClusterInfo","ClusterGap","ClusterList","ClusterOpt"
-                                      ,"ClusterTRY")
-               , file              = rdata_cluster
-               , compress          = "xz"
-               , compression_level = 9
-               )#end save
+   if (! impute_cluster_test){
+      cat0(" + Save cluster analysis to ",basename(rdata_cluster),".")
+      dummy = save( list              = c("FilledTRY","DataInfo","ScaledTRY","DissimilarTRY"
+                                         ,"ClusterInfo","ClusterGap","ClusterList","ClusterOpt"
+                                         ,"ClusterTRY")
+                  , file              = rdata_cluster
+                  , compress          = "xz"
+                  , compression_level = 9
+                  )#end save
+   }#end if (! impute_cluster_test)
 
 }else{
    # Load cluster analysis
@@ -1133,8 +1414,9 @@ if (update_cluster){
 Here we append a column in all data sets to include the Cluster PFT. We always define the clusters in the `TidyTRY`
 
 ```{r,label='try-add-cluster',message=FALSE,results='hide',warning=FALSE}
-update_tidy_cluster = update_cluster || (! file.exists(rdata_TidyCluster))
-update_tidy_cluster = TRUE
+update_tidy_cluster = (  update_cluster
+                      || (! file.exists(rdata_TidyCluster))
+                      || impute_cluster_test )
 
 if (update_tidy_cluster){
 
@@ -1196,25 +1478,39 @@ if (update_tidy_cluster){
 
    # Set colours and symbols
    CntCluster     = length(AbbrCluster)
-   BrewFunction   = if(CntCluster %le% 6L){"Dark2"}else{"Paired"} 
-   ClusterColours = RColorBrewer::brewer.pal(n=max(3L,CntCluster),name=BrewFunction)[sequence(CntCluster)]
+   if (CntCluster %le% 4L){
+      ClusterColours = c("#8B69AE","#F8766D","#5CCEE5","#005566")
+      ClusterColours = ClusterColours[sequence(CntCluster)]
+   }else if (CntCluster %le% 5L){
+#      ClusterColours = c("#8B69AE","#F8766D","#5CCEE5","#008AA6","#005566")
+      ClusterColours = c("#8B69AE","#F8766D","#5CCEE5","#005566","#8C2A58")
+      ClusterColours = ClusterColours[sequence(CntCluster)]
+   }else if (CntCluster %le% 8L){
+      ClusterColours = c("#1B9E77","#D95F02","#7570B3","#8C2A58","#66CCAE","#E5975C","#C8C5E5","#F2B6D2")
+      ClusterColours = ClusterColours[sequence(CntCluster)]
+   }else{
+      ClusterColours = RColorBrewer::brewer.pal(n=max(3L,CntCluster),name="Paired")[sequence(CntCluster)]
+   }#end if (CntCluster %le% 8L)
    ClusterSymbols = c(16L,4L,13L,17L,6L,7L,0L,5L,2L,3L,1L,14L,10L,18L,9L,8L,12L,15L,11L)[sequence(CntCluster)]
 
 
    # Define the order of the clusters for output based on their wood density and leaf phenology   
    WoodDens    = try_trait$Name[try_trait$TraitID %in%                   c(   4L)][1L]
    LeafPhen    = try_trait$Name[try_trait$TraitID %in%             c(  37L,1251L)][1L]
+   GrowthForm  = try_trait$Name[try_trait$TraitID %in%             c(  42L,3400L)][1L]
    SLA         = try_trait$Name[try_trait$TraitID %in% c(3086L,3115L,3116L,3117L)][1L]
+   NFixer      = try_trait$Name[try_trait$TraitID %in%                   c(   8L)][1L]
    
    SummCluster = TidyTRY %>%
-      select(all_of(c("Cluster",LeafPhen,WoodDens,SLA))) %>%
+      select(all_of(c("Cluster",LeafPhen,GrowthForm,NFixer,WoodDens,SLA))) %>%
       filter(! is.na(Cluster))                           %>%
       mutate(across(all_of(SLA), ~ -1*.x))               %>%
       group_by(Cluster) %>%
-      summarise( across(where(is.character), ~ commonest(.x,na.rm=TRUE) )
-               , across(where(is.double   ), ~ mean     (.x,na.rm=TRUE) ) ) %>%
+      summarise( across(where(is.ordered)  , ~ orderedMedian(.x,na.rm=TRUE) )
+               , across(where(is.character), ~ commonest    (.x,na.rm=TRUE) )
+               , across(where(is.double   ), ~ mean         (.x,na.rm=TRUE) ) ) %>%
       ungroup() %>%
-      arrange(across(all_of(LeafPhen),desc),across(all_of(c(WoodDens,SLA)))) %>% 
+      arrange(across(all_of(GrowthForm)),across(all_of(LeafPhen),desc),across(all_of(NFixer)),across(all_of(c(WoodDens,SLA)))) %>% 
       mutate(across(all_of(SLA), ~ -1*.x))
 
    # Re-order the cluster
@@ -1227,19 +1523,22 @@ if (update_tidy_cluster){
                         , Colour   = ClusterColours
                         , Symbol   = ClusterSymbols
                         , XYUse    = NA_character_
+                        , Order    = NA_integer_
                         )#end tibble
 
    CategExtra = rbind(CategInfo,CategCluster) %>%
       arrange(TraitID)
 
    # Save data to some R object
-   cat0(" + Save tidy data with clusters to ",basename(rdata_TidyCluster),".")
-   dummy = save( list              = c("TidyTRY","SpeciesTRY","GenusTRY","try_trait","try_ancil"
-                                      ,"CategCluster","CategExtra")
-               , file              = rdata_TidyCluster
-               , compress          = "xz"
-               , compression_level = 9
-               )#end save
+   if (! impute_cluster_test){
+      cat0(" + Save tidy data with clusters to ",basename(rdata_TidyCluster),".")
+      dummy = save( list              = c("TidyTRY","SpeciesTRY","GenusTRY","try_trait","try_ancil"
+                                         ,"CategCluster","CategExtra")
+                  , file              = rdata_TidyCluster
+                  , compress          = "xz"
+                  , compression_level = 9
+                  )#end save
+   }#end if (! impute_cluster_test)
 }else{
    # Load cluster analysis
    cat0(" + Reload tidy data with cluster results from ",basename(rdata_TidyCluster),".")
@@ -1288,14 +1587,23 @@ MedianTRY = DataTRY                                                             
    filter( ! is.na(Cluster))                                                            %>%
    mutate( Cluster = factor(Cluster,levels=CategCluster$Class))                         %>%
    group_by(Cluster)                                                                    %>%
-   summarise( across(where(is.double )  , ~ median   (.x,na.rm=TRUE))
-            , across(where(is.integer)  , ~ median   (.x,na.rm=TRUE))
-            , across(where(is.logical)  , ~ commonest(.x,na.rm=TRUE))
-            , across(where(is.character), ~ commonest(.x,na.rm=TRUE)) )                 %>%
+   summarise( across(where(is.double )  , ~ median       (.x,na.rm=TRUE))
+            , across(where(is.integer)  , ~ median       (.x,na.rm=TRUE))
+            , across(where(is.ordered)  , ~ orderedMedian(.x,na.rm=TRUE))
+            , across(where(is.logical)  , ~ commonest    (.x,na.rm=TRUE))
+            , across(where(is.character), ~ commonest    (.x,na.rm=TRUE)) )             %>%
    ungroup()                                                                            %>%
    mutate( Cluster = as.character(Cluster))                                             %>%
    mutate( across( where(is.double), ~ signif(.x,digits=4L) ) )                         %>%
    select_at(vars(names(DataTRY)))
+
+# Stop script testing imputation/cluster analysis
+if (impute_cluster_test){
+   stop( paste("This is the end of the imputation/cluster analysis tests. No further"
+              ,"calculation to be carried out. For a full run of the script, set variable"
+              ,"impute_cluster_test=FALSE and run the script again."))
+}#end if (impute_cluster_test)
+
 
 # Write CSV files with trait summaries
 cat0(" + Write CSV files with summaries by species and genus:")
@@ -1371,6 +1679,7 @@ if (reload_SMA_trait && file.exists(rdata_distr)){
                       , Kurtosis   = rep(NA_real_                 ,times=CntDistr*CntCategDistr)
                       , Median     = rep(NA_real_                 ,times=CntDistr*CntCategDistr)
                       , LogLik     = rep(NA_real_                 ,times=CntDistr*CntCategDistr)
+                      , AIC        = rep(NA_real_                 ,times=CntDistr*CntCategDistr)
                       , BIC        = rep(NA_real_                 ,times=CntDistr*CntCategDistr)
                       )#end tibble
 
@@ -1771,6 +2080,11 @@ if (reload_SMA_trait && file.exists(rdata_SMA_trait)){
                , compression_level = 9
                )#end save
 }#end if (reload_SMA_trait && file.exists(rdata_SMA_trait))
+
+
+# Write CSV files with trait summaries
+cat0(" + Write CSV file with SMA information:")
+dummy = write_csv( x = InfoSMA, file = SMA_summ, na = "")
 
 ```
 
@@ -2205,6 +2519,10 @@ if (reload_corr_trait && file.exists(rdata_corr_trait)){
                )#end save
 }#end if (reload_corr_trait && file.exists(rdata_corr_trait))
 
+# Write CSV files with trait summaries
+cat0(" + Write CSV file with correlation information:")
+CorrShow = CorrTRY %>% filter(pValue %le% pmax_kendall_show)
+dummy    = write_csv( x = CorrShow, file = corr_summ, na = "")
 ```
 
 
@@ -2259,10 +2577,10 @@ for (tr in TraitLoop){
 
    # Exclude rows that are not georeferenced or do not have valid data for the current trait,
    # and check if there are enough points for drawing the map.
-   TempTRY   = TidyTRY %>%
+   AbundTRY   = TidyTRY %>%
       select_at(vars(c(Lon,Lat,TraitName))) %>%
       filter_at(vars(c(Lon,Lat,TraitName)), all_vars(! is.na(.)))
-   CntTrait  = nrow(TempTRY)
+   CntTrait  = nrow(AbundTRY)
    TraitPlot = CntTrait %ge% n_map_min
 
 
@@ -2276,14 +2594,14 @@ for (tr in TraitLoop){
          rename_at(vars(x,y,z), ~c(Lon,Lat,TraitName))
 
       # Append empty template to data so hexagons look all the same.
-      TempTRY = bind_rows(TempTRY,Empty)
+      AbundTRY = bind_rows(AbundTRY,Empty)
       
       cat0(" + Plot abundance maps of ",TraitDesc," (",TraitName,").")
       gg_now = ggplot()
       gg_now = gg_now + geom_sf(data=br_states,fill="transparent",colour="grey20",linetype="dashed",size=.15,show.legend=FALSE)
       gg_now = gg_now + geom_sf(data=all_countries,fill="transparent",colour="black",linetype="solid",size=.30,show.legend=FALSE)
       gg_now = gg_now + coord_sf(xlim=LimitLon,ylim=LimitLat)
-      gg_now = gg_now + geom_bin_2d(data=TempTRY,aes_string(x=Lon,y=Lat),binwidth=c(XYWidth,XYWidth))
+      gg_now = gg_now + geom_bin_2d(data=AbundTRY,aes_string(x=Lon,y=Lat),binwidth=c(XYWidth,XYWidth))
       gg_now = gg_now + scale_fill_continuous(type = map_colour,direction=-1,trans=map_trans,limits=map_range,oob=squish)
 
 
@@ -2318,7 +2636,7 @@ for (tr in TraitLoop){
       #Save map to file
       DeviceLoop = sequence(ndevice)
       for (d in DeviceLoop){
-         h_output = paste0("AbundMap-",TraitName,"-",trait_suffix,".",gg_device[d])
+         h_output = paste0("AbundMap-",TraitName,"-",base_suffix,".",gg_device[d])
          dummy    = ggsave( filename = h_output
                           , plot     = gg_now
                           , device   = gg_device[d]
@@ -2346,6 +2664,16 @@ if (gg_screen && (cnt_gg_map %gt% 0L)){
 Here we plot violin diagrams segregated by multiple categorical variables.
 
 ```{r, label='plot-violins',message=FALSE,results='hide',warning=FALSE,fig.width=8, fig.height=6}
+
+
+# Select reference data set for trade-off analysis
+DataTRY = switch( EXPR       = fit_taxon
+                , Individual = TidyTRY
+                , Species    = SpeciesTRY
+                , Genus      = GenusTRY
+                , stop("Invalid settings for variable \"fit_taxon\".")
+                )#end switch
+
 # Select categories we are interested in plotting.
 CategTraitID    = sort(unique(CategExtra$TraitID))
 CategTraitID    = CategTraitID[CategTraitID %in% c(0L,try_trait$TraitID)]
@@ -2381,12 +2709,12 @@ for (w in CategLoop){
    CntInfoNow = nrow(InfoNow)
    
    # Filter input data to exclude missing categories
-   TempTRY = TidyTRY %>%
+   ViolinTRY = DataTRY %>%
       filter_at(vars(CategName), ~ ! is.na(.x)) %>%
       mutate_at(vars(CategName), ~ factor(.x,levels=InfoNow$Class))
    
    # Make sure there is anything to plot 
-   IsPlot = which((try_trait$Type %in% "numeric") & (! try_trait$Allom) & (try_trait$Name %in% names(TempTRY))) 
+   IsPlot = which((try_trait$Type %in% "numeric") & (! try_trait$Allom) & (try_trait$Name %in% names(ViolinTRY))) 
 
    # Loop through all traits, and compare evergreens with drought deciduous.
    for (tr in IsPlot){
@@ -2402,11 +2730,11 @@ for (w in CategLoop){
                          )#end switch
 
       # Ensure that trait is numeric and has valid values for at least 2 categories.
-      TraitRange = TempTRY %>% 
+      TraitRange = ViolinTRY %>% 
          group_by_at(vars(CategName)) %>%
          summarise_at(vars(TraitName), ~ range(.x,finite=TRUE)) %>%
          ungroup()
-      TraitFine  = TempTRY %>% 
+      TraitFine  = ViolinTRY %>% 
          group_by_at(vars(CategName)) %>%
          summarise_at(vars(TraitName), ~ sum(is.finite(.x)) %ge% n_violin_min) %>%
          ungroup()
@@ -2415,14 +2743,14 @@ for (w in CategLoop){
 
       # Exclude data from categories with too few data points
       CategIgnore  = as.integer(TraitFine[[CategName]])[! TraitFine[[TraitName]]]
-      Discard      = as.integer(TempTRY[[CategName]]) %in% CategIgnore
-      TempTRY[[TraitName]][Discard] = NA_real_
+      Discard      = as.integer(ViolinTRY[[CategName]]) %in% CategIgnore
+      ViolinTRY[[TraitName]][Discard] = NA_real_
       
       # We only plot this if this trait has anything to be plotted.
       if (TraitPlot){
          # Run Tukey's HSD test for phenological groups
          TraitFormula = as.formula(paste0(TraitName," ~ ",CategName))
-         TraitAOV     = aov(TraitFormula,data=TempTRY)
+         TraitAOV     = aov(TraitFormula,data=ViolinTRY)
          TraitGroup   = HSD.test(TraitAOV,trt=CategName,group=TRUE)$groups
          TraitOrder   = InfoNow$Class[InfoNow$Class %in% rownames(TraitGroup)]
          TraitGroup   = TraitGroup[TraitOrder,,drop=FALSE]
@@ -2470,7 +2798,7 @@ for (w in CategLoop){
          ViolinColour = InfoNow$Colour; names(ViolinColour) = InfoNow$Class
          
          # Add violins
-         gg_now = ggplot(data=TempTRY,aes_string(x=CategName,y=TraitName,fill=CategName))
+         gg_now = ggplot(data=ViolinTRY,aes_string(x=CategName,y=TraitName,fill=CategName))
          gg_now = gg_now + scale_x_discrete(labels=ViolinLabel)
          gg_now = gg_now + scale_y_continuous(limits=TraitYLim,trans=TraitTrans)
          gg_now = gg_now + geom_violin(trim=TRUE,show.legend = FALSE,kernel="optcosine",n=2048L)
@@ -2505,7 +2833,7 @@ for (w in CategLoop){
          # Save plots.
          DeviceLoop = sequence(ndevice)
          for (d in DeviceLoop){
-            h_output = paste0("Violin-",CategName,"-",TraitName,"-",trait_suffix,".",gg_device[d])
+            h_output = paste0("Violin-",CategName,"-",TraitName,"-",base_suffix,".",gg_device[d])
             dummy    = ggsave( filename = h_output
                              , plot     = gg_now
                              , device   = gg_device[d]
@@ -2606,7 +2934,7 @@ if (plot_stat_cluster){
 
    # Save plot in every format requested.
    for (d in sequence(ndevice)){
-      f_output = paste0("Silhouette_",trait_suffix,".",gg_device[d])
+      f_output = paste0("Silhouette_",base_suffix,".",gg_device[d])
       dummy    = ggsave( filename = f_output
                        , plot     = gg_sil
                        , device   = gg_device[d]
@@ -2673,7 +3001,7 @@ if (plot_stat_cluster){
 
    # Save plot in every format requested.
    for (d in sequence(ndevice)){
-      f_output = paste0("GapStatistic",trait_suffix,".",gg_device[d])
+      f_output = paste0("GapStatistic",base_suffix,".",gg_device[d])
       dummy    = ggsave( filename = f_output
                        , plot     = gg_gap
                        , device   = gg_device[d]
@@ -2753,7 +3081,7 @@ if (plot_wgt_cluster){
 
    # Save plot in every format requested.
    for (d in sequence(ndevice)){
-      f_output = paste0("WeightCluster",trait_suffix,".",gg_device[d])
+      f_output = paste0("WeightCluster",base_suffix,".",gg_device[d])
       dummy    = ggsave( filename = f_output
                        , plot     = gg_wgt
                        , device   = gg_device[d]
@@ -2823,6 +3151,10 @@ for (v in WhichUse){
       
    # Find the normal distribution equivalent of the value
    DataUse[[vName]] = qnorm(p=p_vName,mean=0.,sd=1.)
+   DataUse[[vName]] = ifelse( test = is.finite(DataUse[[vName]])
+                            , yes  = DataUse[[vName]]
+                            , no   = NA_real_
+                            )#end ifelse
 }#end for  (z in WhichUse)
 
 # Select data with a sufficient number of data sets
@@ -2881,13 +3213,18 @@ for (cc in pca_cluster_loop){
       cName             = paste0("cluster_",cType)
       cDesc             = paste0("Clustered PFT: ",c("Gap statistic","Silhouette","Fixed"))[cc-1L]
       if ( ( cType == cluster_method ) && ( "CategCluster" %in% ls(envir=.GlobalEnv) ) ){
-         DataUse[[cName]] = factor(x=as.character(DataUse[[cName]]),levels=CategCluster$TRYClass)
-      }#end if
-      cUniq             = levels(DataUse[[cName]])
-      cSize             = nlevels(DataUse[[cName]])
-      cPalette          = if(cSize %gt% 6L){"Paired"}else{"Dark2"}
-      colClasses        = RColorBrewer::brewer.pal(n=cSize,name=cPalette)
-      names(colClasses) = cUniq
+         DataUse[[cName]]  = factor(x=as.character(DataUse[[cName]]),levels=CategCluster$TRYClass)
+         cUniq             = CategCluster$TRYClass
+         cSize             = nrow(CategCluster)
+         colClasses        = CategCluster$Colour
+         names(colClasses) = CategCluster$TRYClass
+      }else{
+         cUniq             = levels(DataUse[[cName]])
+         cSize             = nlevels(DataUse[[cName]])
+         cPalette          = if(cSize %gt% 6L){"Paired"}else{"Dark2"}
+         colClasses        = RColorBrewer::brewer.pal(n=cSize,name=cPalette)
+         names(colClasses) = cUniq
+      }#end if ( ( cType == cluster_method ) && ( "CategCluster" %in% ls(envir=.GlobalEnv) ) )
    }#end if (cc %in% 1L)
    zTitle = paste0("PCA points by ",tolower(cDesc))
 
@@ -2899,7 +3236,7 @@ for (cc in pca_cluster_loop){
                     , size                  = 1.0
                     , loadings              = TRUE
                     , loadings.colour       = "grey40"
-                    , loadings.label        = TRUE
+                    , loadings.label        = c(FALSE,TRUE)[2L]
                     , loadings.label.size   = 4
                     , loadings.label.colour = "black"
                     , loadings.label.family = "Helvetica"
@@ -2919,7 +3256,7 @@ for (cc in pca_cluster_loop){
    gg_now = gg_now + guides(colour=guide_legend(nrow=cSize),shape=guide_legend(nrow=zSize))
    # Save plot in every format requested.
    for (d in sequence(ndevice)){
-      f_output = paste0("PCAPlot_",cName,"_",trait_suffix,".",gg_device[d])
+      f_output = paste0("PCAPlot_",cName,"_",base_suffix,".",gg_device[d])
       dummy    = ggsave( filename = f_output
                        , plot     = gg_now
                        , device   = gg_device[d]
@@ -2939,6 +3276,135 @@ for (cc in pca_cluster_loop){
 # Show plots
 if (length(gg_pca) %gt% 0L & gg_screen) gg_pca
 ```
+
+
+
+## Plot the medoid of all variables used in the cluster analysis
+
+Here we plot the medoid of each cluster for all traits included as a radial plot, which is obtained by finding the equivalent value of the CDF for each trait.
+```{r, label='plot-medoid-radar',message=FALSE,results='hide',warning=FALSE,fig.width=8, fig.height=6}
+if (plot_radar_cluster){
+   cat0(" + Plot radar plot for medoids.")
+   # Retrieve medoid values and select traits that are numeric and have a global distribution.
+   HasDistrib = names(MedoidTRY)[names(MedoidTRY) %in% GlobDistr$x   ]
+   IsTrait    = names(MedoidTRY)[names(MedoidTRY) %in% try_trait$Name]
+   NormalLoop = sort(intersect(HasDistrib,IsTrait))
+   KeepMedoid = unique(c("Cluster",NormalLoop))
+   
+      
+   RadarTRY = MedoidTRY %>%
+      select(all_of(KeepMedoid))
+
+   # Loop through the numeric variables and find the CDF.
+   for (v in seq_along(NormalLoop)){
+      # Retrieve information for this variable
+      vName   = NormalLoop[v]
+      vIndex  = match(vName,GlobDistr$x)
+      vDistr  = GlobDistr$Distrib[vIndex]
+      vFirst  = GlobDistr$First  [vIndex]
+      vSecond = GlobDistr$Second [vIndex]
+      vThird  = GlobDistr$Third  [vIndex]
+
+      # Fit the cumulative density function according to the distribution.
+      vFun = switch( vDistr
+                   , "uniform"       = punif
+                   , "normal"        = pnorm
+                   , "logistic"      = plogis
+                   , "skew-normal"   = sn::psn
+                   , "log-normal"    = plnorm
+                   , "neglog-normal" = pnlnorm
+                   , "weibull"       = pweibull
+                   , "gamma"         = pgamma
+                   , NA_character_
+                   )#end switch
+
+      # Decide whether the distribution needs two or three parameters
+      if (vDistr %in% "skew-normal"){
+         RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond,vThird)
+      }else if (! is.na(zDistr)){
+         RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond)
+      }#end if (zDistr %in% "skew-normal")
+
+      # Delete NaN values
+      RadarTRY[[vName]] = ifelse( test = is.finite(RadarTRY[[vName]])
+                                , yes  = RadarTRY[[vName]]
+                                , no   = NA_real_
+                                )#end ifelse
+   }#end for (v in seq_along(NormalLoop))
+
+   # Create a table abbreviations
+   NormalAbbr        = letters[seq_along(NormalLoop)]
+   names(NormalAbbr) = NormalLoop
+
+   # List of classes for ordering the clusters. We add "All" as a dummy cluster
+   CategUse   = CategExtra %>% filter((TraitID %in% 0) | (Class %in% "ALL"))
+   orderCateg = c(nrow(CategUse),sequence(nrow(CategUse)-1L))
+   CategUse   = CategUse[orderCateg,]
+
+   # Append a column with all, which will be used as a legend
+   AppendTRY = RadarTRY[1L,,drop=FALSE] %>%
+      mutate( across(where(is.numeric), ~ NA_real_ * .x)
+            , Cluster = CategUse$Class[1L])
+
+   RadarTRY = rbind(AppendTRY,RadarTRY)
+   
+
+   
+   # Reshape RadarTRY so the variables become a categorical variable
+   RadarPlot = RadarTRY %>%
+      pivot_longer(all_of(NormalLoop),names_to="Variable",values_to="CumDistr") %>%
+      mutate( Cluster  = factor(x=Cluster,levels=CategUse$Class)
+            , Variable = factor(x=Variable,levels=NormalLoop,labels=NormalAbbr) )
+
+
+   
+   
+   gg_radar = ggplot( data = RadarPlot, mapping = aes(x=Variable,y=CumDistr,group=Cluster) )
+   gg_radar = gg_radar + facet_wrap( ~Cluster, nrow=2L)
+   gg_radar = gg_radar + geom_polygon(colour="#1F78B4",fill="#A6CEE3",alpha=0.7,linewidth=I(1.2))
+   gg_radar = gg_radar + geom_hline(yintercept=c(0.25,0.5,0.75),colour="black",linetype="dotted",linewidth=I(0.3))
+   gg_radar = gg_radar + geom_hline(yintercept=c(1.0),colour="black",linetype="solid",linewidth=I(0.3))
+   gg_radar = gg_radar + scale_y_continuous(limits=c(0.,1.0),breaks=c(0.,0.25,0.5,0.75,1.0))
+   gg_radar = gg_radar + coord_curvedpolar()
+   
+   gg_radar = gg_radar + labs( x        = element_blank()
+                             , y        = element_blank()
+                             , title    = "Relative traits for the cluster medoids"
+                             , subtitle = LabelSubtitle
+                             )#end labs
+   gg_radar = gg_radar + theme_grey( base_size = gg_ptsz, base_family = "Helvetica",base_line_size = 0.5,base_rect_size =0.5)
+   gg_radar = gg_radar + theme( axis.text.x       = element_text( size = gg_ptsz, margin = unit(rep(0.35,times=4),"cm"))
+                              , axis.text.y       = element_blank()
+                              , axis.ticks.y      = element_blank()
+                              , plot.title        = element_text( size = gg_ptsz)
+                              , plot.subtitle     = element_text( size = 0.7*gg_ptsz)
+                              , axis.ticks.length = unit(-0.25,"cm")
+                              , legend.position   = "bottom"
+                              , legend.direction  = "horizontal"
+                              )#end theme
+   # Save plot in every format requested.
+   for (d in sequence(ndevice)){
+      f_output = paste0("RadarPlot_Faceted_",base_suffix,".",gg_device[d])
+      dummy = ggsave( filename = f_output
+                    , plot     = gg_radar
+                    , device   = gg_device[d]
+                    , path     = trpca_path
+                    , width    = gg_width
+                    , height   = gg_height
+                    , units    = gg_units
+                    , dpi      = gg_depth
+                    )#end ggsave
+   }#end for (o in sequence(nout))
+
+   # If sought, plot images on screen
+   if (gg_screen) gg_radar
+}#end if (plot_radar_cluster)
+
+
+```
+
+
+
 
 
 
@@ -3381,7 +3847,7 @@ for (ct in seq_along(CategTrait)){
          
          # Save plot in every format requested.
          for (d in sequence(ndevice)){
-            f_output = paste0("SMAPlot_",yName,"_by-",zName,"_",trait_suffix,".",gg_device[d])
+            f_output = paste0("SMAPlot_",yName,"_by-",zName,"_",photo_suffix,".",gg_device[d])
             dummy    = ggsave( filename = f_output
                              , plot     = gg_now
                              , device   = gg_device[d]
@@ -3560,7 +4026,7 @@ for (x in sequence(CntDistr)){
 
       # Save plot in every format requested.
       for (d in sequence(ndevice)){
-         f_output = paste0("DistrPlot_",xName,"_Global_",trait_suffix,".",gg_device[d])
+         f_output = paste0("DistrPlot_",xName,"_Global_",base_suffix,".",gg_device[d])
          dummy = ggsave( filename = f_output
                        , plot     = gg_now
                        , device   = gg_device[d]
@@ -3817,7 +4283,7 @@ for (ct in seq_along(CategTrait)){
 
          # Save plot in every format requested.
          for (d in sequence(ndevice)){
-            f_output = paste0("DistrPlot_",xName,"_by-",zName,"_",trait_suffix,".",gg_device[d])
+            f_output = paste0("DistrPlot_",xName,"_by-",zName,"_",base_suffix,".",gg_device[d])
             dummy = ggsave( filename = f_output
                           , plot     = gg_now
                           , device   = gg_device[d]
@@ -4096,7 +4562,7 @@ for (ct in seq_along(CategTrait)){
 
          # Save plot in every format requested.
          for (d in sequence(ndevice)){
-            f_output = paste0("RidgePlot_",xName,"_by-",zName,"_",trait_suffix,".",gg_device[d])
+            f_output = paste0("RidgePlot_",xName,"_by-",zName,"_",base_suffix,".",gg_device[d])
             dummy = ggsave( filename = f_output
                           , plot     = gg_now
                           , device   = gg_device[d]
@@ -4127,4 +4593,3 @@ if (gg_screen && (cnt_gg_Ridge %gt% 0L)){
 }#end if (gg_screen && (length(gg_Ridge) %gt% 0L))
 
 ```
-

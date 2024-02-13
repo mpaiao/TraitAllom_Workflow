@@ -86,6 +86,7 @@ mmdry       <<- 0.02897        # Mean dry air molar mass                       [
 mmo2        <<- 0.03199880     # Mean water molar mass                         [    kg/mol]
 mmh2o       <<- 0.01801505     # Mean water molar mass                         [    kg/mol]
 mmco2       <<- 0.0440095      # Mean CO2 molar mass                           [    kg/mol]
+mmcarot     <<- 0.53688        # Mean (alpha- and beta-)carotene mass          [    kg/mol]
 mmdoc       <<- mmdry/mmco2    # mmdry/mmco2                                   [      ----]
 mmcod       <<- mmco2/mmdry    # mmco2/mmdry                                   [      ----]
 mmdry1000   <<- 1000.*mmdry    # Mean dry air molar mass                       [    kg/mol]
@@ -165,6 +166,8 @@ kPa.2.hPa      <<- kPa.2.Pa * Pa.2.hPa         # kPa            => hPa
 hPa.2.kPa      <<- 1. / kPa.2.hPa              # hPa            => kPa
 MPa.2.Pa       <<- 1.e6                        # MPa            => Pa
 Pa.2.MPa       <<- 1. / MPa.2.Pa               # Pa             => MPa
+MPa.2.bar      <<- 10.                         # MPa            => bar
+bar.2.MPa      <<- 1. / MPa.2.bar              # bar            => MPa
 kt.2.mos       <<- 1852 / hr.sec               # knots          => m/s
 mos.2.kt       <<- 1. / kt.2.mos               # m/s            => knots
 frac2pc        <<- 100.                        # fraction       => percent
@@ -203,6 +206,14 @@ kJ.2.J         <<- 1000.                       # kJ             => J
 J.2.kJ         <<- 1./kJ.2.J                   # J              => kJ
 W.2.MJoday     <<- J.2.MJ * day.sec            # W (J/s)        => MJ/day
 MJoday.2.W     <<- 1. / W.2.MJoday             # MJ/day         => W (J/s)
+N.2.kN         <<- 1.e-3                       # N              => kN
+N.2.MN         <<- 1.e-6                       # N              => MN
+kN.2.N         <<- 1. / N.2.kN                 # kN             => N
+MN.2.N         <<- 1. / N.2.MN                 # MN             => N
+W.2.kW         <<- 1.e-3                       # W              => kW
+W.2.mW         <<- 1.e-3                       # W              => mW
+kW.2.W         <<- 1. / W.2.kW                 # kW             => W
+mW.2.W         <<- 1. / W.2.mW                 # mW             => W
 #------------------------------------------------------------------------------------------#
 
 

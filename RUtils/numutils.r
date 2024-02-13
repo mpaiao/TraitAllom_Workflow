@@ -309,64 +309,132 @@ weighted.frac <<- function(x,w,na.rm=TRUE){
 # sample.  If the size of the resampling is not provided, then the number of samples is    #
 # dependent on the range of probabilities.  By default we find the 0.50 quantile (median). #
 #------------------------------------------------------------------------------------------#
-weighted.quantile <<- function(x,w,qu=0.50,size.minp=10,na.rm=FALSE,out.case=FALSE){
+weightedQuantile <<- function(x,w,probs=0.50,size.minp=10,na.rm=FALSE,out.case=FALSE){
 
    #----- Delete the missing values if the user asked to do it. ---------------------------#
-   if (any(w <= 0, na.rm = TRUE) || any(is.infinite(w)) || any(is.na(w))){
-      stop(" Weights (w) must be positive and finite, and entirely defined!")
-   }else if(qu < 0. || qu > 1.){
-      stop(" Quantile (qu) must be between 0 and 1. ")
-   }else if(na.rm){
-      keep = ! is.na(x)
+   if (na.rm){
+      keep = ! ( is.na(x) | is.na(w) )
       x    = x[keep]
       w    = w[keep]
-   }#end if
+   }#end if(na.rm)
+   #---------------------------------------------------------------------------------------#
+
+
+   #---------------------------------------------------------------------------------------#
+   #    Weights cannot be negative, infinite, and at least one weight must be non-zero.    #
+   #---------------------------------------------------------------------------------------#
+   allZero      = (! any(w %gt% 0) ) & (! all(is.na(w)))
+   anyInfty     = any(is.infinite(w))
+   anyNegative  = any(w %lt% 0)
+   probsInvalid = ! ( probs %wr% c(0.,1.) )
+   if (allZero | anyInfty | anyNegative | probsInvalid){
+      cat0("---~---")
+      cat0("   FATAL ERROR")
+      cat0("---~---")
+      cat0(" - All weights are zero: ",allZero           ," (it should be FALSE).")
+      cat0(" - Any infinite weight:  ",anyInfty          ," (it should be FALSE).")
+      cat0(" - Any negative weight:  ",anyNegative       ," (it should be FALSE).")
+      cat0(" - \"probs\"(",probs,") is between 0 and 1: ",probsInvalid
+                                                         ," (it should be FALSE).")
+      cat0("---~---")
+      stop(" Invalid settings in weightedQuantile. See message above.")
+   }#end if (allZero | anyInfty | anyNegative)
    #---------------------------------------------------------------------------------------#
 
 
 
    #---------------------------------------------------------------------------------------#
-   #      Define the probabilities by normalising the weights.                             #
+   #    If x is an ordered or a factor variable, temporarily convert it to integer.        #
    #---------------------------------------------------------------------------------------#
-   prob = w / sum(w)
-   #---------------------------------------------------------------------------------------#
-
-
-
-   #---------------------------------------------------------------------------------------#
-   #      Sort the values by the probability.                                              #
-   #---------------------------------------------------------------------------------------#
-   o     = order(x,decreasing=FALSE)
-   x     = x[o]
-   w     = w[o]
-   prob  = prob[o]
-   cum   = cumsum(prob)
+   xtype = if(is.ordered(x)){"ordered"}else if(is.factor(x)){"factor"}else{typeof(x)}
+   if (xtype %in% c("ordered","factor")){
+      xlabels  = levels (x)
+      xnlevels = nlevels(x)
+      xlevels  = sequence(nxlevels)
+      x        = as.integer(x)
+   }else if (xtype %in% "logical"){
+      x        = as.integer(x)
+   }#end if (xtype %in% c("ordered","factor"))
    #---------------------------------------------------------------------------------------#
 
 
 
    #---------------------------------------------------------------------------------------#
-   #      Sort the values by the probability.                                              #
+   #    If no data are valid or only one data remains valid, return the trivial results,   #
+   # otherwise, comput them.                                                               #
    #---------------------------------------------------------------------------------------#
-   if (qu <= cum[1]){
-      qout = x[1]
-      case = "minimum"
-   }else if (qu >= cum[length(cum)]){
-      qout = x[length(cum)]
-      case = "maximum"
-   }else if (any(cum == qu)){
-      qout = x[which(cum == qu)]
-      case = "exact"
+   if (length(x) == 0L){
+      qout = as(NA,xtype)
+      case = NA_character_
+   }else if (length(x) == 1L){
+      qout = x
+      case = "Single"
    }else{
-      below   = qu - cum ; below[below < 0] = Inf 
-      above   = cum - qu ; above[above < 0] = Inf
-      i.below = which.min(below)
-      i.above = which.min(above)
-      w.below = 1. / (below[i.below]^2)
-      w.above = 1. / (above[i.above]^2)
-      qout    = ( x[i.below] * w.below + x[i.above] * w.above ) / (w.below + w.above)
-      case    = "interpolated"
-   }#end if
+      #------------------------------------------------------------------------------------#
+      #      Define the probabilities by normalising the weights.                          #
+      #------------------------------------------------------------------------------------#
+      p = w / sum(w)
+      #------------------------------------------------------------------------------------#
+
+
+
+      #------------------------------------------------------------------------------------#
+      #      Sort the values by the probability.                                           #
+      #------------------------------------------------------------------------------------#
+      o    = order(x,decreasing=FALSE)
+      x    = x[o]
+      w    = w[o]
+      p    = p[o]
+      cum  = cumsum(p)
+      ncum = length(cum)
+      #------------------------------------------------------------------------------------#
+
+
+
+      #------------------------------------------------------------------------------------#
+      #      Sort the values by the probability.                                           #
+      #------------------------------------------------------------------------------------#
+      if (probs %le% cum[1L]){
+         qout = x[1L]
+         case = "minimum"
+      }else if (probs %ge% cum[ncum]){
+         qout = x[ncum]
+         case = "maximum"
+      }else if (any(cum %eq% probs)){
+         qout = x[which(cum %eq% probs)]
+         case = "exact"
+      }else{
+         below   = probs - cum ; below[below %lt% 0] = Inf 
+         above   = cum - probs ; above[above %gt% 0] = Inf
+         i.below = which.min(below)
+         i.above = which.min(above)
+         w.below = 1. / (below[i.below]^2)
+         w.above = 1. / (above[i.above]^2)
+         qout    = ( x[i.below] * w.below + x[i.above] * w.above ) / (w.below + w.above)
+         case    = "interpolated"
+      }#end if (probs <= cum[1])
+      #------------------------------------------------------------------------------------#
+   }#end if (length(x) == 0L)
+   #---------------------------------------------------------------------------------------#
+
+
+   #---------------------------------------------------------------------------------------#
+   #     Convert data back to ordered or factor if needed.                                 #
+   #---------------------------------------------------------------------------------------#
+   qout = switch( EXPR    = xtype
+                , ordered = ordered(x=as.integer(round(qout)),levels=xlevels,labels=xlabels)
+                , factor  = factor (x=as.integer(round(qout)),levels=xlevels,labels=xlabels)
+                , integer = as.integer(round(qout))
+                , logical = as.integer(round(qout))
+                , qout
+                )#end switch
+   case = switch( EXPR    = xtype
+                , ordered = ifelse(test=case %in% "interpolated",yes="rounded",no=case)
+                , factor  = ifelse(test=case %in% "interpolated",yes="rounded",no=case)
+                , integer = ifelse(test=case %in% "interpolated",yes="rounded",no=case)
+                , logical = ifelse(test=case %in% "interpolated",yes="rounded",no=case)
+                , case
+                )#end switch
    #---------------------------------------------------------------------------------------#
 
 
@@ -378,7 +446,23 @@ weighted.quantile <<- function(x,w,qu=0.50,size.minp=10,na.rm=FALSE,out.case=FAL
    }#end if (out.case)
    return(ans)
    #---------------------------------------------------------------------------------------#
-}#end function weighted.quantile
+}#end function weightedQuantile
+#==========================================================================================#
+#==========================================================================================#
+
+
+
+
+
+
+#==========================================================================================#
+#==========================================================================================#
+#     This function is a wrapper or weightedQuantile for when computing median.            #
+#------------------------------------------------------------------------------------------#
+weightedMedian <<- function(x,w,na.rm=FALSE,...){
+   ans = weightedQuantile(x=x,w=w,probs=0.50,na.rm=na.rm,...)
+   return(ans)
+}#end weightedMedian
 #==========================================================================================#
 #==========================================================================================#
 
@@ -391,16 +475,33 @@ weighted.quantile <<- function(x,w,qu=0.50,size.minp=10,na.rm=FALSE,out.case=FAL
 #==========================================================================================#
 #     This function estimates the weighted standard deviation.                             #
 #------------------------------------------------------------------------------------------#
-weighted.sd <<- function(x,w,M=NULL,na.rm=FALSE){
+weightedSD <<- function(x,w,M=NULL,na.rm=FALSE){
 
    #----- Delete the missing values if the user asked to do it. ---------------------------#
-   if (any(w < 0, na.rm = TRUE) || any(is.infinite(w)) || any(is.na(w))){
-      stop(" Weights (w) must be non-negative and finite, and entirely defined!")
-   }else if(na.rm){
-      keep = ! is.na(x)
+   if (na.rm){
+      keep = ! ( is.na(x) | is.na(w) )
       x    = x[keep]
       w    = w[keep]
-   }#end if
+   }#end if(na.rm)
+   #---------------------------------------------------------------------------------------#
+
+
+   #---------------------------------------------------------------------------------------#
+   #    Weights cannot be negative, infinite, and at least one weight must be non-zero.    #
+   #---------------------------------------------------------------------------------------#
+   allZero      = (! any(w %gt% 0) ) & (! all(is.na(w)))
+   anyInfty     = any(is.infinite(w))
+   anyNegative  = any(w %lt% 0)
+   if (allZero | anyInfty | anyNegative){
+      cat0("---~---")
+      cat0("   FATAL ERROR")
+      cat0("---~---")
+      cat0(" - All weights are zero: ",allZero           ," (it should be FALSE).")
+      cat0(" - Any infinite weight:  ",anyInfty          ," (it should be FALSE).")
+      cat0(" - Any negative weight:  ",anyNegative       ," (it should be FALSE).")
+      cat0("---~---")
+      stop(" Invalid settings in weightedSD. See message above.")
+   }#end if (allZero | anyInfty | anyNegative)
    #---------------------------------------------------------------------------------------#
 
 
@@ -408,11 +509,12 @@ weighted.sd <<- function(x,w,M=NULL,na.rm=FALSE){
    if (is.null(M)) M = min(w)
    #---------------------------------------------------------------------------------------#
 
+
    #---------------------------------------------------------------------------------------#
    #      Check whether at least one weight is non-zero.                                   #
    #---------------------------------------------------------------------------------------#
    if (all(w %eq% 0)){
-      ans = NA
+      ans = NA_real_
    }else{
       xwm    = weighted.mean(x=x,w=w)
       w.sum  = sum(w)
@@ -422,7 +524,35 @@ weighted.sd <<- function(x,w,M=NULL,na.rm=FALSE){
    #---------------------------------------------------------------------------------------#
 
    return(ans)
-}#end function weighted.sd
+}#end function weightedSD
+#==========================================================================================#
+#==========================================================================================#
+
+
+
+
+#==========================================================================================#
+#==========================================================================================#
+#    This function finds the median, but with a special case for handling ordered          #
+# variables. If the variable is ordered, we convert the variable to integer and reassign   #
+# the orders. If the result falls exactly between two classes, we apply a nudge before     #
+# rounding so the data is randomly assigned to the nearest integer (we don't want to use   #
+# the IEC 60559 standard to avoid biases towards even levels).                             #
+#                                                                                          #
+# IEC 60559 standard -- When rounding a number that is exactly at the middle of two        #
+#                       integers, rounding should go to the nearest even number. So        #
+#                       rounding 1.5 yields 2, and rounding 2.5 also yields 2.             #
+#------------------------------------------------------------------------------------------#
+orderedMedian <<- function(x,...){
+   if (is.ordered(x)){
+      iMed = median(as.integer(x),...)
+      rMed = round(iMed + runif(n=1,min=-0.1,max=+0.1))
+      oMed = ordered(levels(x)[rMed],levels=levels(x))
+   }else{
+      oMed = median(x,...)
+   }#end if (is.ordered(x))
+   return(oMed)
+}#end orderedMedian
 #==========================================================================================#
 #==========================================================================================#
 
@@ -901,7 +1031,7 @@ percentil <<- function(x,trim=0.0){
    xperc   = 100. * pmax(0.,pmin(1.,(x-xlow)/(xhigh-xlow)))
    xperc   = ifelse(is.finite(xperc),xperc,NA)
    return(xperc)
-}#end normalise
+}#end function percentil
 #==========================================================================================#
 #==========================================================================================#
 
@@ -1282,17 +1412,17 @@ max.abs.diff <<- function(x,y,na.rm=TRUE) max(abs(x-y),na.rm=na.rm)
 #==========================================================================================#
 #     This function checks whether or not the values are valid.                            #
 #------------------------------------------------------------------------------------------#
-is.valid <<- function(x,qq.rm=FALSE){
+is.valid.data <<- function(x,qq.rm=FALSE){
    type.x = typeof(x)
    if (type.x %in% "logical"){
       ans = ! is.na(x)
    }else if (type.x %in% "character"){
       ans = ! ( is.na(x) | ((x %in% "") & qq.rm))
    }else{
-      ans = ! is.finite(x)
+      ans = is.finite(x)
    }#end if (type.x %in% c("logical","character"))
    return(ans)
-}#end is.finite
+}#end is.valid.data
 #==========================================================================================#
 #==========================================================================================#
 
@@ -1304,6 +1434,6 @@ is.valid <<- function(x,qq.rm=FALSE){
 #==========================================================================================#
 #     This function counts the number of valid entries.                                    #
 #------------------------------------------------------------------------------------------#
-count.valid <<- function(x,qq.rm=FALSE) sum(is.valid(x,qq.rm=qq.rm))
+count.valid.data <<- function(x,qq.rm=FALSE) sum(is.valid.data(x,qq.rm=qq.rm))
 #==========================================================================================#
 #==========================================================================================#

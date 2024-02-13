@@ -12,8 +12,8 @@
 
 
 #---~---
-#   This function fixes traits when loading the original string value.  Four inputs are 
-# needed.
+#   This function fixes traits when loading the original string value.  The following
+# input variables are needed.
 #
 # - TraitID     -- ID given for this trait by the TRY data base. This must be a scalar.
 # - Type        -- Variable type ("numeric","integer","character","logical"). This must
@@ -641,15 +641,14 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsTT = IsTT | IsAuthor
       #---~---
       #   Chris Baraloto, force to puncture provided. However, no diameter of the puncture
-      # element was provided. As a patch solution, we use the distribution of values from
-      # Vanessa Boukili, and assume the diameter of puncture element to be 4.5 mm. This 
-      # can be revised in the future if the exact puncture element circumference becomes 
-      # known.
+      # element was provided. The supporting information indicates that they used a
+      # Chatillon E-DFE-2 push gauge (penetrometer). Upon reaching out to Chatillon, they
+      # informed me that the factory puncture element diameter is 4.75 mm.
       #---~---
       IsAuthor = 
          ( AuthorName %in% "Chris Baraloto" ) & (NameOrig %in% "toughness" )
       IsFP             = IsFP | IsAuthor
-      CPunct[IsAuthor] = pi * 0.0045
+      CPunct[IsAuthor] = pi * 0.00475
       #--- Vanessa Boukili, assume FP based on the reference paper.
       IsAuthor = 
          ( AuthorName %in% "Vanessa Boukili" ) & (NameOrig %in% "leaf toughness" )
@@ -741,22 +740,16 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       IsFP     = IsFP | IsAuthor
       #---~---
       #   Marko Spasojevic, force to puncture provided. However, no diameter of the
-      # puncture element was provided. As a patch solution, we use the distribution of
-      # values from Vanessa Boukili, and assume the diameter of puncture element to be 
-      # 4.2 mm. This can be revised in the future if the exact puncture element 
-      # circumference becomes known.
+      # puncture element was provided.  For now we discard the data.
       #---~---
       IsAuthor = 
          ( AuthorName %in% "Marko Spasojevic" ) & (NameOrig %in% "leaftoughness" )
-      IsFP             = IsFP | IsAuthor
-      CPunct[IsAuthor] = pi * 0.0042
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
       #---~---
       #   Tanya Strydom, force to puncture provided. However, no diameter of the puncture
-      # element was provided. The data distribution looks very different than Vanessa 
-      # Boukili, possibly because the sample comes from a montane dryland environment in
-      # South Africa. The average ratio between distributions would indicate puncture 
-      # element size to be of the order of 7-8mm, which is somewhat larger than the 
-      # typical values (0.5-5mm). For now we discard the data.
+      # element was provided. For now we discard the data.
       #---~---
       IsAuthor = 
          ( AuthorName %in% "Tanya Strydom" ) & (NameOrig %in% "toughness" )
@@ -766,11 +759,7 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       VName[IsAuthor] = NA_character_
       #---~---
       #   Stephni van der Merwe, force to puncture provided. However, no diameter of the
-      # puncture element was provided. The data distribution looks very different than 
-      # Vanessa Boukili, possibly because the sample comes from a montane dryland 
-      # environment in South Africa. The average ratio between distributions would indicate
-      # puncture element size to be of the order of 8-11mm, which is somewhat larger than 
-      # the typical values (0.5-5mm). For now we discard the data.
+      # puncture element was provided. For now we discard the data.
       #---~---
       IsAuthor = 
          ( AuthorName %in% "Stephni van der Merwe" ) & (NameOrig %in% "penetrometer (n)" )
@@ -1232,6 +1221,201 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       Value[! IsValid] = NA_character_
       #---~---
 
+   }else if (TraitID %in% c(8L)){
+      #---~---
+      #   8   - Plant nitrogen(N) fixation capacity
+      #---~---
+
+      #---~---
+      #   Make input values lower case to make classification easier
+      #---~---
+      Value    = tolower(Value)
+      #---~---
+
+      #---~---
+      #   List of default values.
+      #---~---
+      NFixStd = c(no="No",yes="Yes")
+      #---~---
+
+
+
+      #---~---
+      #   Madhur Anand. Current download has only non N fixers.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Madhur Anand")
+      Value[IsAuthor & ( Value %in% "none" )] = NFixStd["no"]
+      #---~---
+
+
+
+      #---~---
+      #   The following authors used a binary (0/1) system for N fixation
+      # - Chris Baraloto
+      # - Mario Liebergesell
+      # - Colleen Seymour
+      #---~---
+      IsAuthor = AuthorName %in% c( "Chris Baraloto", "Mario Liebergesell", "Colleen Seymour"
+                                  )#end c
+      Value[IsAuthor & ( Value %in% "0" )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% "1" )] = NFixStd["yes"]
+      #---~---
+
+
+
+      #---~---
+      #   The following authors used a yes/no system. 
+      # - William Bond
+      # - Johannes Cornelissen
+      # - Joseph Craine
+      # - Ning Dong
+      # - Jens Kattge
+      # - Daniel Laughlin
+      # - Maowei Liang
+      # - Patrick Meir
+      # - Renske Onstein
+      # - Josep Penuelas
+      # - Hendrik Poorter
+      # - Peter Reich
+      # - Fiona Soper
+      # - Jaime Villacis
+      # - Evan Weiher
+      # - Ian Wright
+      #---~---
+      IsAuthor = AuthorName %in% c( "William Bond", "Johannes Cornelissen","Joseph Craine","ning dong"
+                                  , "Jens Kattge", "Daniel Laughlin", "Maowei Liang", "Patrick Meir"
+                                  , "Renske Onstein", "Josep Penuelas", "Hendrik Poorter", "Peter Reich"
+                                  , "Fiona Soper", "JAIME VILLACIS", "Evan Weiher", "Ian Wright"
+                                  )#end c
+      NoNFixer  = c("n","no" ,"no-n-fixer", "non fixer", "no; not an n fixer", "not n2 fixing"      )
+      YesNFixer = c("y","yes",   "n-fixer", "n fixer"  , "yes; an n fixer"   , "n2 fixing"    , "si")
+      Discard   = IsAuthor & ( Value %in% c("n2 fixing?") )
+      Value[IsAuthor & ( Value %in% NoNFixer  )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% YesNFixer )] = NFixStd["yes"]
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+
+
+      #---~---
+      #   F Stuart Chapin III. They distinguish between symbiotic and non-symbiotic fixation. We ignore
+      # the distinction as most authors don't provide this level of detail.
+      #---~---
+      IsAuthor = AuthorName %in% "F Stuart Chapin III"
+      Value[IsAuthor & ( Value %in% c(    "0") )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% c("1","2") )] = NFixStd["yes"]
+      #---~---
+
+
+
+      #---~---
+      #   Will Cornwell. Multiple systems of classification. Simplify categories and remove spurious
+      # values.
+      #---~---
+      IsAuthor = AuthorName %in% "Will Cornwell"
+      Value[IsAuthor & ( Value %in% c("n"        ) )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% c("y","a","r") )] = NFixStd["yes"]
+      Discard = IsAuthor & ( Value %in% c("carn","cyan","hp") )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Walton Green. Classification includes N-fixing grades. Discard "low" as it is unclear if 
+      # low includes non-fixers too.
+      #---~---
+      IsAuthor = AuthorName %in% "Walton Green"
+      Value[IsAuthor & ( Value %in% c("medium","high") )] = NFixStd["yes"]
+      Discard = IsAuthor & ( Value %in% "low" )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Alvaro G. Gutierrez. TRUE/FALSE system for N fixation
+      #---~---
+      IsAuthor = AuthorName %in% "Alvaro G. Gutierrez"
+      Value[IsAuthor & ( Value %in% "false"  )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% "true"   )] = NFixStd["yes"]
+      #---~---
+
+
+
+      #---~---
+      #   Jon Lloyd. They used a nitrogen fixing rank that goes from -1 to 7. The original reference
+      # does not refer to the actual value. We assume that 0 means no nitrogen fixation, positive values
+      # mean nitrogen fixation, and -1 means not available, and hope for the best...
+      #---~---
+      IsAuthor = AuthorName %in% "Jon Lloyd"
+      Value[IsAuthor & ( Value %in% "0"                          )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% as.character(sequence(7L))   )] = NFixStd["yes"]
+      Discard        = IsAuthor & ( Value %in% "-1" )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Leho Tedersoo. They used a detailed classification system and provided multiple ancillary data
+      # sets. We keep only the consensus, and further simplify the classes. We discard the "unlikely" 
+      # classes as they imply low confidence.
+      #---~---
+      IsAuthor       = ( AuthorName %in% "Leho Tedersoo" ) & ( NameOrig   %in% "consensus estimate" )
+      NoNFixer       = c("none")
+      YesNFixer      = c("frankia","likely_present","likely_rhizobia","nostocaceae","present","rhizobia")
+      MaybeNFixer    = c("unlikely_frankia","unlikely_rhizobia")
+      Value[IsAuthor & ( Value %in% NoNFixer    )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% YesNFixer   )] = NFixStd["yes"]
+      Discard        = 
+         ( ( IsAuthor & ( Value %in% MaybeNFixer ) )
+         | ( ( AuthorName %in% "Leho Tedersoo" ) & (! ( NameOrig   %in% "consensus estimate" )) )
+         )#end Discard
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Gijsbert Werner. They use a no/yes system, but they report the nitrogen fixing
+      # habit across multiple variables. We discard the data from the detailed entries and only use the
+      # yes/no ones. Not that nfc stands for nitrogen fixing clade, not nitrogen fixation capacity.
+      #---~---
+      IsAuthor = ( ( AuthorName %in% "Gijsbert Werner" )
+                 & ( NameOrig   %in% c("nfix","nitrogen fixation capacity") )
+                 )#end IsAuthor
+      Value[IsAuthor & ( Value %in% "no"  )] = NFixStd["no" ]
+      Value[IsAuthor & ( Value %in% "yes" )] = NFixStd["yes"]
+      Discard        = ( ( AuthorName %in% "Gijsbert Werner" )
+                       & ( NameOrig   %in% c("data_fixing","nfc") )
+                       )#end IsAuthor
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Make sure data not assigned to the standard categories become invalid
+      #---~---
+      IsValid = is.na(Value) | ( Value %in% NFixStd ) 
+      Value[! IsValid] = NA_character_
+      #---~---
+
+
+
    }else if (TraitID %in% c(12L,33L,59L,155L,770L,1085L,1809L,1955L)){
       #---~---
       #   12   - Leaf lifespan (longevity)
@@ -1286,10 +1470,10 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       #---~---
       #   Discard binary data that do not provide age range
       #---~---
-      IsAuthor = ( AuthorName %in% "Alexandra Weigelt" ) & ( NameOrig   %in% "flowering" )
-      Value[IsAuthor] = NA_character_
-      Valid[IsAuthor] = FALSE
-      VName[IsAuthor] = NA_character_
+      Discard        = ( AuthorName %in% "Alexandra Weigelt" ) & ( NameOrig   %in% "flowering" )
+      Value[Discard] = NA_character_
+      Valid[Discard] = FALSE
+      VName[Discard] = NA_character_
       #---~---
 
 
@@ -5064,6 +5248,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    VName   = ifelse(test=Valid,yes=OutputName,no=NA_character_)
    TraitID = rep(NA_integer_  ,times=length(Value))
    Trait   = rep(NA_character_,times=length(Value))
+   AncilID = rep(NA_integer_  ,times=length(Value))
+   Ancil   = rep(NA_character_,times=length(Value))
    #---~---
 
 
@@ -5750,9 +5936,9 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    #   Date (calendar dates)
    AncilDate       = DataID %in% c(212L,241L,595L,696L,6601L)
    #   Time (elapsed time)
-   AncilTime       = DataID %in% c(413L,1414L,1832L,3031L,3885L,4696L)
+   AncilTime       = DataID %in% c(413L,976L,1414L,1832L,3031L,3885L,4696L)
    #   Radiation
-   AncilRad        = DataID %in% c( 321L,340L)
+   AncilRad        = DataID %in% c( 88L, 321L, 340L)
    #   Relative humidity
    AncilHumid      = DataID %in% c(326L)
    #   Country
@@ -5767,6 +5953,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
    AncilBiome      = DataID %in% c(193L,202L)
    #   Attributed growth form
    AncilGrowth     = DataID %in% c(6551L)
+   #   Experiment
+   AncilExperiment = DataID %in% c(238L, 308L, 319L, 324L, 363L, 490L, 767L, 4052L, 4695L)
    #---~---
 
 
@@ -6801,6 +6989,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
    }else if (AncilTime){
       #---~---
+      #   Mean length of dry season
       #   Plant age at measurement
       #   Plant developmental status / plant age / maturity / plant life stage
       #   Stand age
@@ -6813,20 +7002,21 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       #   Some age data have values but no units. They are likely years so we assume years.
       #---~---
       IsUnitMiss = is.na(UnitOrig)
-      IsPlantAge = DataID %in% c(1414L,1832L)
-      IsPlantDev = DataID %in% c(413L)
-      IsStandCls = DataID %in% c(3031L)
-      IsStandAge = DataID %in% c(4696L)
-      IsTimeFire = DataID %in% c(3885L)
-      AssumeYear = ( IsUnitMiss
-                   & ( ( IsTimeFire & (AuthorName %in% "Isabelle Aubin"  ) )
-                     | ( IsPlantDev & (AuthorName %in% "Maxime Cailleret") )
-                     | ( IsPlantDev & (AuthorName %in% "Herve Jactel"    ) )
-                     | ( IsPlantAge & (AuthorName %in% "Eric Lamb"       ) )
-                     | ( IsPlantAge & (AuthorName %in% "Christian Wirth" ) )
+      IsDrySeason = DataID %in% c(976L)
+      IsPlantAge  = DataID %in% c(1414L,1832L)
+      IsPlantDev  = DataID %in% c(413L)
+      IsStandCls  = DataID %in% c(3031L)
+      IsStandAge  = DataID %in% c(4696L)
+      IsTimeFire  = DataID %in% c(3885L)
+      AssumeYear  = ( IsUnitMiss
+                    & ( ( IsTimeFire & (AuthorName %in% "Isabelle Aubin"  ) )
+                      | ( IsPlantDev & (AuthorName %in% "Maxime Cailleret") )
+                      | ( IsPlantDev & (AuthorName %in% "Herve Jactel"    ) )
+                      | ( IsPlantAge & (AuthorName %in% "Eric Lamb"       ) )
+                      | ( IsPlantAge & (AuthorName %in% "Christian Wirth" ) )
 
-                     )#end AuthorName
-                   )#end UnitMiss
+                      )#end AuthorName
+                    )#end UnitMiss
       UnitOrig[AssumeYear] = "year"
       #---~---
 
@@ -7007,7 +7197,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       year_sel         = 
          ( has_yr | ( UnitOrig %in% c( "a", "y", "year", "years", "years *see notes"
                                      , "yr", "yrs", "Year", "Years" ) ) )
-      month_sel        = has_mon | ( UnitOrig %in% c("month","months") )
+      month_sel        = has_mon | ( UnitOrig %in% c("mo","month","months") )
       week_sel         = has_wk  | ( UnitOrig %in% c("week","weeks") )
       day_sel          = has_day | ( UnitOrig %in% c("d","day","days") )
       Value[month_sel] = as.character( 1. / yr.mon  * (as.numeric(Value[month_sel])) )
@@ -7023,6 +7213,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
    }else if (AncilRad){
       #---~---
+      #   Annual mean radiation
       #   Light during measurement
       #   Radiation during measurement
       #---~---
@@ -7054,6 +7245,13 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       VName[IsMissing]   = NA_character_
       #---~---
 
+      #---~---
+      #   Some authors provided the units in the variable name instead of the unit column.
+      #---~---
+      IsAuthor           = ( AuthorName %in% "Peter Reich"
+                           & NameOrig   %in% "radiation_av(w/m2)" )
+      UnitOrig[IsAuthor] = "W m-2"
+      #---~---
 
 
       #--- Make sure all data have the same units (W/m2).
@@ -7078,6 +7276,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                                             , "umol/m2/s"
                                             , "umol photons / m2 / sec"
                                             )#end c
+      wom2_sel             = UnitOrig %in% c("W/m2","W m-2")
       Value[umolom2os_sel] = as.character( umol.2.mol * Ein.2.Watts
                                          * (as.numeric(Value[umolom2os_sel]))
                                          )#end as.character
@@ -7093,7 +7292,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
       #--- Delete data without units (for debugging, we do not set them as invalid).
-      unmiss_sel        = ! ( umolom2os_sel )
+      unmiss_sel        = ! ( umolom2os_sel | wom2_sel )
       Value[unmiss_sel] = NA_character_
       #---~---
 
@@ -8745,7 +8944,7 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
 
 
 
-     #---~---
+      #---~---
       #   Assign classes
       #---~---
       Value[IsDesert      ] = "01 - Desert/Semi-arid"
@@ -8830,7 +9029,853 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
       VName  [IsAuthor] = NA_character_
       #---~---
 
-   }#end if (AncilCoord)
+   }else if (AncilExperiment){
+      #---~---
+      #   Treatment precipitation addition/exclusion: Irrigation or drought
+      #   Treatment
+      #   Treatment light
+      #   Treatment CO2
+      #   Treatment: Name of the experimental treatment
+      #   Treatment P (phosphorus) supply
+      #   Treatment conditions
+      #   Treatment exposition: indoors / outdoors
+      #---~---
+
+
+
+      #---~---
+      #   Note that instead of retaining the full information on experiments, the goal
+      # of this harmonisation is to simply retain some basic categories of experiments,
+      # instead of detailing the experiments. In all cases, the control data are clearly
+      # separated from any treatment, because in most cases we would treat them as natural
+      # samples.
+      #
+      # The current categories are currently accounted for:
+      # 0 - control (of any type of experiment)
+      # 1 - minor treatment (fence)
+      # 2 - water treatment (well watered, drought)
+      # 3 - light treatment (high light, shade)
+      # 4 - nutrient treatment (fertilisation, suppression)
+      # 5 - CO2 treatment (CO2 enrichment)
+      # 6 - temperature treatment (warming, chilling)
+      # 7 - other (anything else)
+      #
+      # Important: this classification relied mostly on the information provided by
+      # authors. Some did not include details and are unpublished data sets. Whenever 
+      # unsure, the experiments were assigned to the "Other" category". Likewise, compound
+      # experiments (e.g., CO2 enrichment AND nutrient fertilisation) are assigned to 
+      # other.
+      #---~---
+
+
+
+      #---~---
+      #   Logical flags to identify which ancillary variable we are loading.
+      #---~---
+      IsTreatment        = DataID %in%  308L
+      IsTreatWater       = DataID %in%  238L
+      IsTreatLight       = DataID %in%  319L
+      IsTreatCO2         = DataID %in%  324L
+      IsTreatPhosphorus  = DataID %in%  363L
+      IsExperiment       = DataID %in%  490L
+      IsTreatNitrogen    = DataID %in% 4052L
+      IsInOutDoors       = DataID %in% 4695L
+      #---~---
+
+
+
+      #---~---
+      #   Make results case insensitive
+      #---~---
+      Value    = tolower(Value)
+      #---~---
+
+
+      #---~---
+      #   For all treatments, we standardise to the following classes.
+      #---~---
+      TreatStd = c( control     = "00 - Control"
+                  , minor       = "01 - Minor"
+                  , temperature = "02 - Temperature"
+                  , water       = "03 - Water"
+                  , light       = "04 - Light"
+                  , co2         = "05 - CO2"
+                  , nutrient    = "06 - Nutrient"
+                  , other       = "07 - Other"
+                  )#end c
+      #---~---
+
+
+      #---~---
+      #   Isabelle Aubin. 
+      #---~---
+      IsAuthor   = ( AuthorName %in% "Isabelle Aubin" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"                  )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% c("mature","open" )        )] = TreatStd["minor"   ]
+      Value[IsAuthor & ( Value %in% "full-tree /fertilization" )] = TreatStd["nutrient"]
+      IsOther = 
+         IsAuthor & ( Value %in% c( "full t blade compact", "full t trench"
+                                  , "full tree blade", "full-tree no preparation"
+                                  , "tlength trench", "peh", "tpe"
+                                  )#end c
+                    )#end Value
+      Value[IsOther] = TreatStd["other" ]
+      #---~---
+
+
+      #---~---
+      #   Joana Bergmann. 
+      #---~---
+      IsAuthor   = ( AuthorName %in% "Joana Bergmann" ) & IsTreatment
+      Value[IsAuthor & grepl(pattern="2 ml of a microbial",x=Value)] = TreatStd["other"]
+      #---~---
+
+
+      #---~---
+      #   Fatih Fazlioglu. 
+      #---~---
+      IsAuthor   = ( AuthorName %in% "Fatih Fazlioglu" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"         )] = TreatStd["control" ]
+      IsMinor    = Value %in% c("high competition", "low competition")
+      Value[IsAuthor & IsMinor                         ] = TreatStd["minor"   ]
+      Value[IsAuthor & ( Value %in% "shade treatment" )] = TreatStd["light"   ]
+      Value[IsAuthor & ( Value %in% "low_ph"          )] = TreatStd["other"   ]
+      #---~---
+
+
+      #---~---
+      #   Colleen Iversen.  Details from experiment, ignore information.
+      #---~---
+      IsAuthor = ( ( AuthorName %in% "Colleen Iversen" )
+                 & IsTreatment
+                 & ( NameOrig %in% "notes_treatment extent" )
+                 )#end IsAuthor
+      Value  [IsAuthor] = NA_character_
+      Valid  [IsAuthor] = FALSE
+      VName  [IsAuthor] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Kim La Pierre. 
+      #---~---
+      IsAuthor   = ( AuthorName %in% "Kim La Pierre" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "x"     )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% "fence" )] = TreatStd["minor"   ]
+      IsNutrient = Value %in% c( "k", "n", "nk", "np", "npk", "npkfence", "p", "pk")
+      Value[IsAuthor & IsNutrient            ] = TreatStd["nutrient"]
+      #---~---
+
+
+      #---~---
+      #   Yan-Shih Lin. All samples were flagged as "opt". The description says growing
+      # under ambient or stressed conditions. Assigning minor, although many may be from
+      # control.
+      #---~---
+      IsAuthor   = ( AuthorName %in% "Yan-Shih Lin" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "opt" )] = TreatStd["minor"]
+      #---~---
+
+
+      #---~---
+      #   Daijun Liu. Assuming other for AM because details on the experiment were not 
+      # detailed
+      # in the description
+      #---~---
+      IsAuthor = ( AuthorName %in% "Daijun Liu" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% c("none-am","none-am+none-drought" ) )] = 
+                                                                     TreatStd["control" ]
+      Value[IsAuthor & grepl(pattern="none-am\\+drought",x=Value)] = TreatStd["water"   ]
+      Value[IsAuthor & grepl(pattern="^am"              ,x=Value)] = TreatStd["other"   ]
+      #---~---
+
+
+      #---~---
+      #   Justin Luong. Rainfall manipulation experiments. According to the notes, shelter
+      # means 60% rain exclusion.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Justin Luong" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"              )] = TreatStd["control" ]
+      Value[IsAuthor & grepl(pattern="^2l of water",x=Value)] = TreatStd["water"   ]
+      Value[IsAuthor & ( Value %in% "60% rain exclusion"   )] = TreatStd["water"   ]
+      Value[IsAuthor & ( Value %in% "shelter"              )] = TreatStd["water"   ]
+      #---~---
+
+
+      #---~---
+      #   Mara McPartland. Water level experiments. 
+      #---~---
+      IsAuthor = ( AuthorName %in% "Mara McPartland" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"          )] = TreatStd["control" ]
+      Value[IsAuthor & grepl(pattern="lowered$",x=Value)] = TreatStd["water"   ]
+      Value[IsAuthor & grepl(pattern="raised$" ,x=Value)] = TreatStd["water"   ]
+      #---~---
+
+
+      #---~---
+      #   Vanessa Minden. Nutrient experiments. 
+      #---~---
+      IsAuthor = ( AuthorName %in% "Vanessa Minden" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"              )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% "balanced"             )] = TreatStd["other"   ]
+      Value[IsAuthor & grepl(pattern="limitation$" ,x=Value)] = TreatStd["nutrient"]
+      Value[IsAuthor & grepl(pattern="nitrogen"    ,x=Value)] = TreatStd["nutrient"]
+      Value[IsAuthor & grepl(pattern="penicilin"   ,x=Value)] = TreatStd["other"   ]
+      Value[IsAuthor & grepl(pattern="sulfadiazine",x=Value)] = TreatStd["other"   ]
+      Value[IsAuthor & grepl(pattern="tetracycline",x=Value)] = TreatStd["other"   ]
+      #---~---
+
+
+      #---~---
+      #   Rachel Mitchell. Drought and shade treatments.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Rachel Mitchell" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "ambient" )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "drought" )] = TreatStd["water"  ]
+      Value[IsAuthor & ( Value %in% "shade"   )] = TreatStd["light"  ]
+      #---~---
+
+
+      #---~---
+      #   Giacomo Puglielli. All data are actually control data.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Giacomo Puglielli" ) & IsTreatment
+      Value[IsAuthor & grepl(pattern="^control",x=Value)] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "none"             )] = TreatStd["control"]
+      #---~---
+
+
+      #---~---
+      #   Lawren Sack. The column treatment was used for multiple purposes, not 
+      # necessarily for the idea of treatment. Assigning all of the samples to 
+      # minor treatment because the samples came from common gardens.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Lawren Sack" ) & IsTreatment
+      Value[IsAuthor & ( ! is.na(Value) )] = TreatStd["minor"]
+      #---~---
+
+
+      #---~---
+      #   Rob Salguero-Gomez. The column treatment is not very informative.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Rob Salguero-Gomez" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"           )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% "phosphorus"        )] = TreatStd["nutrient"]
+      Value[IsAuthor & ( Value %in% "resprout"          )] = TreatStd["other"   ]
+      #---~---
+
+
+      #---~---
+      #   Brody Sandel. Not entirely clear what sugar is, assigning to other treatment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Brody Sandel" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control" )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "sugar"   )] = TreatStd["other"  ]
+      #---~---
+
+
+      #---~---
+      #   Marina Scalon. Assign litter to minor treatment, control, and nutrient
+      # treatments, and fire to other treatment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Marina Scalon" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "biennial fire"     )] = TreatStd["other"   ]
+      Value[IsAuthor & grepl(pattern="^ca\\+mg" ,x=Value)] = TreatStd["nutrient"]
+      Value[IsAuthor & ( Value %in% "cerrado ss"        )] = TreatStd["control" ]
+      Value[IsAuthor & grepl(pattern="^litter"  ,x=Value)] = TreatStd["minor"   ]
+      Value[IsAuthor & grepl(pattern="^n\\ "    ,x=Value)] = TreatStd["nutrient"]
+      Value[IsAuthor & grepl(pattern="^p\\ "    ,x=Value)] = TreatStd["nutrient"]
+      Value[IsAuthor & grepl(pattern="^n\\+p"   ,x=Value)] = TreatStd["nutrient"]
+      #---~---
+
+
+      #---~---
+      #   Marina Semchenko. Treatment was different assemblages of plant compositions.
+      # Assign to "minor treatment."
+      #---~---
+      IsAuthor = ( AuthorName %in% "Marina Semchenko" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "conspecific"     )] = TreatStd["minor"]
+      Value[IsAuthor & ( Value %in% "heterospecific"  )] = TreatStd["minor"]
+      #---~---
+
+
+      #---~---
+      #   Bill Shipley. Treatments were multiple hydroponic solutions. Assign to other.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Bill Shipley" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "ln" )] = TreatStd["other"]
+      #---~---
+
+
+      #---~---
+      #   Martijn Slot. Classes are straightforward.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Martijn Slot" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control" )] = TreatStd["control"    ]
+      Value[IsAuthor & ( Value %in% "warming" )] = TreatStd["temperature"]
+      #---~---
+
+
+      #---~---
+      #   Joao Paulo Souza. Matrix of water and CO2 enrichment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Joao Paulo Souza" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "380 ppm -without water stress" )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "380 ppm -water stress"         )] = TreatStd["water"  ]
+      Value[IsAuthor & ( Value %in% "700 ppm -without water stress" )] = TreatStd["co2"    ]
+      Value[IsAuthor & ( Value %in% "700 ppm -water stress"         )] = TreatStd["other"  ]
+      #---~---
+
+
+      #---~---
+      #   Jose M. Torres-Ruiz.  Drought and irrigation experiment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Jose M. Torres-Ruiz" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "control"              )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "localized irrigation" )] = TreatStd["water"  ]
+      Value[IsAuthor & ( Value %in% "water stressed"       )] = TreatStd["water"  ]
+      #---~---
+
+
+      #---~---
+      #   Anthony Walker.  Variable treatment_other_levels is not the most informative
+      # for this (other IDs may need to be loaded).
+      #---~---
+      IsAuthor        = ( AuthorName %in% "Anthony Walker" ) & IsTreatment
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #---~---
+
+
+      #---~---
+      #   Qiang Yu.  Treatment is on nutrients.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Qiang Yu" ) & IsTreatment
+      Value[IsAuthor & ( Value %in% "c"                   )] = TreatStd["control" ]
+      Value[IsAuthor & ( grepl(pattern="^n[0-9]",x=Value) )] = TreatStd["nutrient"]
+      Value[IsAuthor & ( grepl(pattern="^p[0-9]",x=Value) )] = TreatStd["nutrient"]
+      #---~---
+
+
+      #---~---
+      #   Christian Ammer.  Assume both dry and moist are water treatments.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Christian Ammer" ) & IsTreatWater
+      Value[IsAuthor & ( Value %in% c("dry","moist") )] = TreatStd["water" ]
+      #---~---
+
+
+      #---~---
+      #   Johannes Cornelissen.  Treatment is on irrigation.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Johannes Cornelissen" ) & IsTreatWater
+      Value[IsAuthor & ( Value %in% c("n")      )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% c("rehydr") )] = TreatStd["water"  ]
+      #---~---
+
+
+      #---~---
+      #   Will Cornwell.  Treatment is on irrigation..
+      #---~---
+      IsAuthor = ( AuthorName %in% "Will Cornwell" ) & IsTreatWater
+      Value[IsAuthor & ( Value %in% c("n") )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% c("y") )] = TreatStd["water"  ]
+      #---~---
+
+
+      #---~---
+      #   Christopher Muir.  Treatment is on irrigation..
+      #---~---
+      IsAuthor = ( AuthorName %in% "Christopher Muir" ) & IsTreatWater
+      Value[IsAuthor & ( Value %in% c("regular to preven drought") )] = TreatStd["water"  ]
+      #---~---
+
+
+      #---~---
+      #   Nick Smith.  Treatment is on irrigation..
+      #---~---
+      IsAuthor = ( AuthorName %in% "Nick Smith" ) & IsTreatWater
+      Value[IsAuthor & ( Value %in% "ambient"     )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "ambient -50%")] = TreatStd["water"  ]
+      Value[IsAuthor & ( Value %in% "ambient +50%")] = TreatStd["water"  ]
+      #---~---
+
+
+
+
+
+      #---~---
+      #   Christian Ammer. Values are percent of open field light availability. Apply 
+      # this to sun/shade.
+      #---~---
+      IsAuthor  = ( AuthorName %in% "Christian Ammer" ) & IsTreatLight
+      IsShade   =  IsAuthor & ( as.numeric(Value) %lt% 40       )
+      IsPartial =  IsAuthor & ( as.numeric(Value) %wr% c(41,85) )
+      IsSunlit  =  IsAuthor & ( as.numeric(Value) %gt% 85       )
+      AncilID[IsShade | IsPartial | IsSunlit] = 443L
+      Ancil  [IsShade  ] = "01 - Mostly Shaded"
+      Ancil  [IsPartial] = "02 - Partially Shaded"
+      Ancil  [IsSunlit ] = "03 - Mostly Sun-Exposed"
+      Value  [IsShade | IsPartial | IsSunlit] = NA_character_
+      Valid  [IsShade | IsPartial | IsSunlit] = FALSE
+      VName  [IsShade | IsPartial | IsSunlit] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Madhur Anand. Values indicate light availability.
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Madhur Anand" ) & IsTreatLight
+      IsSunlit         =  IsAuthor & ( Value %in% "sun" )
+      AncilID[IsSunlit] = 443L
+      Ancil  [IsSunlit] = "03 - Mostly Sun-Exposed"
+      Value  [IsSunlit] = NA_character_
+      Valid  [IsSunlit] = FALSE
+      VName  [IsSunlit] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Owen Atkin. Values indicate light level. Assume light treatment.
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Owen Atkin" ) & IsTreatLight
+      Value[IsAuthor & ( Value %in% c("300","520") )] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Coline Boonman. Light experiment as they used lamps.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Coline Boonman" ) & IsTreatLight
+      IsSunlit = 
+         ( IsAuthor 
+         & ( Value %in% "daylight; supported by lamps during dark daytime conditions" )
+         )#end IsAuthor
+      Value [IsSunlit] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Serra Willow Buchanan. Light experiment but not artifical lighting. Assign
+      # results to the light conditions rather than light treatment.
+      #---~---
+      IsAuthor  = ( AuthorName %in% "Serra Willow Buchanan" ) & IsTreatLight
+      IsShade   = IsAuthor & grepl(pattern="^permanent full shade;",x=Value)
+      IsPartial = IsAuthor & grepl(pattern="^managed shade;"       ,x=Value)
+      IsSunlit  = IsAuthor & grepl(pattern="^full sun monoculture" ,x=Value)
+      AncilID[IsShade | IsPartial | IsSunlit] = 443L
+      Ancil  [IsShade                       ] = "01 - Mostly Shaded"
+      Ancil  [IsPartial                     ] = "02 - Partially Shaded"
+      Ancil  [IsSunlit                      ] = "03 - Mostly Sun-Exposed"
+      Value  [IsShade | IsPartial | IsSunlit] = NA_character_
+      Valid  [IsShade | IsPartial | IsSunlit] = FALSE
+      VName  [IsShade | IsPartial | IsSunlit] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Remove data for the following authors as the data were numeric.
+      #---~---
+      IsAuthor         = 
+         AuthorName %in% c( "Bradley Butterfield", "Johannes Cornelissen"
+                          , "Eric Garnier", "Tucker Gilman", "Nate Hough-Snee"
+                          , "Rebecca Montgomery", "Peter van Bodegom"
+                          , "Mark van Kleunen")
+      Value [IsAuthor & IsTreatLight] = NA_character_
+      Valid [IsAuthor & IsTreatLight] = FALSE
+      VName [IsAuthor & IsTreatLight] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Eric Garnier. Light experiment
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Gregoire Freschet" ) & IsTreatLight
+      Value [IsAuthor] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Jens Kattge and Patrick Meir. Light information of categories not provided.
+      # Assign light for it but it may not have been light treatment in the strictest 
+      # sense.
+      #---~---
+      IsAuthor = ( AuthorName %in% c("Jens Kattge","Patrick Meir" ) ) & IsTreatLight
+      Value[IsAuthor] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Vanessa Minden. Light experiment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Vanessa Minden" ) & IsTreatLight
+      Value [IsAuthor & ( Value %in% "ambient light" )] = TreatStd["control"]
+      Value [IsAuthor & ( Value %in% "low light"     )] = TreatStd["light"  ]
+      Value [IsAuthor & ( Value %in% "medium light"  )] = TreatStd["light"  ]
+      #---~---
+
+
+
+      #---~---
+      #   Christopher Muir. Light experiment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Christopher Muir" ) & IsTreatLight
+      Value [IsAuthor & ( Value %in% "supplementary light; 16:8 h" )] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Antonio Jesus Perea. Canopy position rather than light level.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Antonio Jesus Perea" ) & IsTreatLight
+      AncilID[IsAuthor] = 443L
+      Ancil  [IsAuthor & ( Value %in% "shadow" )] = "01 - Mostly Shaded"
+      Ancil  [IsAuthor & ( Value %in% "open"   )] = "03 - Mostly Sun-Exposed"
+      Ancil  [IsAuthor & ( Value %in% "adult"  )] = "03 - Mostly Sun-Exposed"
+      Value  [IsAuthor                          ] = NA_character_
+      Valid  [IsAuthor                          ] = FALSE
+      VName  [IsAuthor                          ] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Peter Reich. Treatment light
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Peter Reich" ) & IsTreatLight
+      Value [IsAuthor] = TreatStd["light"]
+      #---~---
+
+
+
+      #---~---
+      #   Michael Scherer-Lorenzen. Treatment light
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Michael Scherer-Lorenzen" ) & IsTreatLight
+      Value [IsAuthor & (  Value %in% c(100) )] = TreatStd["control"]
+      Value [IsAuthor & (! Value %in% c(100) )] = TreatStd["light"  ]
+      #---~---
+
+
+
+      #---~---
+      #   Bill Shipley. Most data were quantitative. Keep only the full sunlight 
+      # information
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Bill Shipley" ) & IsTreatLight
+      Value [IsAuthor & ( Value %in% c("full sunlight") )] = TreatStd["control"]
+      Value [IsAuthor & ( Value %in% c("sunlight+lamp") )] = TreatStd["light"  ]
+      IsTMI            =
+         IsAuthor & ( ! Value %in% c("full sunlight", "sunlight+lamp") )
+      Value [IsTMI] = NA_character_
+      Valid [IsTMI] = FALSE
+      VName [IsTMI] = NA_character_
+      #---~---
+
+
+
+
+      #---~---
+      #   Anthony Walker. It seems data referred to canopy position rather than light
+      # experiments. Save information to sun/shade flag. If not applicable, save as
+      # control in treatment.
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Anthony Walker" ) & IsTreatLight
+      IsShade   = 
+         IsAuthor & ( grepl(pattern="^low"   ,x=Value) | ( Value %in% c("shade") ) )
+      IsPartial = 
+         IsAuthor & ( grepl(pattern="^middle",x=Value) )
+      IsSunlit  = 
+         IsAuthor & ( grepl(pattern="^high"  ,x=Value) | ( Value %in% c("sun","upper") ) )
+      AncilID[IsShade | IsPartial | IsSunlit            ] = 443L
+      Ancil  [IsShade                                   ] = "01 - Mostly Shaded"
+      Ancil  [IsPartial                                 ] = "02 - Partially Shaded"
+      Ancil  [IsSunlit                                  ] = "03 - Mostly Sun-Exposed"
+      Value  [IsShade | IsPartial | IsSunlit            ] = NA_character_
+      Valid  [IsShade | IsPartial | IsSunlit            ] = FALSE
+      VName  [IsShade | IsPartial | IsSunlit            ] = NA_character_
+      Value  [IsAuthor & ( Value %in% "not applicable" )] = TreatStd["control"]
+      #---~---
+
+
+
+      #---~---
+      #   Christian Wirth. Information seemed to be related to the method used to infer
+      # microenvironmental conditions. Discard information.
+      #---~---
+      IsAuthor         = ( AuthorName %in% "Christian Wirth" ) & IsTreatLight
+      Value [IsAuthor] = NA_character_
+      Valid [IsAuthor] = FALSE
+      VName [IsAuthor] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Owen Atkin. Assign control/treatment based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Owen Atkin" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% "350" )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "700" )] = TreatStd["co2"    ]
+      #---~---
+
+
+
+      #---~---
+      #   Jens Kattge. Assign control/treatment based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Jens Kattge" ) & IsTreatCO2
+      Value[IsAuthor & (Value %in% c("actual","ambient (about 360ppm)"))] =
+                                                                        TreatStd["control"]
+      Value[IsAuthor & (Value %in% c("elevated","reduced")             )] =
+                                                                        TreatStd["co2"    ]
+      IsTMI        = IsAuthor & ( Value %in% "unknown" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Dushan Kumarathunge. Assign control/treatment based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Dushan Kumarathunge" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% "ambient"  )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "elevated" )] = TreatStd["co2"    ]
+      #---~---
+
+
+
+      #---~---
+      #   Yan-Shih Lin. All levels provided are control.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Yan-Shih Lin" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% c("350","ambient","control")  )] = TreatStd["control"]
+      #---~---
+
+
+
+      #---~---
+      #   Peter Manning. CO2 levels are ambient.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Peter Manning" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% c("360")  )] = TreatStd["control"]
+      #---~---
+
+
+
+      #---~---
+      #   Belinda Medlyn. Assign control/treatment based on CO2 level.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Belinda Medlyn" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% c("350","355","360","ambient"))] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% c("467","583","700","710"    ))] = TreatStd["co2"    ]
+      #---~---
+
+
+
+      #---~---
+      #   Patrick Meir. All levels seems to be ambient.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Patrick Meir" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% c("actual","ambient (about 360ppm)"))] = 
+                                                                        TreatStd["control"]
+      #---~---
+
+
+
+      #---~---
+      #   Peter Reich. Assign control/treatment based on CO2 level.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Peter Reich" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% "ambient"  )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "elevated" )] = TreatStd["co2"    ]
+      #---~---
+
+
+
+      #---~---
+      #   Bill Shipley. Assign control/treatment based on CO2 level. 435 is assumed to
+      # to be elevated because of the time of measurements.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Bill Shipley" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% "400" )] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "435" )] = TreatStd["co2"    ]
+      #---~---
+
+
+
+      #---~---
+      #   Emily Swaine. Assign all to control based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Emily Swaine" ) & IsTreatCO2
+      Value[IsAuthor & ( Value %in% c("360","400") )] = TreatStd["control"]
+      #---~---
+
+
+
+      #---~---
+      #   Anthony Walker. Assign all to control based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Anthony Walker" ) & IsTreatCO2
+      Value[IsAuthor & (Value %in% "amb" )] = TreatStd["control"]
+      Value[IsAuthor & (Value %in% "ele" )] = TreatStd["co2"    ]
+      IsTMI        = IsAuthor & ( Value %in% "not applicable" )
+      Value[IsTMI] = NA_character_
+      Valid[IsTMI] = FALSE
+      VName[IsTMI] = NA_character_
+      #---~---
+
+
+
+      #---~---
+      #   Bill Shipley. Assign all to control based on the CO2 levels.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Bill Shipley" ) & IsTreatPhosphorus
+      Value[IsAuthor & (! is.na(as.numeric(Value)) )] = TreatStd["nutrient"]
+      #---~---
+
+
+
+      #---~---
+      #   Peter van Bodegom. They used a 0/1 code for the control/phosphorus treatment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Peter van Bodegom" ) & IsTreatPhosphorus
+      Value[IsAuthor & ( Value %in% "0" )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% "1" )] = TreatStd["nutrient"]
+      #---~---
+
+
+
+      #---~---
+      #   Anthony Walker. They used a 0/1 code for the control/phosphorus treatment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Anthony Walker" ) & IsTreatPhosphorus
+      Value[IsAuthor & ( Value %in% c("not applicable","unfertilised") )] = 
+                                                                       TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% c("fertilised","high","low")       )] =
+                                                                       TreatStd["nutrient"]
+      #---~---
+
+
+
+
+
+
+      #---~---
+      #   Gregoire Freschet. Assign all to nitrogen treatment.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Gregoire Freschet" ) & IsTreatNitrogen
+      Value[IsAuthor & (Value %in% c("high soil n","low soil n") )] = TreatStd["control" ]
+      #---~---
+
+
+
+      #---~---
+      #   Anthony Walker. Assign control/treatment based on categories.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Anthony Walker" ) & IsTreatNitrogen
+      Value[IsAuthor & (  Value %in% c("not applicable","unfertilised") )] = 
+                                                                       TreatStd["control" ]
+      Value[IsAuthor & (! Value %in% c("not applicable","unfertilised") )] = 
+                                                                       TreatStd["nutrient"]
+      #---~---
+
+
+
+      #---~---
+      #   Michael Beckmann.  Treatment is with UVB.
+      #---~---
+      IsAuthor = ( AuthorName %in% "Michael Beckmann" ) & IsExperiment
+      Value[IsAuthor & ( Value %in% "nouvb"                      )] = TreatStd["control" ]
+      Value[IsAuthor & ( Value %in% "uvb"                        )] = TreatStd["other"   ]
+      #---~---
+
+
+
+      #---~---
+      #   Michael Beckmann.  We don't assign abandonment or land use histories to any
+      # treatment, unless there is indication of fertilisation (but we assign to other
+      # treatment as this is not the typical controlled experiment).
+      #---~---
+      IsAuthor  = ( AuthorName %in% "Eric Garnier" ) & IsExperiment
+      IsControl = 
+         Value %in% c( "bal_abandoned >60 years", "bal_abandoned 15-60 years"
+                     , "bal_abandoned 5-15 years", "bal_grazing", "hgm_abandoned 2 years"
+                     , "hgm_abandoned 25-45 years", "hgm_abandoned 5-15 years"
+                     , "kde_abandonment early", "kde_abandonment late", "kde_heavy grazing"
+                     , "kde_moderate grazing", "lag_abandoned field grazed"
+                     , "lag_dense shrubland grazed", "lag_grassland grazed"
+                     , "lag_open shrubland grazed", "lau_never ploughed/grazed"
+                     , "lau_never ploughed/mown", "lau_ploughed/grazed"
+                     , "lau_ploughed/mown", "mer_abandoned 12 years"
+                     , "mer_abandoned 20 years", "mer_grazing", "mnp_abandoned/dry"
+                     , "mnp_abandoned/fresh", "mnp_high intensive grazing/dry"
+                     , "mnp_high intensive grazing/fresh"
+                     , "mnp_medium intensive grazing/dry"
+                     , "mnp_medium intensive grazing/fresh"
+                     , "nor_high continous grazing by sheep through summer"
+                     , "nor_low continous grazing by sheep through summer"
+                     , "ohr_mown/unfertilized", "ohr_unmown/unfertilized"
+                     , "sut_abandoned fallow", "sut_unploughed"
+                     )#end c
+      IsOther = 
+         Value %in% c( "erc_grazing/high nutrient", "erc_grazing/low nutrient"
+                     , "erc_grazing/mowing/grazing/high nutrient"
+                     , "erc_grazing/mowing/grazing/low nutrient"
+                     , "erc_mowing/mowing/grazing/high nutrient"
+                     , "erc_mowing/mowing/grazing/low nutrient"
+                     , "lau_ploughed/mown and fertilized", "mer_rotational agriculture"
+                     , "ohr_mown/fertilized", "ohr_unmown/fertilized"
+                     , "sut_short rotation fallow"
+                     )#end c
+      Value[IsAuthor & IsControl] = TreatStd["control"]
+      Value[IsAuthor & IsOther  ] = TreatStd["other"  ]
+      #---~---
+
+
+
+      #---~---
+      #   Michael Beckmann.  We don't assign abandonment or land use histories to any
+      # treatment, unless there is indication of fertilisation (but we assign to other
+      # treatment as this is not the typical controlled experiment).
+      #---~---
+      IsAuthor  = ( AuthorName %in% "Justin Wright" ) & IsExperiment
+      Value[IsAuthor & ( Value %in% "nitrogen"    )] = TreatStd["nutrient"]
+      Value[IsAuthor & ( Value %in% "water table" )] = TreatStd["water"   ]
+      #---~---
+
+
+
+      #---~---
+      #   Colleen Iversen.  Information on outdoor/indoor experiment. Assume indoor to
+      # be other experiment.
+      #---~---
+      IsAuthor  = ( AuthorName %in% "Colleen Iversen" ) & IsInOutDoors
+      Value[IsAuthor & ( Value %in% "outdoor")] = TreatStd["control"]
+      Value[IsAuthor & ( Value %in% "indoor" )] = TreatStd["other"  ]
+      #---~---
+
+
+      #---~---
+      #   Standardise values. If not in the list of expected categories, remove values
+      # but do not change validity. These are values that may have been missed.
+      #---~---
+      IsValid          = Value %in% TreatStd
+      Value[! IsValid] = NA_character_
+      #---~---
+    }#end if (AncilCoord)
    #---~---
 
 
@@ -8840,6 +9885,8 @@ TRY_FixAncil_OrigValue_Str <<- function(DataID,Type,AncilOrig,UnitOrig,NameOrig
                          , VName   = VName
                          , TraitID = TraitID
                          , Trait   = Trait
+                         , AncilID = AncilID
+                         , Ancil   = Ancil
                          )#end tidyr::tibble
    return(Answer)
    #---~---

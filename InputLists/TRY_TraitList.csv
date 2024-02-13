@@ -1,118 +1,138 @@
-Name,TraitID,Desc,Type,Add,Mult,Power,UseStdUnit,Unit,Debug,LightPlastic,SMA,Allom,Photo,Trans,Supporting
-a_amax,53,Area-based leaf photosynthesis,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-a_gsw,45,Area-based stomata conductance,numeric,0,1,1,TRUE,mmolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-a_gsw_tlp,3087,Area-based stomata conductance at turgor loss point,numeric,0,1,1,FALSE,molom2os,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-a_jmax,269,Area-based electron transport capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-a_rdmax,54,Area-based leaf dark respiration rate,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-a_vcmax,186,Area-based photosynthesis carboxylation capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-age_maturity,155,Plant age of reproductive maturity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,log,NA
-bark_carbon,617,Bark carbon content,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-bark_dens,248,Bark density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-bark_phenology,833,Bark phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-bark_phosphorus,619,Bark phosphorus content,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-bark_thick,24,Bark thickness,numeric,0,1,1,TRUE,mm,FALSE,FALSE,FALSE,TRUE,FALSE,identity,NA
-bseeds,26,Seed biomass,numeric,0,1,1,TRUE,mg,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-climate,825,Climate occurrence,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-co2_gamma,479,Leaf photosynthesis CO2 compensation point,numeric,0,1,1,FALSE,umolomol,FALSE,TRUE,TRUE,FALSE,TRUE,identity,NA
-croot_turnover,1699,Coarse root turnover rate,numeric,0,1,1,FALSE,oneoyr,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-crown_depth,773,Crown depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-crown_diam,324,Crown diameter horizontal,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-dbh,21,Diameter at breast height,numeric,0,m.2.cm,1,TRUE,cm,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-drought_toler,30,Species tolerance to drought,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-fire_toler,318,Fire tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-froot_c2n,167,Fine-root carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-froot_carbon,471,Fine root carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-froot_shoot,1778,Fine-root:shoot ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,TRUE,FALSE,identity,NA
-froot_turnover,1809,Fine root turnover rate,numeric,0,yr.day,-1,FALSE,oneoyr,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-froot_turnover_1955,1955,Fine root turnover rate,numeric,0,1,1,FALSE,oneoyr,FALSE,FALSE,FALSE,FALSE,FALSE,log,froot_turnover
-frost_toler,31,Frost tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-growth_form,42,Plant growth form,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-heart_carbon,3369,Heartwood carbon content,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-heart_nitrogen,3455,Heartwood nitrogen content,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-height,3106,Plant height,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-huber,171,Sapwood:leaf area ratio (Huber value),numeric,0,1,1,FALSE,cm2om2,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
-leaf_area,3110,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,NA
-leaf_area_3108,3108,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_area_3109,3109,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_area_3111,3111,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_area_3112,3112,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_area_3113,3113,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_area_3114,3114,Leaf area,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,TRUE,FALSE,log,leaf_area
-leaf_c2n,146,Leaf carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-leaf_c2p,151,Leaf carbon:phosphorus ratio,numeric,0,1,1,FALSE,kgcokgp,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-leaf_carbon,13,Leaf carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_carot,809,Leaf carotenoid content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-leaf_chloro,164,Leaf chlorophyll content,numeric,0,1,1,TRUE,gokg,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-leaf_conduct,928,Leaf specific conductivity,numeric,0,1,1,FALSE,mmolom2os,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-leaf_dens,48,Leaf tissue density,numeric,0,1,1,TRUE,gocm3,FALSE,TRUE,FALSE,FALSE,FALSE,identity,NA
-leaf_dmc,47,Leaf dry matter content,numeric,0,kg2g,1,TRUE,gokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_elas_mod,190,Leaf elastic modulus,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,FALSE,log,NA
-leaf_hydcond,748,Leaf hydraulic conductance,numeric,0,1,1,FALSE,mmolom2osompa,FALSE,FALSE,TRUE,TRUE,FALSE,neglog,NA
-leaf_length,144,Leaf length,numeric,0,1,1,TRUE,cm,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
-leaf_length_0940,940,Leaf length,numeric,0,1,1,TRUE,cm,FALSE,TRUE,FALSE,FALSE,FALSE,log,leaf_length
-leaf_n2p,56,Leaf nitrogen:phosphorus ratio,numeric,0,1,1,TRUE,kgnokgp,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-leaf_nitrogen,14,Leaf nitrogen content,numeric,0,1,1,TRUE,gnokg,FALSE,TRUE,FALSE,FALSE,FALSE,identity,NA
-leaf_orient,3,Leaf orientation,numeric,0,1,1,TRUE,deg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_phenology,37,Leaf phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_phenology_1251,1251,Leaf phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,leaf_phenology
-leaf_phosphorus,15,Leaf phosphorus content,numeric,0,1,1,TRUE,gpokg,FALSE,TRUE,FALSE,FALSE,FALSE,identity,NA
-leaf_pio_full,188,Leaf osmotic potential at full turgor,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,FALSE,neglog,NA
-leaf_psi_tlp_189,189,Leaf osmotic potential at turgor loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,FALSE,neglog,leaf_psi_tlp
-leaf_psi_tlp,3468,Leaf water potential at turgor loss point,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,FALSE,FALSE,neglog,NA
-leaf_rwc_apop,191,Leaf water content apoplastic,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,log,NA
-leaf_rwc_tlp,710,Leaf water content at turgor loss point,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_thick,46,Leaf thickness,numeric,0,1,1,TRUE,mm,FALSE,TRUE,FALSE,FALSE,FALSE,identity,NA
-leaf_turnover,12,Leaf turnover rate,numeric,0,yr.mon,-1,TRUE,oneoyr,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
-leaf_water_cap,711,Leaf water capacitance,numeric,0,1,1,FALSE,molom2lompa,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_water_sat,3122,Leaf water content at saturation,numeric,0,kg2g,1,TRUE,gwokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-leaf_width,145,Leaf width,numeric,0,1,1,TRUE,cm,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-light_type,788,Shade tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-longevity,59,Plant longevity,numeric,0,1,-1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-m_amax,40,Mass-based leaf photosynthesis,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-m_gsw,106,Mass-based stomata conductance,numeric,0,1,1,TRUE,mmolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-m_jmax,270,Mass-based electron transport capacity,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-m_rdmax,41,Mass-based leaf dark respiration rate,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-m_vcmax,185,Mass-based carboxylation capacity,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,log,NA
-pft,197,Plant functional type (PFT),character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-photo_path,22,Leaf photosynthesis pathway,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-plant_hydcond,752,Plant hydraulic conductance,numeric,0,1,1,FALSE,molosompa,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-qroot,2003,Fine-root:leaf biomass ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-qyield_psII,3393,Quantum yield of photosystem II,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,TRUE,identity,NA
-raunkiaer,343,Raunkiaer life form,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-rd_gamma,2943,Leaf dark-respiration:carboxylation ratio,numeric,0,1,1,TRUE,empty,FALSE,FALSE,FALSE,FALSE,TRUE,identity,NA
-repro_height,3107,Reproductive plant height,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-resprouter,819,Plant resprouting capacity,character,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_c2n,1055,Root carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-root_carbon,84,Root carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_dmc,785,Root dry matter content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_fr2cr,1019,Coarse:fine root ratio,numeric,0,1,1,TRUE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_hydcond,1476,Root hydraulic conductivity,numeric,0,wdns*cm2.2.m2*MPa.2.Pa,1,FALSE,kgwom2osompa,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_nitrogen,80,Root nitrogen content,numeric,0,1,1,TRUE,gnokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_shoot,9,Root:shoot ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-root_turnover,1085,Root turnover rate,numeric,0,1,-1,FALSE,oneoyr,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-root_turnover_1418,1418,Root turnover rate,numeric,0,1,1,FALSE,oneoyr,FALSE,FALSE,FALSE,FALSE,FALSE,log,root_turnover
-sap_carbon,3368,Wood (sapwood) carbon content,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-SCRA,1557,Specific coarse root area,numeric,0,cm2.2.m2*kg2g,1,FALSE,m2okg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_disperse,28,Dispersal syndrome,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_germeff,95,Seed germination efficiency,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_germreq,596,Seed germination requirement,character,0,1,1,FALSE,degC,FALSE,FALSE,FALSE,FALSE,FALSE,log,NA
-seed_length,27,Seed length,numeric,0,1,1,TRUE,mm,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_phenology,335,Plant reproductive phenology timing,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_pollen,29,Pollination syndrome,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-seed_turnover,33,Seed (seedbank) turnover,numeric,0,1,-1,TRUE,oneoyr,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-SFRA,1813,Specific fine root area,numeric,0,cm2.2.m2*kg2g,1,TRUE,m2okg,FALSE,FALSE,FALSE,FALSE,FALSE,log,NA
-SFRL,614,Specific fine root length,numeric,0,cm.2.m*kg2g,1,TRUE,mokg,FALSE,FALSE,TRUE,FALSE,FALSE,log,NA
-SLA,3117,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,TRUE,FALSE,FALSE,log,NA
-SLA_3086,3086,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
-SLA_3115,3115,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
-SLA_3116,3116,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,log,SLA
-stem_dmc,1181,Stem dry matter content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-struct_c2n,409,Shoot carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,TRUE,FALSE,FALSE,FALSE,identity,NA
-wood_dens,4,Wood density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,FALSE,FALSE,identity,NA
-wood_hydcond,1096,Wood (sapwood) specific conductivity,numeric,0,1,1,TRUE,kgomompaos,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-wood_water_sat,1097,Wood (sapwood) water content,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-wood_water_store,1098,Wood (sapwood) water storage capacity,numeric,0,1,1,FALSE,kgwom3ompa,FALSE,FALSE,FALSE,FALSE,FALSE,identity,NA
-xylem_pxx,719,Xylem pressure at xx% conductivity loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,FALSE,FALSE,FALSE,neglog,xylem_p12;xylem_p20;xylem_p50;xylem_p80;xylem_p88
-zroot,6,Rooting depth,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,NA
-zroot_1777,1777,Rooting depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,zroot
-zroot_2545,2545,Rooting depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,TRUE,FALSE,log,zroot
+Name,TraitID,Desc,Type,Add,Mult,Power,UseStdUnit,Unit,Debug,LightPlastic,Impute,Cluster,SMA,Allom,Photo,Trans,LabelID,Supporting
+a_amax,53,Area-based leaf photosynthesis,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,TRUE,log,503,NA
+a_gsw,45,Area-based stomata conductance,numeric,0,1,1,TRUE,mmolom2os,FALSE,TRUE,FALSE,FALSE,TRUE,FALSE,TRUE,log,501,NA
+a_gsw_tlp,3087,Area-based stomata conductance at turgor loss point,numeric,0,1,1,FALSE,molom2os,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,log,211,NA
+a_jmax,269,Area-based electron transport capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,TRUE,log,509,NA
+a_rdmax,54,Area-based leaf dark respiration rate,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,TRUE,log,505,NA
+a_vcmax,186,Area-based photosynthesis carboxylation capacity,numeric,0,1,1,TRUE,umolom2os,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,TRUE,log,507,NA
+agb,3446,Aboveground oven-dry mass,numeric,0,g2kg,1,TRUE,kg,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,9,NA
+age_maturity,155,Plant age of reproductive maturity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,607,NA
+bark_carbon,617,Bark carbon content,numeric,0,pc2frac*kg2g,1,FALSE,gcokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,714,NA
+bark_dens,248,Bark density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,811,NA
+bark_nitrogen,618,Bark nitrogen content,numeric,0,pc2frac*kg2g,1,FALSE,gnokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,715,NA
+bark_phenology,833,Bark phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,402,NA
+bark_phosphorus,619,Bark phosphorus content,numeric,0,pc2frac*kg2g,1,FALSE,gpokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,716,NA
+bark_thick,24,Bark thickness,numeric,0,1,1,TRUE,mm,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,identity,8,NA
+bleaf,129,Leaf oven-dry mass,numeric,0,g2kg,1,TRUE,kg,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,3,NA
+bleaf_3441,3441,Leaf oven-dry mass,numeric,0,g2kg,1,TRUE,kg,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,3,bleaf
+bseeds,26,Seed oven-dry mass,numeric,0,1,1,TRUE,mg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,601,NA
+climate,825,Climate occurrence,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,identity,301,NA
+co2_gamma,479,Leaf photosynthesis CO2 compensation point,numeric,0,1,1,FALSE,umolomol,FALSE,TRUE,FALSE,FALSE,TRUE,FALSE,TRUE,identity,515,NA
+croot_longevity,1699,Coarse root longevity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,814,NA
+crown_area,20,Crown area,numeric,0,1,1,TRUE,m2,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,5,NA
+crown_depth,773,Crown depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,7,NA
+crown_diam,324,Crown diameter horizontal,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,6,NA
+dbh,21,Diameter at breast height,numeric,0,m.2.cm,1,TRUE,cm,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,1,NA
+drought_toler,30,Species tolerance to drought,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,802,NA
+fire_toler,318,Fire tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,804,NA
+froot_c2n,167,Fine-root carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,718,NA
+froot_carbon,471,Fine root carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,717,NA
+froot_longevity,1809,Fine root longevity,numeric,0,yr.day,1,FALSE,yr,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,812,NA
+froot_longevity_1955,1955,Fine root longevity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,813,froot_longevity
+froot_shoot,1778,Fine-root:shoot ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,identity,110,NA
+frost_toler,31,Frost tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,803,NA
+growth_form,42,Plant growth form,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,101,NA
+growth_form_3400,3400,Growth form,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,101,growth_form
+heart_c2n,409,Shoot carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,713,NA
+heart_carbon,3369,Heartwood carbon content,numeric,0,pc2frac*kg2g,1,FALSE,gcokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,711,NA
+heart_nitrogen,3455,Heartwood nitrogen content,numeric,0,1,1,TRUE,gnokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,712,NA
+height,18,Plant height,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,2,NA
+height_3106,3106,Vegetative plant height,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,2,height
+huber,171,Sapwood:leaf area ratio (Huber value),numeric,0,1,1,FALSE,cm2om2,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,log,108,NA
+leaf_area,410,Leaf area per plant,numeric,0,1,1,TRUE,m2,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,4,NA
+leaf_c_area,570,Leaf carbon per leaf area,numeric,0,1,1,TRUE,gom2,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,log,701,NA
+leaf_c2n,146,Leaf carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,707,NA
+leaf_c2p,151,Leaf carbon:phosphorus ratio,numeric,0,1,1,FALSE,kgcokgp,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,708,NA
+leaf_carbon,13,Leaf carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,702,NA
+leaf_carot,809,Leaf carotenoid content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,516,NA
+leaf_carot_area,491,Leaf carotenoid per leaf area,numeric,0,1,1,TRUE,gom2,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,log,517,NA
+leaf_chloro,164,Leaf chlorophyll content,numeric,0,1,1,TRUE,gokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,518,NA
+leaf_chloro_area,413,Leaf chlorophyll per leaf area,numeric,0,1,1,TRUE,gom2,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,log,519,NA
+leaf_conduct,928,Leaf specific conductivity,numeric,0,1,1,FALSE,mmolom2os,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,202,NA
+leaf_dens,48,Leaf tissue density,numeric,0,1,1,TRUE,gocm3,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,FALSE,identity,102,NA
+leaf_dmc,47,Leaf dry matter content,numeric,0,kg2g,1,TRUE,gokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,201,NA
+leaf_elas_mod,190,Leaf elastic modulus,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,204,NA
+leaf_hydcond,748,Leaf hydraulic conductance,numeric,0,1,1,FALSE,mmolom2osompa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,neglog,203,NA
+leaf_length,144,Leaf length,numeric,0,1,1,TRUE,cm,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,106,NA
+leaf_length_0940,940,Leaf length,numeric,0,1,1,TRUE,cm,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,106,leaf_length
+leaf_longevity,12,Leaf longevity,numeric,0,yr.mon,1,TRUE,yr,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,log,807,NA
+leaf_n_area,50,Leaf nitrogen per leaf area,numeric,0,1,1,TRUE,gnom2,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,FALSE,log,703,NA
+leaf_n2p,56,Leaf nitrogen:phosphorus ratio,numeric,0,1,1,TRUE,kgnokgp,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,709,NA
+leaf_nitrogen,14,Leaf nitrogen content,numeric,0,1,1,TRUE,gnokg,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,704,NA
+leaf_orient,3,Leaf orientation,numeric,0,1,1,TRUE,deg,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,520,NA
+leaf_p_area,51,Leaf phosphorus per leaf area,numeric,0,1,1,TRUE,gpom2,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,FALSE,log,705,NA
+leaf_phenology,37,Leaf phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,401,NA
+leaf_phenology_1251,1251,Leaf phenology,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,401,leaf_phenology
+leaf_phosphorus,15,Leaf phosphorus content,numeric,0,1,1,TRUE,gpokg,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,706,NA
+leaf_pio_full,188,Leaf osmotic potential at full turgor,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,neglog,205,NA
+leaf_psi_tlp,3468,Leaf water potential at turgor loss point,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,neglog,206,NA
+leaf_psi_tlp_189,189,Leaf osmotic potential at turgor loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,neglog,206,leaf_psi_tlp
+leaf_rwc_apop,191,Leaf water content apoplastic,numeric,0,1,1,FALSE,pc,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,207,NA
+leaf_rwc_tlp,710,Leaf water content at turgor loss point,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,208,NA
+leaf_texture,2,Leaf texture,numeric,0,1,1,FALSE,knom,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,808,leaf_f_tear;leaf_f_punct;leaf_t_tear;leaf_t_punct
+leaf_thick,46,Leaf thickness,numeric,0,1,1,TRUE,mm,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,809,NA
+leaf_water_cap,711,Leaf water capacitance,numeric,0,1,1,FALSE,oneompa,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,209,NA
+leaf_water_sat,3122,Leaf water content at saturation,numeric,0,kg2g,1,TRUE,gwokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,210,NA
+leaf_width,145,Leaf width,numeric,0,1,1,TRUE,cm,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,107,NA
+m_amax,40,Mass-based leaf photosynthesis,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,504,NA
+m_gsw,106,Mass-based stomata conductance,numeric,0,1,1,TRUE,mmolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,502,NA
+m_jmax,270,Mass-based electron transport capacity,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,510,NA
+m_rdmax,41,Mass-based leaf dark respiration rate,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,506,NA
+m_vcmax,185,Mass-based carboxylation capacity,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,508,NA
+mycorrhiza,7,Mycorrhiza type,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,303,NA
+n_fixer,8,Nitrogen fixer,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,304,NA
+pft,197,Plant functional type (PFT),character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,302,NA
+photo_path,22,Leaf photosynthesis pathway,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,511,NA
+plant_hydcond,752,Plant hydraulic conductance,numeric,0,1,1,FALSE,molosompa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,213,NA
+plant_longevity,59,Plant longevity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,805,NA
+plant_woodiness,38,Plant woodiness,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,102,NA
+qroot,2003,Fine-root:leaf biomass ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,109,NA
+qyield,3394,Quantum yield,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,identity,512,NA
+qyield_psII,3393,Quantum yield of photosystem II,numeric,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,identity,513,NA
+raunkiaer,343,Raunkiaer life form,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,103,NA
+rd_gamma,2943,Leaf dark-respiration:carboxylation ratio,numeric,0,1,1,TRUE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,identity,514,NA
+repro_height,3107,Reproductive plant height,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,606,NA
+resprouter,819,Plant resprouting capacity,character,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,806,NA
+root_c2n,1055,Root carbon:nitrogen ratio,numeric,0,1,1,FALSE,kgcokgn,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,721,NA
+root_carbon,84,Root carbon content,numeric,0,1,1,TRUE,gcokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,719,NA
+root_dmc,785,Root dry matter content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,218,NA
+root_fr2cr,1019,Coarse:fine root ratio,numeric,0,1,1,TRUE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,111,NA
+root_hydcond,1476,Root hydraulic conductivity,numeric,0,wdns*cm2.2.m2*MPa.2.Pa,1,FALSE,kgwom2osompa,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,219,NA
+root_longevity,1085,Root longevity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,815,NA
+root_longevity_1418,1418,Root turnover rate,numeric,0,1,1,FALSE,yr,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,815,root_longevity
+root_nitrogen,80,Root nitrogen content,numeric,0,1,1,TRUE,gnokg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,720,NA
+root_shoot,9,Root:shoot ratio,numeric,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,112,NA
+sap_carbon,3368,Wood (sapwood) carbon content,numeric,0,pc2frac*kg2g,1,FALSE,gcokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,710,NA
+SCRA,1557,Specific coarse root area,numeric,0,cm2.2.m2*kg2g,1,FALSE,m2okg,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,113,NA
+seed_disperse,28,Dispersal syndrome,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,identity,603,NA
+seed_germeff,95,Seed germination efficiency,numeric,0,pc2frac,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,608,NA
+seed_germreq,596,Seed germination requirement,character,0,1,1,FALSE,degC,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,log,609,NA
+seed_length,27,Seed length,numeric,0,1,1,TRUE,mm,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,602,NA
+seed_longevity,33,Seed (seedbank) turnover,numeric,0,1,1,TRUE,yr,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,605,NA
+seed_phenology,335,Plant reproductive phenology timing,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,403,NA
+seed_pollen,29,Pollination syndrome,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,604,NA
+SFRA,1813,Specific fine root area,numeric,0,cm2.2.m2*kg2g,1,TRUE,m2okg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,114,NA
+SFRL,614,Specific fine root length,numeric,0,cm.2.m,1,TRUE,mog,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,115,NA
+shade_toler,603,Shade tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,801,NA
+shade_toler_788,788,Shade tolerance,character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,801,shade_toler
+single_leaf_area,3110,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,log,105,NA
+single_leaf_area_3108,3108,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+single_leaf_area_3109,3109,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+single_leaf_area_3111,3111,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+single_leaf_area_3112,3112,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+single_leaf_area_3113,3113,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+single_leaf_area_3114,3114,Leaf area per individual blade,numeric,0,mm2.2.cm2,1,TRUE,cm2,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,105,single_leaf_area
+SLA,3117,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE,log,104,NA
+SLA_3086,3086,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,104,SLA
+SLA_3115,3115,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,104,SLA
+SLA_3116,3116,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,104,SLA
+stem_dmc,1181,Stem dry matter content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,212,NA
+wood_dens,4,Wood density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,810,NA
+wood_hydcond,1096,Wood (sapwood) specific conductivity,numeric,0,1,1,TRUE,kgomompaos,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,214,NA
+wood_water_sat,1097,Wood (sapwood) water content,numeric,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,215,NA
+wood_water_store,1098,Wood (sapwood) water storage capacity,numeric,0,1,1,FALSE,kgwom3ompa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,216,NA
+xylem_pxx,719,Xylem pressure at xx% conductivity loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,neglog,217,xylem_p12;xylem_p20;xylem_p50;xylem_p80;xylem_p88
+xylem_pxx_3479,3479,Xylem pressure at xx% conductivity loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,neglog,217,xylem_p12;xylem_p20;xylem_p50;xylem_p80;xylem_p88
+zroot,6,Rooting depth,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,10,NA
+zroot_1777,1777,Rooting depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,10,zroot
+zroot_2545,2545,Rooting depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,10,zroot

@@ -8,8 +8,26 @@
 #
 # x      -- A numeric vector containing at least 'xmin' finite values.
 # nx_min -- Minimum number of valid points to consider fitting any distribution.
+# n_rand -- Number of random samples generated from the fitted distribution, to find the
+#           derived statistics (e.g., mean, standard deviation)
+# best   -- Which information criterion to use for selecting model? Current options are
+#           Akaike Information Criterion (AIC) or Schwarz "Bayesian" information criterion 
+#           (BIC)
 #------------------------------------------------------------------------------------------#
-FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
+FindBestDistr <<- function( x
+                          , nx_min  = 10L
+                          , n_rand  = 1000L
+                          , best    = c("AIC","BIC")
+                          , verbose = FALSE){
+
+   #---~---
+   #   Make sure best is a valid argument
+   #---~---
+   best     = match.arg(best)
+   useAIC   = best %in% "AIC"
+   #---~---
+
+
    #---~---
    #   Remove non-finite points 
    #---~---
@@ -39,7 +57,9 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
                    , Skewness        = NA_real_
                    , Kurtosis        = NA_real_
                    , Median          = NA_real_
+                   , AIC             = +Inf
                    , BIC             = +Inf
+                   , XIC             = +Inf
                    , stringAsFactors = FALSE
                    )#end data.frame
    #---~---
@@ -72,7 +92,9 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
    ans$Third     = NA_real_
    ans$SE_Third  = NA_real_
    ans$LogLik    = this_loglik
-   ans$BIC       = 2*log(nxfit) - 2. * this_loglik
+   ans$AIC       = 4. - 2 * this_loglik
+   ans$BIC       = 2.*log(nxfit) - 2. * this_loglik
+   ans$XIC       = if (useAIC){ans$AIC}else{ans$BIC}
    if (verbose){
       cat0("     * Uniform: (min=",ans$First,"; max=",ans$Second,"); BIC = ",ans$BIC)
    }#end if (verbose)
@@ -87,8 +109,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
    # the uniform distribution, select it.
    #---~---
    this_fit   = MASS::fitdistr(x=xfit,densfun="normal")
+   this_aic   = 4. - 2. * this_fit$loglik
    this_bic   = 2*log(nxfit) - 2. * this_fit$loglik
-   if (this_bic %lt% ans$BIC){
+   this_xic   = if (useAIC){this_aic}else{this_bic}
+   if (this_xic %lt% ans$XIC){
       ans$Distr     = "normal"
       ans$First     = this_fit$estimate[["mean"]]
       ans$SE_First  = this_fit$sd      [["mean"]]
@@ -97,12 +121,14 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
       ans$Third     = NA_real_
       ans$SE_Third  = NA_real_
       ans$LogLik    = this_fit$loglik
+      ans$AIC       = this_aic
       ans$BIC       = this_bic
-   }#end if (this_bic %lt% ans$bic)
+      ans$XIC       = this_xic
+   }#end if (this_xic %lt% ans$XIC)
    if (verbose){
       First  = this_fit$estimate[["mean"]]
       Second = this_fit$estimate[["sd"  ]]
-      cat0("     * Normal: (mean=",First,"; SD=",Second,"); BIC = ",this_bic)
+      cat0("     * Normal: (mean=",First,"; SD=",Second,"); XIC = ",this_xic)
    }#end if (verbose)
    #---~---
 
@@ -114,8 +140,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
    #---~---
    this_fit = try( MASS::fitdistr(x=xfit,densfun="logistic"), silent = TRUE)
    if ( ! "try-error" %in% is(this_fit)){
+      this_aic = 4. - 2. * this_fit$loglik
       this_bic = 2*log(nxfit) - 2. * this_fit$loglik
-      if (this_bic %lt% ans$BIC){
+      this_xic = if (useAIC){this_aic}else{this_bic}
+      if (this_xic %lt% ans$XIC){
          ans$Distr     = "logistic"
          ans$First     = this_fit$estimate[["location"]]
          ans$SE_First  = this_fit$sd      [["location"]]
@@ -124,14 +152,16 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          ans$Third     = NA_real_
          ans$SE_Third  = NA_real_
          ans$LogLik    = this_fit$loglik
+         ans$AIC       = this_aic
          ans$BIC       = this_bic
-      }#end if (this_bic %lt% ans$bic)
+         ans$XIC       = this_xic
+      }#end if (this_xic %lt% ans$XIC)
       #---~---
 
       if (verbose){
          First  = this_fit$estimate[["location"]]
          Second = this_fit$estimate[["scale"   ]]
-         cat0("     * Logistic: (mean=",First,"; SD=",Second,"); BIC = ",this_bic)
+         cat0("     * Logistic: (mean=",First,"; SD=",Second,"); XIC = ",this_xic)
       }#end if (verbose)
    }else if (verbose){
       cat0("     * Logistic distribution did not converge.")
@@ -154,8 +184,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
       #---~---
       #   Check whether this is a better fit.
       #---~---
+      this_aic = 6. - 2. * this_fit$loglik
       this_bic = 3*log(nxfit) - 2. * this_fit$loglik
-      if (this_bic %lt% ans$BIC){
+      this_xic = if (useAIC){this_aic}else{this_bic}
+      if (this_xic %lt% ans$XIC){
          ans$Distr     = "skew-normal"
          ans$First     = this_fit$estimate[["xi"   ]]
          ans$SE_First  = this_fit$sd      [["xi"   ]]
@@ -164,8 +196,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          ans$Third     = this_fit$estimate[["alpha"]]
          ans$SE_Third  = this_fit$sd      [["alpha"]]
          ans$LogLik    = this_fit$loglik
+         ans$AIC       = this_aic
          ans$BIC       = this_bic
-      }#end if (this_bic %lt% ans$bic)
+         ans$XIC       = this_xic
+      }#end if (this_xic %lt% ans$XIC)
       #---~---
 
 
@@ -174,7 +208,7 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          Second = this_fit$estimate[["omega"]]
          Third  = this_fit$estimate[["alpha"]]
          cat0("     * Skew-Normal: (location=",First,"; scale=",Second,"; shape=",Third,");"
-                                 ," BIC = ",this_bic)
+                                 ," XIC = ",this_xic)
       }#end if (verbose)
    }else if (verbose){
       cat0("     * Skew-normal distribution did not converge.")
@@ -190,12 +224,14 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
    #---~---
    if (positive){
       this_fit = MASS::fitdistr(x=xfit,densfun="log-normal")
+      this_aic = 4. - 2. * this_fit$loglik
       this_bic = 2*log(nxfit) - 2. * this_fit$loglik
+      this_xic = if (useAIC){this_aic}else{this_bic}
 
       #---~---
       #   Check for convergence.
       #---~---
-      if (this_bic %lt% ans$BIC){
+      if (this_xic %lt% ans$XIC){
          ans$Distr     = "log-normal"
          ans$First     = this_fit$estimate[["meanlog"]]
          ans$SE_First  = this_fit$sd      [["meanlog"]]
@@ -204,8 +240,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          ans$Third     = NA_real_
          ans$SE_Third  = NA_real_
          ans$LogLik    = this_fit$loglik
+         ans$AIC       = this_aic
          ans$BIC       = this_bic
-      }#end if (this_bic %lt% ans$bic)
+         ans$XIC       = this_xic
+      }#end if (this_xic %lt% ans$XIC)
       #---~---
 
       if (verbose){
@@ -217,12 +255,14 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
       xtrans   = -log(-xfit)
       nl_1st   = list(meannlog=mean(xtrans),sdnlog=sd(xtrans))
       this_fit = MASS::fitdistr(x=xfit,densfun=dnlnorm,start=nl_1st)
+      this_aic = 4. - 2. * this_fit$loglik
       this_bic = 2*log(nxfit) - 2. * this_fit$loglik
+      this_xic = if (useAIC){this_aic}else{this_bic}
 
       #---~---
       #   Check for convergence.
       #---~---
-      if (this_bic %lt% ans$BIC){
+      if (this_xic %lt% ans$XIC){
          ans$Distr     = "neglog-normal"
          ans$First     = this_fit$estimate[["meannlog"]]
          ans$SE_First  = this_fit$sd      [["meannlog"]]
@@ -231,15 +271,17 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          ans$Third     = NA_real_
          ans$SE_Third  = NA_real_
          ans$LogLik    = this_fit$loglik
+         ans$AIC       = this_aic
          ans$BIC       = this_bic
-      }#end if (this_bic %lt% ans$bic)
+         ans$XIC       = this_xic
+      }#end if (this_xic %lt% ans$XIC)
       #---~---
 
       if (verbose){
          First  = this_fit$estimate[["meannlog"]]
          Second = this_fit$estimate[["sdnlog"  ]]
          cat0("     * Neg-Log-Normal: (meannlog=",First,"; sdLog=",Second,");"
-                                    ," BIC = ",this_bic)
+                                    ," XIC = ",this_xic)
       }#end if (verbose)
    }else if (verbose){
       cat0("     * Skip fitting log-normal. Positive and negative data present")
@@ -260,8 +302,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
       #   Check for convergence.
       #---~---
       if (! "try-error" %in% is(this_fit)){
+         this_aic = 4. - 2. * this_fit$loglik
          this_bic = 2*log(nxfit) - 2. * this_fit$loglik
-         if (this_bic %lt% ans$BIC){
+         this_xic = if (useAIC){this_aic}else{this_bic}
+         if (this_xic %lt% ans$XIC){
             ans$Distr     = "weibull"
             ans$First     = this_fit$estimate[["shape"]]
             ans$SE_First  = this_fit$sd      [["shape"]]
@@ -270,14 +314,16 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
             ans$Third     = NA_real_
             ans$SE_Third  = NA_real_
             ans$LogLik    = this_fit$loglik
+            ans$AIC       = this_aic
             ans$BIC       = this_bic
+            ans$XIC       = this_xic
          }#end if (this_bic %lt% ans$bic)
          #---~---
 
          if (verbose){
             First  = this_fit$estimate[["shape"]]
             Second = this_fit$estimate[["scale"]]
-            cat0("     * Weibull: (shape=",First,"; scale=",Second,"); BIC = ",this_bic)
+            cat0("     * Weibull: (shape=",First,"; scale=",Second,"); XIC = ",this_xic)
          }#end if (verbose)
       }else if (verbose){
          cat0("     * Weibull distribution did not converge.")
@@ -302,8 +348,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
       #   Check for convergence.
       #---~---
       if (! "try-error" %in% is(this_fit)){
+         this_aic = 4. - 2. * this_fit$loglik
          this_bic = 2*log(nxfit) - 2. * this_fit$loglik
-         if (this_bic %lt% ans$BIC){
+         this_xic = if (useAIC){this_aic}else{this_bic}
+         if (this_xic %lt% ans$XIC){
             ans$Distr     = "gamma"
             ans$First     = this_fit$estimate[["shape"]]
             ans$SE_First  = this_fit$sd      [["shape"]]
@@ -312,8 +360,10 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
             ans$Third     = NA_real_
             ans$SE_Third  = NA_real_
             ans$LogLik    = this_fit$loglik
+            ans$AIC       = this_aic
             ans$BIC       = this_bic
-         }#end if (this_bic %lt% ans$bic)
+            ans$XIC       = this_xic
+         }#end if (this_xic %lt% ans$XIC)
          #---~---
 
          #---~---
@@ -322,7 +372,7 @@ FindBestDistr <<- function(x, nx_min = 10L, n_rand = 1000L, verbose = FALSE){
          if (verbose){
             First  = this_fit$estimate[["shape"]]
             Second = this_fit$estimate[["rate" ]]
-            cat0("     * Gamma: (shape=",First,"; rate=",Second,"); BIC = ",this_bic)
+            cat0("     * Gamma: (shape=",First,"; rate=",Second,"); XIC = ",this_xic)
          }#end if (verbose)
          #---~---
       }else if (verbose){

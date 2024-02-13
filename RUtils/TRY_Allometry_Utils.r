@@ -63,6 +63,11 @@
 #                         take a model with more parameters if there is strong evidence that
 #                         it actually improves the model.
 # + CntAllomMin        -- Minimum number of points for fitting allometric models.
+# + CntAllomMax        -- Maximum number of points to consider for fitting. This is used to
+#                         limit the model fitting to a more manageable number of 
+#                         observations when allometric data are exceedingly large. If no
+#                         cap is sought, set CntAllomMax = +Inf. This setting is 
+#                         independent on the data binning sampling defined by UseSizeBins.
 # + AllomConfInt       -- Confidence interval for allometric model fittings.
 # + AllomMaxItGain     -- Maximum number of iterations for calling the main optimiser for
 #                         seeking a better maximum using the previous optimised set of 
@@ -92,6 +97,17 @@
 # + AllomCntBoot       -- Number of times for bootstrapping for generating confidence bands.
 # + CntBootFail        -- For each bootstrap iteration, maximum number of attempts before 
 #                         giving up.
+# + UseSizeBins        -- Use binning across size classes to have a more balanced 
+#                         distribution across the predictor range? Note that in this case
+#                         we cannot use AIC or BIC to define the best model, and thus we
+#                         simply use adjusted R2.
+# + xSample            -- Which variable to use for binning? This must be a valid column
+#                         in DataTRY
+# + xLogSmp            -- Should the binning be applied in the linear scale or log scale?
+# + MinSmpPerBin       -- Minimum number of observations for each bin. Binning will not 
+#                         occur unless there are at least twice as many valid points (and
+#                         possibly even more points in case of very imbalanced data sets).
+# + MaxCntBins         -- Maximum number of bins to be considered.
 # + Verbose            -- Print information?
 #---~---
 Allom_Fit <<- function( DataTRY
@@ -99,21 +115,27 @@ Allom_Fit <<- function( DataTRY
                       , ModelTRY
                       , CategAllom
                       , UseFixedModel      = TRUE
-                      , InfoCrit           = c("AIC","BIC")
+                      , InfoCrit           = c("AIC","BIC","mR2Adj")
                       , InfoExtraOffset    = 10.
                       , CntAllomMin        = 30L
+                      , CntAllomMax        = 10000L
                       , AllomConfInt       = 0.95
                       , AllomMaxItGain     = 5L
                       , AllomMaxItOptim    = 5000L
-                      , AllomTolGain       = 1.e-5
+                      , AllomTolGain       = 1.e-6
                       , AllomTolOptim      = 1.e-8
-                      , AllomTolBestMult   = 100.
+                      , AllomTolBestMult   = 10.
                       , AllomMaxItBestFrac = 1.
-                      , AllomTolMax        = 1.e-3
+                      , AllomTolMax        = 1.e-5
                       , AllomMaxItMin      = 500L
                       , AllomCntPred       = 101L
                       , AllomQuantPred     = TRUE
                       , AllomCntBoot       = 1000L
+                      , UseSizeBins        = FALSE
+                      , xSample            = ModelTRY$xName[1L]
+                      , xLogSmp            = FALSE
+                      , MinSmpPerBin       = 500L
+                      , MaxCntBins         = 20L
                       , Verbose            = FALSE
                       ){
 
@@ -121,9 +143,29 @@ Allom_Fit <<- function( DataTRY
    #---~---
    #   Define information criterion to be used.
    #---~---
-   InfoCrit = match.arg(InfoCrit)
-   XIC      = match.fun(InfoCrit)
+   InfoCrit        = match.arg(InfoCrit)
+   if (InfoCrit %in% "mR2Adj"){
+      XICFmt          = "%.3f"
+      InfoExtraOffset = 0.
+   }else{
+      XICFmt          = "%.2f"
+   }#end if (InfoCrit %in% "mR2Adj")
    #---~---
+
+
+   #---~---
+   #   Define function that retrieves the information criterion
+   #---~---
+   XIC = function(object,InfoCrit){
+      ans = switch( InfoCrit
+                  , AIC    = object$AIC
+                  , BIC    = object$BIC
+                  , mR2Adj = - object$wgt.r.squared
+                  )#end switch
+      return(ans)
+   }#end function
+   #---~---
+
 
 
    #---~---
@@ -217,9 +259,11 @@ Allom_Fit <<- function( DataTRY
                      , s1           = rep( x = NA_real_     , times = CntCategAllom )
                      , SE_s1        = rep( x = NA_real_     , times = CntCategAllom )
                      , LogLik       = rep( x = NA_real_     , times = CntCategAllom )
+                     , Bias         = rep( x = NA_real_     , times = CntCategAllom )
                      , MAE          = rep( x = NA_real_     , times = CntCategAllom )
                      , RMSE         = rep( x = NA_real_     , times = CntCategAllom )
-                     , R2Adjust     = rep( x = NA_real_     , times = CntCategAllom )
+                     , wR2Adjust    = rep( x = NA_real_     , times = CntCategAllom )
+                     , oR2Adjust    = rep( x = NA_real_     , times = CntCategAllom )
                      , AIC          = rep( x = NA_real_     , times = CntCategAllom )
                      , BIC          = rep( x = NA_real_     , times = CntCategAllom )
                      )#end tibble
@@ -259,9 +303,11 @@ Allom_Fit <<- function( DataTRY
                     , a2          = rep( x = NA_real_             , times = CntBootCateg  )
                     , s0          = rep( x = NA_real_             , times = CntBootCateg  )
                     , s1          = rep( x = NA_real_             , times = CntBootCateg  )
+                    , Bias        = rep( x = NA_real_             , times = CntBootCateg  )
                     , MAE         = rep( x = NA_real_             , times = CntBootCateg  )
                     , RMSE        = rep( x = NA_real_             , times = CntBootCateg  )
-                    , R2Adjust    = rep( x = NA_real_             , times = CntBootCateg  )
+                    , wR2Adjust   = rep( x = NA_real_             , times = CntBootCateg  )
+                    , oR2Adjust   = rep( x = NA_real_             , times = CntBootCateg  )
                     , xBias       = rep( x = NA_real_             , times = CntBootCateg  )
                     , xSigRes     = rep( x = NA_real_             , times = CntBootCateg  )
                     , xMAE        = rep( x = NA_real_             , times = CntBootCateg  )
@@ -298,6 +344,23 @@ Allom_Fit <<- function( DataTRY
 
 
    #---~---
+   #   If we are to use sampling, create a sample of data points that is evenly
+   # distributed across size classes. Otherwise, the data for training is the original
+   # data set unless it has so many points that it exceeds the maximum.
+   #---~---
+   TrainTRY = Allom_SetTrain( OrigTRY      = DataTRY
+                            , CntAllomMax  = CntAllomMax
+                            , UseSizeBins  = UseSizeBins
+                            , xName        = xSample
+                            , LogSmp       = xLogSmp
+                            , MinSmpPerBin = MinSmpPerBin
+                            , MaxCntBins   = MaxCntBins
+                            )#end Allom_SetTrain
+   #---~---
+
+
+
+   #---~---
    #   If sought, find the best global model.
    #---~---
    gBest       = NA_integer_
@@ -314,101 +377,36 @@ Allom_Fit <<- function( DataTRY
       #---~---
       #   Retrieve settings for model fitting.
       #---~---
-      mModel = ModelTRY$Model[m]
-      xName  = ModelTRY$xName[m]
-      wName  = ModelTRY$wName[m]
-      yName  = ModelTRY$yName[m]
+      mModel  = ModelTRY$Model [m]
+      xName   = ModelTRY$xName [m]
+      wName   = ModelTRY$wName [m]
+      yName   = ModelTRY$yName [m]
+      mLogSmp = ModelTRY$LogSmp[m]
       #---~---
 
-      #---~---
-      #   First, we find some information about predictors and predictand that may be
-      # useful for defining first guesses.
-      #---~---
-      qLwrX = quantile(x=DataTRY[[xName]],probs=0.025,names=FALSE,na.rm=TRUE)
-      qMidX = quantile(x=DataTRY[[xName]],probs=0.500,names=FALSE,na.rm=TRUE)
-      qUprX = quantile(x=DataTRY[[xName]],probs=0.975,names=FALSE,na.rm=TRUE)
-      qLwrY = quantile(x=DataTRY[[yName]],probs=0.025,names=FALSE,na.rm=TRUE)
-      qMidY = quantile(x=DataTRY[[yName]],probs=0.500,names=FALSE,na.rm=TRUE)
-      qUprY = quantile(x=DataTRY[[yName]],probs=0.975,names=FALSE,na.rm=TRUE)
-      #--- W is not always available.
-      if (is.na(wName)){
-         qMidW = NA_real_
-      }else{
-         qMidW = quantile(x=DataTRY[[wName]],probs=0.500,names=FALSE,na.rm=TRUE)
-      }#end if (is.na(wName))
-      #---~---
+
 
 
       #---~---
       #   Set predictors, number of parameters and first guesses based on the functional 
       # form of the model.
       #---~---
-      mPredictor = 
-         switch( EXPR         = mModel
-               , OneLinear    = paste0("a0 * ",xName                              )
-               , OneLogLinear = paste0("a0 * ",xName,"^a1"                        )
-               , TwoLinear    = paste0("a0 * ",xName," * ",wName                  )
-               , TwoMixLinear = paste0("a0 * ",xName,"^a1 * ",wName               )
-               , TwoLogLinear = paste0("a0 * ",xName,"^a1 * ",wName,"^a2"         )
-               , MartinezCano = paste0("a0 * ",xName,"^a1 / ( a2 + ",xName,"^a1 )")
-               , Weibull      = paste0("a0 * (1 - exp( -a1 * ",xName,"^a2 ) )"    )
-               , stop(paste0(" Invalid Model: \"",mModel,"\".")                   )
-               )#end mPredictor
-      mCntParam = 
-         switch( EXPR         = mModel
-               , OneLinear    = 1L
-               , OneLogLinear = 2L
-               , TwoLinear    = 1L
-               , TwoMixLinear = 2L
-               , TwoLogLinear = 3L
-               , MartinezCano = 3L
-               , Weibull      = 3L
-               , stop(paste0(" Invalid Model: \"",mModel,"\".")                   )
-               )#end mPredictor
-      mFirst_a0  =
-         switch( EXPR         = mModel
-               , OneLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
-               , OneLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
-               , TwoLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-               , TwoMixLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-               , TwoLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-               , MartinezCano = qUprY
-               , Weibull      = qUprY
-               , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-               )#end mFirst_a0
-      mFirst_a1  =
-         switch( EXPR         = mModel
-               , OneLinear    = NULL
-               , OneLogLinear = 1.
-               , TwoLinear    = NULL
-               , TwoMixLinear = 1.
-               , TwoLogLinear = 1.
-               , MartinezCano = 1.
-               , Weibull      = 1./qUprX
-               , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-               )#end mFirst_a1
-      mFirst_a2  =
-         switch( EXPR         = mModel
-               , OneLinear    = NULL
-               , OneLogLinear = NULL
-               , TwoLinear    = NULL
-               , TwoMixLinear = NULL
-               , TwoLogLinear = 1.
-               , MartinezCano = qMidX
-               , Weibull      = 1.
-               , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-               )#end mFirst_a2
+      mSettings   = Allom_PrepOptim( OrigTRY = TrainTRY
+                                   , Model   = mModel
+                                   , xName   = xName
+                                   , yName   = yName
+                                   , wName   = wName
+                                   )#end Allom_PrepOptim
+      mPredictor  = mSettings$Predictor
+      mCntParam   = mSettings$CntParam
+      mExpect     = mSettings$Expect
+      mSigma      = mSettings$Sigma
+      mStartLSQ   = mSettings$StartLSQ
+      mStartSigma = mSettings$StartSigma
       #---~---
 
 
-      #---~---
-      #   Define equations for expected model and expected variance.
-      #---~---
-      mExpect     = paste0(yName," ~ I(",mPredictor,")")
-      mSigma      = paste0(" ~ I(yhat^s1)")
-      mStartLSQ   = as.list(c( a0 = mFirst_a0, a1 = mFirst_a1, a2 = mFirst_a2 ))
-      mStartSigma = list(s1=0.)
-      #---~---
+
 
       #---~---
       #   Fit homoscedastic model
@@ -416,7 +414,7 @@ Allom_Fit <<- function( DataTRY
       mFitHomo   = 
          try( expr = optim.lsq.htscd( lsq.formula = mExpect
                                     , sig.formula = NULL
-                                    , data        = DataTRY
+                                    , data        = TrainTRY
                                     , lsq.first   = mStartLSQ
                                     , tol.gain    = AllomTolGainBest
                                     , tol.optim   = AllomTolOptimBest
@@ -437,7 +435,7 @@ Allom_Fit <<- function( DataTRY
          #---~---
          #   Model could not be fitted. Discard model, but still try the heteroscedastic.
          #---~---
-         mXICHomo  = +Inf
+         mXICHomo   = +Inf
          if (Verbose){
             cat0("   - ",mModel,",  homoscedastic "," (X = ",xName,"; W = ",wName,")."
                                ,"  Failed fitting.")
@@ -448,12 +446,12 @@ Allom_Fit <<- function( DataTRY
          #   Use the fitted homoscedastic model parameters as first guess for 
          # the heteroscedastic model.
          #---~---
-         mXICHomo         = XIC(mFitHomo)
+         mXICHomo         = XIC(mFitHomo,InfoCrit)
          mStartLSQ        = as.list(coef(mFitHomo))
          names(mStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(mStartLSQ))
          if (Verbose){
             cat0("   - ",mModel,",  homoscedastic "," (X = ",xName,"; W = ",wName,")."
-                               ,"  ",InfoCrit," = ",sprintf("%.2f",mXICHomo),".")
+                               ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICHomo),".")
          }#end if (Verbose)
          #---~---
       }#end if ("try-error" %in% is(mFitHomo))
@@ -464,12 +462,13 @@ Allom_Fit <<- function( DataTRY
       #   Select model if this is the best model so far.
       #---~---
       mXICOff = InfoExtraOffset * as.numeric( mCntParam > gCntParam )
-      if ( mXICHomo < ( gXIC - mXICOff) ){
+      if ( ( mXICHomo + mXICOff ) < gXIC ){
          gBest       = m
          gCntParam   = mCntParam
          gXIC        = mXICHomo
          gDesc       = paste0(mModel,". (Homoscedastic)")
          gExpect     = mExpect
+         gSigma      = NULL
          gFit        = mFitHomo
          gSigma      = NULL
          gStartLSQ   = mStartLSQ
@@ -479,13 +478,13 @@ Allom_Fit <<- function( DataTRY
 
 
       #---~---
-      #   Fit the heteroscedastic model. Add two parameters as we fit uncertainty too.
+      #   Fit the heteroscedastic model. Add one parameter as we fit uncertainty too.
       #---~---
-      mCntParam  = mCntParam + 2L
+      mCntParam  = mCntParam + 1L
       mFitHete   = 
          try( expr = optim.lsq.htscd( lsq.formula = mExpect
                                     , sig.formula = mSigma
-                                    , data        = DataTRY
+                                    , data        = TrainTRY
                                     , lsq.first   = mStartLSQ
                                     , sig.first   = mStartSigma
                                     , tol.gain    = AllomTolGainBest
@@ -513,14 +512,14 @@ Allom_Fit <<- function( DataTRY
          }#end if (Verbose)
          #---~---
       }else{
-         mXICHete         = XIC(mFitHete)
+         mXICHete         = XIC(mFitHete,InfoCrit)
          mStartLSQ        = as.list(coef(mFitHete))
          mStartLSQ        = mStartLSQ[grepl(pattern="^lsq\\.",x=names(mStartLSQ))]
          names(mStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(mStartLSQ))
          mStartSigma      = list( s1 = coef(mFitHete)["sig.s1"] )
          if (Verbose){
             cat0("   - ",mModel,",  heteroscedastic "," (X = ",xName,"; W = ",wName,")."
-                               ,"  ",InfoCrit," = ",sprintf("%.2f",mXICHete),".")
+                               ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICHete),".")
          }#end if (Verbose)
       }#end if ("try-error" %in% is(mFitHete))
       #---~---
@@ -530,15 +529,15 @@ Allom_Fit <<- function( DataTRY
       #   Select model if this is the best model so far.
       #---~---
       mXICOff = InfoExtraOffset * as.numeric( mCntParam > gCntParam )
-      if ( mXICHete < ( gXIC - mXICOff ) ){
+      if ( ( mXICHete + mXICOff ) < gXIC ){
          gBest       = m
          gCntParam   = mCntParam
          gXIC        = mXICHete
          gDesc       = paste0(mModel,". (Heteroscedastic)")
          gHete       = TRUE
          gExpect     = mExpect
-         gFit        = mFitHete
          gSigma      = mSigma
+         gFit        = mFitHete
          gStartLSQ   = mStartLSQ
          gStartSigma = mStartSigma
       }#end if (mXICHete < zXIC)
@@ -585,6 +584,23 @@ Allom_Fit <<- function( DataTRY
       #---~---
       SubsetTRY = DataTRY[zSel,,drop=FALSE]
       CntSubset = nrow(SubsetTRY)
+      #---~---
+
+
+
+      #---~---
+      #   If we are to use sampling, create a sample of data points that is evenly
+      # distributed across size classes. Otherwise, the data for training is the original
+      # data set unless it has so many points that it exceeds the maximum.
+      #---~---
+      TrainTRY = Allom_SetTrain( OrigTRY      = SubsetTRY
+                               , CntAllomMax  = CntAllomMax
+                               , UseSizeBins  = UseSizeBins
+                               , xName        = xSample
+                               , LogSmp       = xLogSmp
+                               , MinSmpPerBin = MinSmpPerBin
+                               , MaxCntBins   = MaxCntBins
+                               )#end Allom_SetTrain
       #---~---
 
 
@@ -638,99 +654,51 @@ Allom_Fit <<- function( DataTRY
          #---~---
          #   Retrieve settings for model fitting.
          #---~---
-         mModel = ModelTRY$Model[m]
-         xName  = ModelTRY$xName[m]
-         wName  = ModelTRY$wName[m]
-         yName  = ModelTRY$yName[m]
+         mModel  = ModelTRY$Model [m]
+         xName   = ModelTRY$xName [m]
+         wName   = ModelTRY$wName [m]
+         yName   = ModelTRY$yName [m]
+         mLogSmp = ModelTRY$LogSmp[m]
          #---~---
+
+
 
          #---~---
          #   First, we find some information about predictors and predictand that may be
          # useful for defining first guesses.
          #---~---
-         qLwrX = quantile(x=SubsetTRY[[xName]],probs=0.025,names=FALSE,na.rm=TRUE)
-         qMidX = quantile(x=SubsetTRY[[xName]],probs=0.500,names=FALSE,na.rm=TRUE)
-         qUprX = quantile(x=SubsetTRY[[xName]],probs=0.975,names=FALSE,na.rm=TRUE)
-         qLwrY = quantile(x=SubsetTRY[[yName]],probs=0.025,names=FALSE,na.rm=TRUE)
-         qMidY = quantile(x=SubsetTRY[[yName]],probs=0.500,names=FALSE,na.rm=TRUE)
-         qUprY = quantile(x=SubsetTRY[[yName]],probs=0.975,names=FALSE,na.rm=TRUE)
+         qLwrX = quantile(x=TrainTRY[[xName]],probs=0.025,names=FALSE,na.rm=TRUE)
+         qMidX = quantile(x=TrainTRY[[xName]],probs=0.500,names=FALSE,na.rm=TRUE)
+         qUprX = quantile(x=TrainTRY[[xName]],probs=0.975,names=FALSE,na.rm=TRUE)
+         qLwrY = quantile(x=TrainTRY[[yName]],probs=0.025,names=FALSE,na.rm=TRUE)
+         qMidY = quantile(x=TrainTRY[[yName]],probs=0.500,names=FALSE,na.rm=TRUE)
+         qUprY = quantile(x=TrainTRY[[yName]],probs=0.975,names=FALSE,na.rm=TRUE)
          if (is.na(wName)){
             qMidW = NA_real_
          }else{
-            qMidW = quantile(x=SubsetTRY[[wName]],probs=0.500,names=FALSE,na.rm=TRUE)
+            qMidW = quantile(x=TrainTRY[[wName]],probs=0.500,names=FALSE,na.rm=TRUE)
          }#end if (is.na(wName))
          #---~---
+
+
 
 
          #---~---
          #   Set predictors, number of parameters and first guesses based on the functional 
          # form of the model.
          #---~---
-         mPredictor = 
-            switch( EXPR         = mModel
-                  , OneLinear    = paste0("a0 * ",xName                              )
-                  , OneLogLinear = paste0("a0 * ",xName,"^a1"                        )
-                  , TwoLinear    = paste0("a0 * ",xName," * ",wName                  )
-                  , TwoMixLinear = paste0("a0 * ",xName,"^a1 * ",wName               )
-                  , TwoLogLinear = paste0("a0 * ",xName,"^a1 * ",wName,"^a2"         )
-                  , MartinezCano = paste0("a0 * ",xName,"^a1 / ( a2 + ",xName,"^a1 )")
-                  , Weibull      = paste0("a0 * (1 - exp( -a1 * ",xName,"^a2 ) )"    )
-                  , stop(paste0(" Invalid Model: \"",xModel,"\".")                   )
-                  )#end mPredictor
-         mCntParam = 
-            switch( EXPR         = mModel
-                  , OneLinear    = 1L
-                  , OneLogLinear = 2L
-                  , TwoLinear    = 1L
-                  , TwoMixLinear = 2L
-                  , TwoLogLinear = 3L
-                  , MartinezCano = 3L
-                  , Weibull      = 3L
-                  , stop(paste0(" Invalid Model: \"",mModel,"\".")                   )
-                  )#end mPredictor
-         mFirst_a0  =
-            switch( EXPR         = mModel
-                  , OneLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
-                  , OneLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
-                  , TwoLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-                  , TwoMixLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-                  , TwoLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-                  , MartinezCano = qUprY
-                  , Weibull      = qUprY
-                  , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-                  )#end mFirst_a0
-         mFirst_a1  =
-            switch( EXPR         = mModel
-                  , OneLinear    = NULL
-                  , OneLogLinear = 1.
-                  , TwoLinear    = NULL
-                  , TwoMixLinear = 1.
-                  , TwoLogLinear = 1.
-                  , MartinezCano = 1.
-                  , Weibull      = 1./qUprX
-                  , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-                  )#end mFirst_a1
-         mFirst_a2  =
-            switch( EXPR         = mModel
-                  , OneLinear    = NULL
-                  , OneLogLinear = NULL
-                  , TwoLinear    = NULL
-                  , TwoMixLinear = NULL
-                  , TwoLogLinear = 1.
-                  , MartinezCano = qMidX
-                  , Weibull      = 1.
-                  , stop(paste0(" Invalid Model: \"",mModel,"\"."))
-                  )#end mFirst_a2
-         #---~---
-
-
-         #---~---
-         #   Define equations for expected model and expected variance.
-         #---~---
-         mExpect     = paste0(yName," ~ I(",mPredictor,")")
-         mSigma      = paste0(" ~ I(yhat^s1)")
-         mStartLSQ   = as.list(c( a0 = mFirst_a0, a1 = mFirst_a1, a2 = mFirst_a2 ))
-         mStartSigma = list(s1=0.)
+         mSettings   = Allom_PrepOptim( OrigTRY = TrainTRY
+                                      , Model   = mModel
+                                      , xName   = xName
+                                      , yName   = yName
+                                      , wName   = wName
+                                      )#end Allom_PrepOptim
+         mPredictor  = mSettings$Predictor
+         mCntParam   = mSettings$CntParam
+         mExpect     = mSettings$Expect
+         mSigma      = mSettings$Sigma
+         mStartLSQ   = mSettings$StartLSQ
+         mStartSigma = mSettings$StartSigma
          #---~---
 
 
@@ -741,7 +709,7 @@ Allom_Fit <<- function( DataTRY
          mFitHomo   = 
             try( expr = optim.lsq.htscd( lsq.formula = mExpect
                                        , sig.formula = NULL
-                                       , data        = DataTRY
+                                       , data        = TrainTRY
                                        , lsq.first   = mStartLSQ
                                        , tol.gain    = AllomTolGainBest
                                        , tol.optim   = AllomTolOptimBest
@@ -766,12 +734,12 @@ Allom_Fit <<- function( DataTRY
             #   Use the fitted homoscedastic model parameters as first guess for 
             # the heteroscedastic model.
             #---~---
-            mXICHomo         = XIC(mFitHomo)
+            mXICHomo         = XIC(mFitHomo,InfoCrit)
             mStartLSQ        = as.list(coef(mFitHomo))
             names(mStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(mStartLSQ))
             if (Verbose){
                cat0("   - ",mModel,",  homoscedastic "," (X = ",xName,"; W = ",wName,")."
-                                  ,"  ",InfoCrit," = ",sprintf("%.2f",mXICHomo),".")
+                                  ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICHomo),".")
             }#end if (Verbose)
             #---~---
          }#end if ("try-error" %in% is(mFitHomo))
@@ -782,7 +750,7 @@ Allom_Fit <<- function( DataTRY
          #   Select model if this is the best model so far.
          #---~---
          mXICOff = InfoExtraOffset * as.numeric( mCntParam > zCntParam )
-         if ( mXICHomo < ( zXIC - mXICOff ) ){
+         if ( ( mXICHomo + mXICOff ) < zXIC ){
             zBest       = m
             zCntParam   = mCntParam
             zXIC        = mXICHomo
@@ -797,13 +765,13 @@ Allom_Fit <<- function( DataTRY
 
 
          #---~---
-         #   Fit the heteroscedastic model. Add two parameters as we fit uncertainties too.
+         #   Fit the heteroscedastic model. Add one parameter as we fit uncertainties too.
          #---~---
-         mCntParam  = mCntParam + 2L
+         mCntParam  = mCntParam + 1L
          mFitHete   = 
             try( expr = optim.lsq.htscd( lsq.formula = mExpect
                                        , sig.formula = mSigma
-                                       , data        = DataTRY
+                                       , data        = TrainTRY
                                        , lsq.first   = mStartLSQ
                                        , sig.first   = mStartSigma
                                        , tol.gain    = AllomTolGainBest
@@ -828,18 +796,18 @@ Allom_Fit <<- function( DataTRY
             mXICHete = + Inf
             if (Verbose){
                cat0("   - ",mModel,",  heteroscedastic "," (X = ",xName,"; W = ",wName,")."
-                                  ,"  ",InfoCrit," = ",sprintf("%.2f",mXICHomo),".")
+                                  ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICHomo),".")
             }#end if (Verbose)
             #---~---
          }else{
-            mXICHete         = XIC(mFitHete)
+            mXICHete         = XIC(mFitHete,InfoCrit)
             mStartLSQ        = as.list(coef(mFitHete))
             mStartLSQ        = mStartLSQ[grepl(pattern="^lsq\\.",x=names(mStartLSQ))]
             names(mStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(mStartLSQ))
             mStartSigma      = list( s1 = coef(mFitHete)["sig.s1"] )
             if (Verbose){
                cat0("   - ",mModel,",  heteroscedastic "," (X = ",xName,"; W = ",wName,")."
-                                  ,"  ",InfoCrit," = ",sprintf("%.2f",mXICHete),".")
+                                  ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICHete),".")
             }#end if (Verbose)
          }#end if ("try-error" %in% is(mFitHete))
          #---~---
@@ -849,7 +817,7 @@ Allom_Fit <<- function( DataTRY
          #   Select model if this is the best model so far.
          #---~---
          mXICOff = InfoExtraOffset * as.numeric( mCntParam > zCntParam )
-         if ( mXICHete < ( zXIC - mXICOff ) ){
+         if ( ( mXICHete + mXICOff ) < zXIC ){
             zBest       = m
             zCntParam   = mCntParam
             zXIC        = mXICHete
@@ -875,9 +843,11 @@ Allom_Fit <<- function( DataTRY
          warning("   - Failed fitting models for: ",zDescClass,", category: ",zCateg,".")
          next
       }else{
-         xName  = ModelTRY$xName[zBest]
-         wName  = ModelTRY$wName[zBest]
-         yName  = ModelTRY$yName[zBest]
+         zModel  = ModelTRY$Model [zBest]
+         xName   = ModelTRY$xName [zBest]
+         wName   = ModelTRY$wName [zBest]
+         yName   = ModelTRY$yName [zBest]
+         zLogSmp = ModelTRY$LogSmp[zBest]
          if (Verbose){
             cat0("   - Selected model: ",zDesc,"; (X = ",xName,"; W = ",wName,")."
                                               ," Find coefficients and uncertainties.")
@@ -888,12 +858,30 @@ Allom_Fit <<- function( DataTRY
 
 
       #---~---
+      #   Set predictors, number of parameters and first guesses based on the functional 
+      # form of the model.
+      #---~---
+      zSettings   = Allom_PrepOptim( OrigTRY = TrainTRY
+                                   , Model   = zModel
+                                   , xName   = xName
+                                   , yName   = yName
+                                   , wName   = wName
+                                   )#end Allom_PrepOptim
+      zPredictor  = zSettings$Predictor
+      zCntParam   = zSettings$CntParam
+      zStartLSQ   = zSettings$StartLSQ
+      zStartSigma = if(is.null(zSigma)){NULL}else{zSettings$StartSigma}
+      #---~---
+
+
+
+      #---~---
       #   Fit the model with stricter tolerance and also generate bootstrapped estimates.
       #---~---
       if (is.null(zSigma)){
          zFit = try( expr   = optim.lsq.htscd( lsq.formula = zExpect
                                              , sig.formula = NULL
-                                             , data        = SubsetTRY
+                                             , data        = TrainTRY
                                              , lsq.first   = zStartLSQ
                                              , err.method  = "bootstrap"
                                              , tol.gain    = AllomTolGain
@@ -906,9 +894,34 @@ Allom_Fit <<- function( DataTRY
                    , silent = TRUE
                    )#end try
       }else{
+         #---~---
+         #   Fit the homoscedastic model first to bring coefficients closer to the answer, 
+         # then fit the heteroscedastic model.
+         #---~---
+         zFitHomo = try( expr   = optim.lsq.htscd( lsq.formula = zExpect
+                                                 , sig.formula = NULL
+                                                 , data        = TrainTRY
+                                                 , lsq.first   = zStartLSQ
+                                                 , tol.gain    = AllomTolGainBest
+                                                 , tol.optim   = AllomTolOptimBest
+                                                 , maxit       = AllomMaxItGainBest
+                                                 , maxit.optim = AllomMaxItOptimBest
+                                                 , verbose     = FALSE
+                                                 )#end optim.lsq.htscd
+                       , silent = TRUE
+                       )#end try
+         zStartLSQ        = as.list(coef(zFitHomo))
+         names(zStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(zStartLSQ))
+         #---~---
+
+
+
+         #---~---
+         #   Fit the heteroscedastic model.
+         #---~---
          zFit = try( expr   = optim.lsq.htscd( lsq.formula = zExpect
                                              , sig.formula = zSigma
-                                             , data        = SubsetTRY
+                                             , data        = TrainTRY
                                              , lsq.first   = zStartLSQ
                                              , sig.first   = zStartSigma
                                              , err.method  = "bootstrap"
@@ -921,17 +934,19 @@ Allom_Fit <<- function( DataTRY
                                              )#end optim.lsq.htscd
                    , silent = TRUE
                    )#end try
+         #---~---
       }#end if (is.null(zSigma))
       #---~---
 
 
       if (Verbose) cat0("   - Best model (",zDescClass,", category ",zCateg,"): ",zDesc,".")
-      zModel     = ModelTRY$Model[zBest]
+      zModel     = ModelTRY$Model [zBest]
       zFormula   = as.character(zExpect)
       zScedastic = if(is.null(zSigma)){"Homoscedastic"}else{"Heteroscedastic"}
-      xName      = ModelTRY$xName[zBest]
-      wName      = ModelTRY$wName[zBest]
-      yName      = ModelTRY$yName[zBest]
+      xName      = ModelTRY$xName [zBest]
+      wName      = ModelTRY$wName [zBest]
+      yName      = ModelTRY$yName [zBest]
+      zLogSmp    = ModelTRY$LogSmp[zBest]
       #---~---
 
 
@@ -957,7 +972,11 @@ Allom_Fit <<- function( DataTRY
          #---~---
          minX  = min(DataTRY[[xName]],na.rm=TRUE)
          maxX  = max(DataTRY[[xName]],na,rm=TRUE)
-         PredX = seq(from=minX,to=maxX,length.out=AllomCntPred)
+         if (zLogSmp){
+            PredX = exp(seq(from=log(minX),to=log(maxX),length.out=AllomCntPred))
+         }else{
+            PredX = seq(from=minX,to=maxX,length.out=AllomCntPred)
+         }#end if (zLogSmp)
          #---~---
       }#end if if (AllomQuantPred)
       #---~---
@@ -979,10 +998,9 @@ Allom_Fit <<- function( DataTRY
       zParam        = coef(zFit)
       names(zParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(zParam))
       names(zParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(zParam))
-      names(zParam) = gsub(pattern="^sigma0$",replacement="s0",x=names(zParam))
       if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
       if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
-      if (! "s0" %in% names(zParam)) zParam["s0"] = mean(zFit$sigma,na.rm=TRUE)
+      if (! "s0" %in% names(zParam)) zParam["s0"] = zFit$sigma0
       if (! "s1" %in% names(zParam)) zParam["s1"] = 0.
       zParam        = zParam[c("a0","a1","a2","s0","s1")]
       #---~---
@@ -1001,13 +1019,19 @@ Allom_Fit <<- function( DataTRY
       #   Find the predicted height based on the original data and find goodness-of-fit 
       # metrics.
       #---~---
-      yOrig = SubsetTRY[[yName]]
-      yPred = Allom_Pred( x     = SubsetTRY[[xName]]
-                        , w     = SubsetTRY[[wName]]
+      yOrig = TrainTRY[[yName]]
+      yPred = Allom_Pred( x     = TrainTRY[[xName]]
+                        , w     = TrainTRY[[wName]]
                         , param = zParam
                         , fun   = zModel
                         , ans   = "mu"
                         )#end try TRY_AllomPred
+      ySigma = Allom_Pred( x     = TrainTRY[[xName]]
+                         , w     = TrainTRY[[wName]]
+                         , param = zParam
+                         , fun   = zModel
+                         , ans   = "sigma"
+                         )#end try TRY_AllomPred
       #---~---
 
 
@@ -1028,9 +1052,18 @@ Allom_Fit <<- function( DataTRY
       SummAllom$s0       [saIdx] = zParam["s0"]
       SummAllom$s1       [saIdx] = zParam["s1"]
       SummAllom$LogLik   [saIdx] = logLik(zFit)
+      SummAllom$Bias     [saIdx] = Allom_Bias (yOrig=yOrig,yPred=yPred)
       SummAllom$MAE      [saIdx] = Allom_MAE  (yOrig=yOrig,yPred=yPred)
       SummAllom$RMSE     [saIdx] = Allom_RMSE (yOrig=yOrig,yPred=yPred,nParam=zCntParam)
-      SummAllom$R2Adjust [saIdx] = Allom_AdjR2(yOrig=yOrig,yPred=yPred,nParam=zCntParam)
+      SummAllom$wR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
+                                              , yPred  = yPred
+                                              , ySigma = ySigma
+                                              , nParam = zCntParam
+                                              )#end Allom_R2Adj
+      SummAllom$oR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
+                                              , yPred  = yPred
+                                              , nParam = zCntParam
+                                              )#end Allom_R2Adj
       SummAllom$AIC      [saIdx] = AIC(zFit)
       SummAllom$BIC      [saIdx] = BIC(zFit)
       #---~---
@@ -1085,11 +1118,10 @@ Allom_Fit <<- function( DataTRY
          bParam        = zFit$coeff.boot[b,]
          names(bParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(bParam))
          names(bParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(bParam))
-         names(bParam) = gsub(pattern="^sigma0$",replacement="s0",x=names(bParam))
-         if (! "a1" %in% names(zParam)) bParam["a1"] = NA_real_
-         if (! "a2" %in% names(zParam)) bParam["a2"] = NA_real_
-         if (! "s0" %in% names(zParam)) bParam["s0"] = mean(bFit$sigma,na.rm=TRUE)
-         if (! "s1" %in% names(zParam)) bParam["s1"] = 0.
+         if (! "a1" %in% names(bParam)) bParam["a1"] = NA_real_
+         if (! "a2" %in% names(bParam)) bParam["a2"] = NA_real_
+         if (! "s0" %in% names(bParam)) bParam["s0"] = zFit$sigma0.boot[b]
+         if (! "s1" %in% names(bParam)) bParam["s1"] = 0.
          bParam        = bParam[c("a0","a1","a2","s0","s1")]
          #---~---
 
@@ -1114,9 +1146,11 @@ Allom_Fit <<- function( DataTRY
          SummBoot$s0       [bsIdx] = bParam["s0"]
          SummBoot$s1       [bsIdx] = bParam["s1"]
          SummBoot$LogLik   [bsIdx] = zFit$support.boot                 [b]
+         SummBoot$Bias     [bsIdx] = zFit$boot.train$goodness$bias     [b]
          SummBoot$MAE      [bsIdx] = zFit$boot.train$goodness$mae      [b]
          SummBoot$RMSE     [bsIdx] = zFit$boot.train$goodness$rmse     [b]
-         SummBoot$R2Adjust [bsIdx] = zFit$boot.train$goodness$r.squared[b]
+         SummBoot$wR2Adjust[bsIdx] = zFit$boot.train$wgt.r.squared     [b]
+         SummBoot$oR2Adjust[bsIdx] = zFit$boot.train$r.squared         [b]
          SummBoot$xBias    [bsIdx] = zFit$cross.val$bias               [b]
          SummBoot$xSigRes  [bsIdx] = zFit$cross.val$sigma              [b]
          SummBoot$xMAE     [bsIdx] = zFit$cross.val$mae                [b]
@@ -1290,26 +1324,49 @@ Allom_Pred <<- function( x
 # Input variables:
 # yOrig  - vector with original values of variable y
 # yPred  - vector with predicted values of variable y
+# ySigma - vector with the predicted values of standard deviation of the residuals.
 # nParam - number of model parameters
 #---~---
-Allom_AdjR2 <<- function(yOrig,yPred,nParam){
-   
+Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,nParam){
+
+   #---~---
+   #   Assign a default sigma if it is missing.
+   #---~---
+   if (is.null(ySigma)) ySigma = 0*yOrig + sd(yOrig-yPred,na.rm=TRUE)
+   #---~---
+
+
    #---~---
    #   Keep only the entries in which both yOrig and yPred are valid
    #---~---
-   yKeep = is.finite(yOrig) & is.finite(yPred)
+   yKeep = is.finite(yOrig) & is.finite(yPred) & is.finite(ySigma)
    yOrig = yOrig[yKeep]
    yPred = yPred[yKeep]
-   yMean = mean(yOrig)
-   nData = length(yOrig)
+   #---~---
+
+
+   #---~---
+   #   Find the weights and transform the data.
+   #---~---
+   yWeight  = ( sd(yOrig-yPred) / ySigma )^2
+   ysOrig   = sqrt(yWeight) * yOrig
+   ysPred   = sqrt(yWeight) * yPred
+   #---~---
+
+
+   #---~---
+   #   Find the average of the transformed data.
+   #---~---
+   ysMean = mean(ysOrig)
+   nData  = length(ysOrig)
    #---~---
 
 
    #---~---
    #   Find sum of squares and degrees of freedom
    #---~---
-   SSRes = sum((yOrig-yPred)^2)
-   SSTot = sum((yOrig-yMean)^2)
+   SSRes = sum((ysOrig-ysPred)^2)
+   SSTot = sum((ysOrig-ysMean)^2)
    DFRes = nData - nParam
    DFTot = nData - 1
    #---~---
@@ -1321,7 +1378,7 @@ Allom_AdjR2 <<- function(yOrig,yPred,nParam){
    r2adj = 1 - SSRes * DFTot / ( SSTot * DFRes )
    return(r2adj)
    #---~---
-}#end Allom_AdjR2
+}#end Allom_R2Adj
 #---~---
 
 
@@ -1449,4 +1506,354 @@ Allom_SigRes <<- function(yOrig,yPred){
    return(ans)
    #---~---
 }#end Allom_SigRes
+#---~---
+
+
+
+
+
+#---~---
+#   This function sets the training data such that it does not exceed the maximum number 
+# of training points. Depending on the options, it will also resample the data to ensure 
+# the sampling effort is balanced across the sample size.
+#
+# Inputs
+#
+# + OrigTRY      -- Original data frame to be used as training data.
+# + CntAllomMax  -- Maximum number of points to consider for fitting. This is used to
+#                   limit the model fitting to a more manageable number of 
+#                   observations when allometric data are exceedingly large. If no
+#                   cap is sought, set CntAllomMax = +Inf. This setting is 
+#                   independent on the data binning sampling defined by UseSizeBins.
+# + UseSizeBins  -- Use binning across size classes to have a more balanced 
+#                   distribution across the predictor range? Note that in this case
+#                   we cannot use AIC or BIC to define the best model, and thus we
+#                   simply use adjusted R2.
+# + xName        -- Name of the column with size data.
+# + LogSmp       -- Apply log transformation when defining the bin boundaries?
+# + MinSmpPerBin -- Minimum number of observations for each bin. Binning will not 
+#                   occur unless there are at least twice as many valid points (and
+#                   possibly even more points in case of very imbalanced data sets).
+# + MaxCntBins   -- Maximum number of bins to be considered.
+#---~---
+Allom_SetTrain <<- function( OrigTRY
+                           , CntAllomMax  = 10000L
+                           , UseSizeBins  = FALSE
+                           , xName
+                           , LogSmp       = FALSE
+                           , MinSmpPerBin = 500L
+                           , MaxCntBins   = 20L
+                           ){
+
+   #---~---
+   #   Find the number of valid data points and a few ancillary variables.
+   #---~---
+   CntOrig   = nrow(OrigTRY)            # Original sample size
+   OrigIndex = sequence(CntOrig)        # Vector indices of the original sample
+   CntUpper  = min(CntOrig,CntAllomMax) # Upper limit for the sampling effort
+   #---~---
+
+
+   #---~---
+   #   If we are to use sampling, create a sample of data points that is evenly
+   # distributed across size classes.
+   #---~---
+   if (UseSizeBins){
+      #---~---
+      #   Find the bounds for the binning; we use quantiles to avoid outliers stretching
+      # the bins.
+      #---~---
+      qLwrX = quantile(x=OrigTRY[[xName]],probs=0.01,names=FALSE,na.rm=TRUE)
+      qUprX = quantile(x=OrigTRY[[xName]],probs=0.99,names=FALSE,na.rm=TRUE)
+      #---~---
+
+
+
+      #---~---
+      #   First guess for number of bins.
+      #---~---
+      InitCntBins = max(1L, min(MaxCntBins, floor(CntOrig / MinSmpPerBin)))
+      #---~---
+
+
+
+      #---~---
+      #   Iterate until all bins have at least the minimum number of samples. In case
+      # the data does not have enough points for binning, we give up on re-sampling.
+      #---~---
+      CntBins = InitCntBins + 1L
+      iterate = TRUE
+      while (iterate){
+         CntBins     = CntBins - 1L
+         CntBrks     = CntBins + 1L
+
+
+         #---~---
+         #   If CntBins is 1, we give up on binning data, as we don't have enough data 
+         # points.
+         #---~---
+         if (CntBins %eq% 1L){
+            #---~---
+            #   Stop iterating.
+            #---~---
+            iterate = FALSE
+            #---~---
+
+            #---~---
+            #   No binning, but we still sample in case the number of data points 
+            # exceeds the maximum.
+            #---~---
+            xIndex   = Allom_Sample(x=OrigIndex,size=CntUpper)
+            TrainTRY = OrigTRY[xIndex,,drop=FALSE]
+            #---~---
+         }else{
+            #---~---
+            #   Find the number of bins. We don't split in quantiles, but in equal width
+            # bins because the idea is to balance the range of samples.
+            #---~---
+            if (LogSmp){
+               qBrksX          = exp(seq(from=log(qLwrX),to=log(qUprX),length.out=CntBrks))
+               qBrksX[     1L] = -Inf
+               qBrksX[CntBrks] = +Inf
+            }else{
+               qBrksX          = seq(from=qLwrX,to=qUprX,length.out=CntBrks)
+               qBrksX[     1L] = -Inf
+               qBrksX[CntBrks] = +Inf
+            }#end if (mLogBins)
+            #---~---
+
+
+            #---~---
+            #   Split variable X into bins.
+            #---~---
+            xCut      = cut(OrigTRY[[xName]],breaks=qBrksX,labels=FALSE)
+            TallyCut  = table(xCut)
+            CntSample = floor(CntUpper / CntBins)
+            #---~---
+
+
+            #---~---
+            #   Make sure the sample size is fine. If not, iterate.
+            #---~---
+            UseBins = all(TallyCut %ge% MinSmpPerBin)
+            iterate = ! UseBins
+            if (UseBins){
+               xIndex   = c( unlist( mapply( FUN      = Allom_Sample
+                                           , x        = split(x=seq_along(xCut),f=xCut)
+                                           , MoreArgs = list(size=CntSample)
+                                           , SIMPLIFY = FALSE
+                                           )#end mapply
+                                   )#end unlist
+                           )#end c
+               names(xIndex) = NULL
+               TrainTRY = OrigTRY[xIndex,,drop=FALSE]
+            }#end if (UseBins)
+            #---~---
+         }#end if (CntBins %eq% 1L)
+         #---~---
+      }#end while (iterate)
+      #---~---
+   }else{
+      #---~---
+      #   No binning, but we still sample in case the number of data points exceeds the 
+      # maximum.
+      #---~---
+      xIndex   = Allom_Sample(x=OrigIndex,size=CntUpper)
+      TrainTRY = OrigTRY[xIndex,,drop=FALSE]
+      #---~---
+   }#end if (UseSizeBins)
+   #---~---
+
+
+   #---~---
+   #   Return training data
+   #---~---
+   return(TrainTRY)
+   #---~---
+}#end function Allom_SetTrain
+#---~---
+
+
+
+
+
+#---~---
+#   This function sets the first guesses and a few additional parameters for the parameter
+# optimisation.
+#
+# Inputs
+#
+# + OrigTRY      -- Original data frame to be used as training data.
+# + Model        -- Which model to fit? Options are
+#                   - OneLinear (y = a0 * x )
+#                   - OneLogLinear (y = a0 * x^a1                    )
+#                   - TwoLinear    (y = a0 * x    * w                )
+#                   - TwoMixLinear (y = a0 * x^a1 * w                )
+#                   - TwoLogLinear (y = a0 * x^a1 * w^2              )
+#                   - MartinezCano (y = a0 * x^a1 / (a2 + x^a1)      )
+#                   - Weibull      (y = a0 * (1 - exp( -a1 * x^a2) ) )
+# + xName        -- Name of the column with main predictor (x).
+# + yName        -- Name of the column with predictand (y)
+# + wName        -- Name of the column with scaling data (only needed for the models
+#                   above that have a "w" term).
+
+# + CntAllomMax  -- Maximum number of points to consider for fitting. This is used to
+#                   limit the model fitting to a more manageable number of 
+#                   observations when allometric data are exceedingly large. If no
+#                   cap is sought, set CntAllomMax = +Inf. This setting is 
+#                   independent on the data binning sampling defined by UseSizeBins.
+# + UseSizeBins  -- Use binning across size classes to have a more balanced 
+#                   distribution across the predictor range? Note that in this case
+#                   we cannot use AIC or BIC to define the best model, and thus we
+#                   simply use adjusted R2.
+# + LogSmp       -- Apply log transformation when defining the bin boundaries?
+# + MinSmpPerBin -- Minimum number of observations for each bin. Binning will not 
+#                   occur unless there are at least twice as many valid points (and
+#                   possibly even more points in case of very imbalanced data sets).
+# + MaxCntBins   -- Maximum number of bins to be considered.
+#---~---
+Allom_PrepOptim <<- function( OrigTRY
+                            , Model = c("OneLinear","OneLogLinear","TwoLinear"
+                                       ,"TwoMixLinear","TwoLogLinear","MartinezCano"
+                                       ,"Weibull")
+                            , xName
+                            , yName
+                            , wName
+                            ){
+
+   #---~---
+   #   Make sure Model is a valid model
+   #---~---
+   Model = match.arg(Model)
+   #---~---
+
+
+   #---~---
+   #   First, we find some information about predictors and predictand that may be
+   # useful for defining first guesses.
+   #---~---
+   qLwrX = quantile(x=OrigTRY[[xName]],probs=0.025,names=FALSE,na.rm=TRUE)
+   qMidX = quantile(x=OrigTRY[[xName]],probs=0.500,names=FALSE,na.rm=TRUE)
+   qUprX = quantile(x=OrigTRY[[xName]],probs=0.975,names=FALSE,na.rm=TRUE)
+   qLwrY = quantile(x=OrigTRY[[yName]],probs=0.025,names=FALSE,na.rm=TRUE)
+   qMidY = quantile(x=OrigTRY[[yName]],probs=0.500,names=FALSE,na.rm=TRUE)
+   qUprY = quantile(x=OrigTRY[[yName]],probs=0.975,names=FALSE,na.rm=TRUE)
+   #--- W is not always available.
+   if (is.na(wName)){
+      qMidW = NA_real_
+   }else{
+      qMidW = quantile(x=OrigTRY[[wName]],probs=0.500,names=FALSE,na.rm=TRUE)
+   }#end if (is.na(wName))
+   #---~---
+
+
+   #---~---
+   #   Set predictors, number of parameters and first guesses based on the functional 
+   # form of the model.
+   #---~---
+   Predictor = 
+     switch( EXPR         = Model
+           , OneLinear    = paste0("a0 * ",xName                              )
+           , OneLogLinear = paste0("a0 * ",xName,"^a1"                        )
+           , TwoLinear    = paste0("a0 * ",xName," * ",wName                  )
+           , TwoMixLinear = paste0("a0 * ",xName,"^a1 * ",wName               )
+           , TwoLogLinear = paste0("a0 * ",xName,"^a1 * ",wName,"^a2"         )
+           , MartinezCano = paste0("a0 * ",xName,"^a1 / ( a2 + ",xName,"^a1 )")
+           , Weibull      = paste0("a0 * (1 - exp( -a1 * ",xName,"^a2 ) )"    )
+           , stop(paste0(" Invalid Model: \"",Model,"\".")                   )
+           )#end Predictor
+   CntParam = 
+     switch( EXPR         = Model
+           , OneLinear    = 1L
+           , OneLogLinear = 2L
+           , TwoLinear    = 1L
+           , TwoMixLinear = 2L
+           , TwoLogLinear = 3L
+           , MartinezCano = 3L
+           , Weibull      = 3L
+           )#end Predictor
+   First_a0  =
+     switch( EXPR         = Model
+           , OneLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
+           , OneLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
+           , TwoLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
+           , TwoMixLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
+           , TwoLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
+           , MartinezCano = qUprY
+           , Weibull      = qUprY
+           )#end First_a0
+   First_a1  =
+     switch( EXPR         = Model
+           , OneLinear    = NULL
+           , OneLogLinear = 1.
+           , TwoLinear    = NULL
+           , TwoMixLinear = 1.
+           , TwoLogLinear = 1.
+           , MartinezCano = 1.
+           , Weibull      = 1./qUprX
+           )#end First_a1
+   First_a2  =
+     switch( EXPR         = Model
+           , OneLinear    = NULL
+           , OneLogLinear = NULL
+           , TwoLinear    = NULL
+           , TwoMixLinear = NULL
+           , TwoLogLinear = 1.
+           , MartinezCano = qMidX
+           , Weibull      = 1.
+           )#end First_a2
+   #---~---
+
+
+   #---~---
+   #   Define equations for expected model and expected variance.
+   #---~---
+   Expect     = paste0(yName," ~ I(",Predictor,")")
+   Sigma      = paste0(" ~ I(yhat^s1)")
+   StartLSQ   = as.list(c( a0 = First_a0, a1 = First_a1, a2 = First_a2 ))
+   StartSigma = list(s1=0.)
+   #---~---
+
+
+   #---~---
+   #   Build a list with all the information
+   #---~---
+   Answer = list( Predictor  = Predictor
+                , CntParam   = CntParam
+                , Expect     = Expect
+                , Sigma      = Sigma
+                , StartLSQ   = StartLSQ
+                , StartSigma = StartSigma
+                )#end list
+   #---~---
+
+   #---~---
+   #   Return training data
+   #---~---
+   return(Answer)
+   #---~---
+}#end function Allom_PrepOptim
+#---~---
+
+
+
+
+#---~---
+#     This function is a wrapper for sampling that decides whether to run with or without
+# replacement depending on the requested size.
+#
+# Input variables:
+# x    - Vector to be sampled
+# size - Size of the vector with samples.
+#---~---
+Allom_Sample <<- function(x,size){
+   #---~---
+   #   Make sure that x has more than one element (so sample will not assume x is the 
+   # number of integer elements to be sampled).
+   #---~---
+   if (length(x) == 1) x=c(x,x)
+   ans       = sort(sample(x=x,size=size,replace=length(x) < size))
+   return(ans)
+   #---~---
+}#end Allom_Sample
 #---~---
