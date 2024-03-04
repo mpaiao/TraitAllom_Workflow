@@ -1045,13 +1045,13 @@ use_suffix   = paste(use_realm,use_lifeclass,sep=&quot;_&quot;)
 
 # Build RData object file names for the trait and ancillary data, 
 # SMA (trait and photosynthesis), and allometry models.  
-Rdata_LookUp         = file.path(rdata_path,paste0(&quot;LookUp_&quot;         , use_suffix  ,&quot;.RData&quot;))
-Rdata_RawTRY         = file.path(rdata_path,paste0(&quot;RawTRY_&quot;         , use_suffix  ,&quot;.RData&quot;))
-Rdata_ExtraTRY       = file.path(rdata_path,paste0(&quot;ExtraTRY_&quot;       , use_suffix  ,&quot;.RData&quot;))
-Rdata_GeolocationTRY = file.path(rdata_path,paste0(&quot;GeolocationTRY_&quot; , use_suffix  ,&quot;.RData&quot;))
-Rdata_GeodataTRY     = file.path(rdata_path,paste0(&quot;GeodataTRY_&quot;     , use_suffix  ,&quot;.RData&quot;))
-Rdata_TaxonomyTRY    = file.path(rdata_path,paste0(&quot;TaxonomyTRY_&quot;    , use_suffix  ,&quot;.RData&quot;))
-Rdata_TidyTRY        = file.path(rdata_path,paste0(&quot;TidyTRY_&quot;        , use_suffix  ,&quot;.RData&quot;)) 
+Rdata_LookUp         = file.path(rdata_path,&quot;LookUp_AllRegions_AllPlants.RData&quot;                    )
+Rdata_RawTRY         = file.path(rdata_path,&quot;RawTRY_AllRegions_AllPlants.RData&quot;                    )
+Rdata_ExtraTRY       = file.path(rdata_path,paste0(&quot;ExtraTRY_&quot;      , use_realm,&quot;_AllPlants.RData&quot;))
+Rdata_GeolocationTRY = file.path(rdata_path,paste0(&quot;GeolocationTRY_&quot;, use_realm,&quot;_AllPlants.RData&quot;))
+Rdata_GeodataTRY     = file.path(rdata_path,paste0(&quot;GeodataTRY_&quot;    , use_realm,&quot;_AllPlants.RData&quot;))
+Rdata_TaxonomyTRY    = file.path(rdata_path,paste0(&quot;TaxonomyTRY_&quot;   , use_suffix         ,&quot;.RData&quot;))
+Rdata_TidyTRY        = file.path(rdata_path,paste0(&quot;TidyTRY_&quot;       , use_suffix         ,&quot;.RData&quot;)) 
 
 # Make sure directories are set.
 dummy = dir.create(path=lookup_path    ,showWarnings=FALSE,recursive=TRUE)
