@@ -133,6 +133,8 @@ The following block defines some settings for the standardised major axis for mo
 
     -   `"NeoTropical"`. South and Central America
     -   `"PanTropical"`. All continents.
+    -   `"AfricaTropical"`. Africa
+    -   `"AsiaTropical"`. Asia
 
 -   **fit_taxon**. Which taxonomic level of detail to use for SMA analyses? Options are:
 
@@ -175,7 +177,7 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical")[3L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
@@ -504,6 +506,8 @@ LabelLife = switch( use_lifeclass
 LabelRealm = switch( use_realm
                    , NeoTropical = "Neotropical"
                    , PanTropical = "Pantropical"
+                   , AfricaTropical = "AfricaTropical"
+                   , AsiaTropical = "AsiaTropical"
                    , stop("Unrecognised realm.")
                    )#end switch
 
