@@ -2,11 +2,10 @@
 title: "Trait/Allometry Database Pre-processor"
 author: "Marcos Longo"
 date: '2022-09-27'
-output:
-  html_document: default
-  pdf_document: default
+output: html_document
 ---
 
+```{=html}
 <style>
 pre {
   overflow-x: auto;
@@ -16,7 +15,7 @@ pre code {
   white-space: pre;
 }
 </style>
-
+```
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -612,7 +611,7 @@ if (reload_lookup && file.exists(Rdata_LookUp) && (! is_dry_run )){
       # Load author file.
       cat0("   - Read file ",try_base,".")
       TRYdbNow = read_csv( file      = try_file
-                         , col_types = paste(rep("c",times=27),collapse="")
+                         , col_types = paste(rep("c",times=28L),collapse="")
                          )#end read_csv
 
       # Identify which lines contain traits.
@@ -771,6 +770,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
    # Initialise the tidy TRY object.
    cat0(" + Initialise the tidy TRY object containing traits and ancillary variables.")
    TidyTRY = tibble( ObservationID  = integer(0L)
+                   , DatasetID      = character(0L)
                    , ScientificName = character(0L)
                    , Genus          = character(0L)
                    , Family         = character(0L)
@@ -841,16 +841,24 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
       # Load author file.
       cat0("   - ",sprintf("%4.4i of %4.4i",f,n_try_file_list),": Read file ",try_base,".")
       trydb_now = read_csv( file      = try_file
-                          , col_types = paste(rep("c",times=27),collapse="")
+                          , col_types = paste(rep("c",times=28L),collapse="")
                           )#end read_csv
 
       # Remove invalid characters
       trydb_now = trydb_now %>%
          mutate_all(~ iconv(.x,to=UTF8_System,sub="byte"))
 
-
-      # Standardise value kind names, and delete unwanted statistics (e.g., min/max)
-      trydb_now = TRY_Fix_ValueKindName(trydb_now,discard_rm=TRUE)
+      #    Standardise TRY Dataset identifiers. We append TRY to all of them.
+      trydb_now = trydb_now %>%
+         mutate( DatasetID = ifelse( test = ! is.na(suppressWarnings(as.integer(DatasetID)))
+                                   , yes  = sprintf("TRY%4.4i",suppressWarnings(as.integer(DatasetID)))
+                                   , no   = DatasetID
+                                   )#end ifelse
+               )#end mutate
+      
+      #    Standardise value kind names, and delete unwanted statistics (e.g., min/max) and
+      # duplicated observations (as flagged by TRY itself)
+      trydb_now = TRY_Fix_ValueKindName(trydb_now,discard_rm=TRUE,duplicate_rm=TRUE)
       # Make sure value kind is ordered
       if (! is.ordered(TidyTRY$ValueKind)){
          TidyTRY$ValueKind = ordered(TidyTRY$ValueKind,levels=levels(trydb_now$ValueKindName))
@@ -931,6 +939,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
 
          # Load useful variables that will be needed regardless of whether we use the 
          # original or standardised data.
+         DatasetID  = trydb_now$DatasetID    [sel]
          NameOrig   = trydb_now$OriglName    [sel]
          AuthorName = paste(trydb_now$FirstName[sel],trydb_now$LastName[sel])
          TraitVKind = trydb_now$ValueKindName[sel]
@@ -1033,7 +1042,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
          }#end if (any(TraitMess))
 
          
-         # Append scientific name and author (in case the information hasn't been already added).
+         # Append scientific name, author and dataset ID (in case the information hasn't been already added).
          TidyTRY$ScientificName[idx] = ifelse( test = is.na(TidyTRY$ScientificName[idx])
                                                     & (! is.na(trydb_now$AccSpeciesName[sel]))
                                              , yes  = trydb_now$AccSpeciesName[sel]
@@ -1043,6 +1052,10 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
          TidyTRY$Author        [idx] = ifelse( test = is.na(TidyTRY$Author[idx]) & (! is.na(AuthorName))
                                              , yes  = AuthorName
                                              , no   = TidyTRY$Author[idx]
+                                             )#end ifelse
+         TidyTRY$DatasetID     [idx] = ifelse( test = is.na(TidyTRY$DatasetID[idx]) & (! is.na(DatasetID))
+                                             , yes  = DatasetID
+                                             , no   = TidyTRY$DatasetID[idx]
                                              )#end ifelse
       }#end for (z in sequence(CntWhichTrait))
    }#end for ( f in seq_along(try_file_list))
@@ -1111,7 +1124,7 @@ if (load_ancil){
       # Load author file.
       cat0("   - ",sprintf("%4.4i of %4.4i",f,n_try_file_list),": Read file ",try_base,".")
       trydb_now = read_csv( file      = try_file
-                          , col_types = paste(rep("c",times=27),collapse="")
+                          , col_types = paste(rep("c",times=28L),collapse="")
                           )#end read_csv
       # Remove invalid characters
       trydb_now = trydb_now %>%
@@ -1235,6 +1248,9 @@ if (load_ancil){
             AncilTrait   = AncilFixed$Trait
             AncilAncilID = AncilFixed$AncilID
             AncilAncil   = AncilFixed$Ancil
+
+            # Also return the list of standard values, if present.
+            AncilLevels  = attr(AncilFixed,"Levels")
          }#end if (UseStdUnitNow)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
@@ -1275,12 +1291,30 @@ if (load_ancil){
             # is still NA, and only if the filling variable has information (we do this to
             # because many lines of the code may be associated with the same ancillary variable
             # and observation ID, but often only one has meaningful information). The only exception
-            # is if the variable is an experiment. In this case, we update treatment if there is 
-            # indication of a more substantial treatment than previously indicated.
+            # is if the variable is an experiment. In this case, we update treatment if there was 
+            # previous (incorrect) indication that this was not an experiment. If we identify
+            # multiple experiments, we set the value to "other".
             for (OutputNameNow in OutputName){
                if (OutputNameNow %in% TreatmentName){
-                  AncilIndex = as.integer(gsub(pattern="\\ .*",replacement="",x=AncilValue              ))
-                  ReferIndex = as.integer(gsub(pattern="\\ .*",replacement="",x=TidyTRY[[OutputNameNow]]))
+                  # Number of levels for treatment, and which are not "major" experiments
+                  CntAncilLevels = length(AncilLevels)
+                  MajorIndices   = 
+                     which(! ( grepl(pattern="control",x=AncilLevels,ignore.case=TRUE)
+                             | grepl(pattern="minor"  ,x=AncilLevels,ignore.case=TRUE) )
+                          )#end which
+
+                  # Match indices for ancillary and reference
+                  AncilIndex = match(AncilValue              ,AncilLevels)
+                  ReferIndex = match(TidyTRY[[OutputNameNow]],AncilLevels)
+                  
+                  # Update new index in case there are multiple experiments
+                  IsMultiple             = ( ( AncilIndex %in% MajorIndices )
+                                           & ( ReferIndex %in% MajorIndices ) )
+                  AncilValue[IsMultiple] = AncilLevels[CntAncilLevels]
+                  AncilIndex[IsMultiple] = CntALevels
+
+                  # Fill in information when new experiment information exists, or if
+                  # the new information indicates higher levels of experiments.
                   fill       = ( ( is.na(ReferIndex) | ( AncilIndex %gt% ReferIndex ) ) 
                                & ( AncilVName %in% OutputNameNow )
                                )#end fill
@@ -1562,7 +1596,7 @@ if (file.exists(Rdata_ExtraTRY)){
 Now we run additional trait harmonisation. Specifically, we standardise scientific names (always use the accepted name), make sure countries/continents are consistent with coordinates, and fix taxonomy to the best extent possible.
 ```{r, label='harmonise-geolocation',results='hide',message=FALSE}
 
-if (file.exists(Rdata_GeolocationTRY)){
+if (FALSE & file.exists(Rdata_GeolocationTRY)){
    # Load data.
    cat0(" + Reload TRY with harmonised geolocation from ",basename(Rdata_GeolocationTRY),".")
    dummy = load(Rdata_GeolocationTRY)
@@ -1602,6 +1636,7 @@ if (file.exists(Rdata_GeolocationTRY)){
       TidyTRY[[Country  ]][sel] = GeoHarm$Country
       TidyTRY[[Continent]][sel] = GeoHarm$Continent
    }#end if (IsGeoCoord & IsLocation)
+
 
    # Save look-up tables
    cat0("   - Save geolocation-corrected TRY data base to ",basename(Rdata_GeolocationTRY))
@@ -1828,10 +1863,10 @@ if (file.exists(Rdata_TaxonomyTRY)){
 
    }else if (! is.na(taxon_file)){
       cat0("     ~ File ",basename(taxon_file)," not found! Retrieve taxonomic information online.")
-      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+      IdxUniq = rep(NA_integer_,times=length(UniqScientific))
    }else{
       cat0("     ~ No taxonomic look-up table provided.  Retrieve taxonomic information online.")
-      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+      IdxUniq = rep(NA_integer_,times=length(UniqScientific))
    }#end if (file.exists(taxon_file))
 
       
@@ -1885,7 +1920,9 @@ if (file.exists(Rdata_TaxonomyTRY)){
    # Assign growth form in case they are available, then complement with taxa that can be related to growth form
    # Note that setting Poaceae to grass is not recommended, as we distinguish grasses from bamboos.
    cat0("     ~ Fill in growth form when they are synonym of a taxonomic group")
-   if ("GrowthForm" %in% names(TaxonList)) UniqTaxon$GrowthForm[sel] = TaxonList$GrowthForm[IdxUniq[sel]]
+   if ("TaxonList" %in% ls()){
+      if ("GrowthForm" %in% names(TaxonList)) UniqTaxon$GrowthForm[sel] = TaxonList$GrowthForm[IdxUniq[sel]]
+   }#end if ("TaxonList" %in% ls())
    UniqTaxon$GrowthForm[UniqTaxon$Family %in% "Arecaceae"       ] = "Palm"
    UniqTaxon$GrowthForm[UniqTaxon$Class  %in% "Polypodiopsida"  ] = "Fern"
 
@@ -2489,4 +2526,5 @@ if (file.exists(Rdata_TidyTRY)){
                )#end save
 }#end if (file.exists(Rdata_TidyTRY))
 ```
+
 

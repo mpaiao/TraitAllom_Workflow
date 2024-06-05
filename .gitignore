@@ -4,6 +4,7 @@
 *.x
 
 # specific rules
+Adm1_GeoJSON
 ByAuthor
 ClusterRData
 Figures
@@ -15,6 +16,7 @@ TaxonSummary
 UniqueAncil
 UniqueTrait
 docs/AdditionalData
+docs/Adm1_GeoJSON
 docs/BrazilianStatesMap
 docs/ByAuthor
 docs/ClusterRData

@@ -43,7 +43,6 @@ plot_path       = file.path(main_path,"Figures")
 rdata_path      = file.path(main_path,"RData")
 ```
 
-
 The following block defines some settings that were used for defining clusters and standardised major axes. This is used to reload the correct data sets and to generate unique labels for the allometry objects.
 
 -   **use_lifeclass**. Which life-form/phylogenetic level was used to subset the original data set. Options are:
@@ -104,11 +103,11 @@ The following block defines some settings for model fitting.
 -  **CntAllomMin**. Minimum number of valid points to consider for maps.
 -  **CntAllomMax**. Maximum number of points to consider for fitting. This is used to limit the model fitting to a more manageable number of observations when allometric data are exceedingly large. If no cap is sought, set `CntAllomMax = +Inf`, which will ensure to always use the actual number of observations. This setting is independent on the data binning sampling described in the next chunk.
 -  **AllomConfInt**. Confidence interval for allometric equations.
--  **AllomFitXIC**. Which information criterion to use when comparing models? Options are AIC (default), BIC or mR2Adj (negative of $R^2$ adjusted for the number of parameters).
--  **AllomMaxItGain**. Maximum number of iterations for calling the main optimiser for seeking a better maximum using the previous optimised set of parameters. This sometimes helps improving the model, but it typically stabilises after a handful of iterations (about 5).
+-  **AllomFitXIC**. Which information criterion to use when comparing models? Options are AIC (default) or BIC.
 -  **AllomMaxItOptim**. Maximum number of iterations before giving up optimising the model. This is actually what controls the search for the optimal point, and should be relatively high (1000--5000) as sometimes the initial guess is too far from the actual optimal.
--  **AllomTolGain**. Relative tolerance for successive calls of the main optimiser. Values of the order of $10^{-5}$ are typically sufficient.
+-  **AllomMaxItGain**. Maximum number of iterations for calling the main optimiser for seeking a better maximum using the previous optimised set of parameters. This sometimes helps improving the model, but it typically stabilises after a handful of iterations (about 5).
 -  **AllomTolOptim**. Relative tolerance for model fitting. This controls the error tolerance of the optimiser itself and should be stricter ($10^{-7}$) or less).
+-  **AllomTolGain**. Relative tolerance for successive calls of the main optimiser. Values of the order of $10^{-5}$ are typically sufficient.
 -  **UseFixedModel**. If `TRUE`, use global observations to define the best model formulation (equation type), and use this one for all classes and categories. If `FALSE`, use the test the best formulation for each class and category within class.
 -  **AllomCntPred**. Number of points spanning the range of predictors for fitted curve.
 -  **AllomQuantPred**. Logical flag: should the values span evenly by quantiles (TRUE) or just linearly (FALSE).
@@ -118,13 +117,14 @@ CntAllomMax   = Inf       # Maximum number of points for fitting allometric mode
 AllomConfInt  = 0.95      # Confidence interval for allometric model fittings.
 
 # Information criterion for selecting the best model
-AllomFitXIC     = c("AIC","BIC","mR2Adj")[2L]
+AllomFitXIC     = c("AIC","BIC")[1L]
 
 # Settings for non-linear heteroscedastic model fitting.
-AllomMaxItGain  = 4L      # Maximum number of iterations for calling the optimiser
-AllomMaxItOptim = 10000L  # Maximum number of iterations for finding the optimal point
-AllomTolGain    = 1.e-3   # Tolerance for accepting convergence of multiple optimiser calls.
-AllomTolOptim   = 1.e-8   # Tolerance for finding the optimum within each optimiser call.
+AllomMaxItOptim  = 10000L   # Max. # of iterations for the gnls optimisation
+AllomMaxItGain   = 5L       # Max. # of iterations for the nls optimisation step 
+AllomTolOptim    = 1.e-8    # Tolerance for convergence in the gnls algorithm
+AllomTolGain     = 1.e-4    # Tolerance for convergence criterion in nls step
+
 
 
 # Settings for predicting values.
@@ -714,10 +714,10 @@ if (reload_height_allom && file.exists(rdata_height_allom)){
                         , CntAllomMin     = CntAllomMin
                         , CntAllomMax     = CntAllomMax
                         , AllomConfInt    = AllomConfInt
-                        , AllomMaxItGain  = AllomMaxItGain
                         , AllomMaxItOptim = AllomMaxItOptim
-                        , AllomTolGain    = AllomTolGain
+                        , AllomMaxItGain  = AllomMaxItGain
                         , AllomTolOptim   = AllomTolOptim
+                        , AllomTolGain    = AllomTolGain
                         , AllomCntPred    = AllomCntPred
                         , AllomQuantPred  = AllomQuantPred
                         , AllomCntBoot    = AllomCntBoot
@@ -799,14 +799,14 @@ if (reload_agb_allom && file.exists(rdata_agb_allom)){
                      , CntAllomMin     = CntAllomMin
                      , CntAllomMax     = CntAllomMax
                      , AllomConfInt    = AllomConfInt
-                     , AllomMaxItGain  = AllomMaxItGain
                      , AllomMaxItOptim = AllomMaxItOptim
-                     , AllomTolGain    = AllomTolGain
+                     , AllomMaxItGain  = AllomMaxItGain
                      , AllomTolOptim   = AllomTolOptim
+                     , AllomTolGain    = AllomTolGain
                      , AllomCntPred    = AllomCntPred
                      , AllomQuantPred  = AllomQuantPred
                      , AllomCntBoot    = AllomCntBoot
-                     , UseSizeBins     = UseSizeBins
+                     , UseSizeBins     = FALSE
                      , xSample         = WDSize
                      , xLogSmp         = TRUE
                      , MinSmpPerBin    = MinSmpPerBin
@@ -865,12 +865,12 @@ if (reload_bleaf_allom && file.exists(rdata_bleaf_allom)){
                        , "OneLogLinear" , Height , NA_character_ , BLeaf
                        , "OneLogLinear" , Size   , NA_character_ , BLeaf
                        , "OneLogLinear" , LMSize , NA_character_ , BLeaf
-                       , "TwoMixLinear" , DBH    , LMA           , BLeaf
-                       , "TwoLogLinear" , DBH    , SLA           , BLeaf
-                       , "TwoMixLinear" , Height , LMA           , BLeaf
-                       , "TwoLogLinear" , Height , SLA           , BLeaf
-                       , "TwoMixLinear" , Size   , LMA           , BLeaf
-                       , "TwoLogLinear" , Size   , SLA           , BLeaf
+#                       , "TwoMixLinear" , DBH    , LMA           , BLeaf
+#                       , "TwoLogLinear" , DBH    , SLA           , BLeaf
+#                       , "TwoMixLinear" , Height , LMA           , BLeaf
+#                       , "TwoLogLinear" , Height , SLA           , BLeaf
+#                       , "TwoMixLinear" , Size   , LMA           , BLeaf
+#                       , "TwoLogLinear" , Size   , SLA           , BLeaf
                        )#end tribble
 
    # Find the suite of allometric models and uncertainties
@@ -884,10 +884,10 @@ if (reload_bleaf_allom && file.exists(rdata_bleaf_allom)){
                        , CntAllomMin     = CntAllomMin
                        , CntAllomMax     = CntAllomMax
                        , AllomConfInt    = AllomConfInt
-                       , AllomMaxItGain  = AllomMaxItGain
                        , AllomMaxItOptim = AllomMaxItOptim
-                       , AllomTolGain    = AllomTolGain
+                       , AllomMaxItGain  = AllomMaxItGain
                        , AllomTolOptim   = AllomTolOptim
+                       , AllomTolGain    = AllomTolGain
                        , AllomCntPred    = AllomCntPred
                        , AllomQuantPred  = AllomQuantPred
                        , AllomCntBoot    = AllomCntBoot
@@ -964,10 +964,10 @@ if (reload_leaf_area_allom && file.exists(rdata_leaf_area_allom)){
                           , CntAllomMin     = CntAllomMin
                           , CntAllomMax     = CntAllomMax
                           , AllomConfInt    = AllomConfInt
-                          , AllomMaxItGain  = AllomMaxItGain
                           , AllomMaxItOptim = AllomMaxItOptim
-                          , AllomTolGain    = AllomTolGain
+                          , AllomMaxItGain  = AllomMaxItGain
                           , AllomTolOptim   = AllomTolOptim
+                          , AllomTolGain    = AllomTolGain
                           , AllomCntPred    = AllomCntPred
                           , AllomQuantPred  = AllomQuantPred
                           , AllomCntBoot    = AllomCntBoot
@@ -1040,10 +1040,10 @@ if (reload_crown_area_allom && file.exists(rdata_crown_area_allom)){
                            , CntAllomMin     = CntAllomMin
                            , CntAllomMax     = CntAllomMax
                            , AllomConfInt    = AllomConfInt
-                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomMaxItOptim = AllomMaxItOptim
-                           , AllomTolGain    = AllomTolGain
+                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomTolOptim   = AllomTolOptim
+                           , AllomTolGain    = AllomTolGain
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
@@ -1112,10 +1112,10 @@ if (reload_crown_depth_allom && file.exists(rdata_crown_depth_allom)){
                             , CntAllomMin     = CntAllomMin
                             , CntAllomMax     = CntAllomMax
                             , AllomConfInt    = AllomConfInt
-                            , AllomMaxItGain  = AllomMaxItGain
                             , AllomMaxItOptim = AllomMaxItOptim
-                            , AllomTolGain    = AllomTolGain
+                            , AllomMaxItGain  = AllomMaxItGain
                             , AllomTolOptim   = AllomTolOptim
+                            , AllomTolGain    = AllomTolGain
                             , AllomCntPred    = AllomCntPred
                             , AllomQuantPred  = AllomQuantPred
                             , AllomCntBoot    = AllomCntBoot
@@ -1186,14 +1186,14 @@ if (reload_bark_thick_allom && file.exists(rdata_bark_thick_allom)){
                            , CntAllomMin     = CntAllomMin
                            , CntAllomMax     = CntAllomMax
                            , AllomConfInt    = AllomConfInt
-                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomMaxItOptim = AllomMaxItOptim
-                           , AllomTolGain    = AllomTolGain
+                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomTolOptim   = AllomTolOptim
+                           , AllomTolGain    = AllomTolGain
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = UseSizeBins
+                           , UseSizeBins     = FALSE
                            , xSample         = DBH
                            , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin
@@ -1807,7 +1807,7 @@ if (gg_screen && (cnt_gg_funct %gt% 0L)){
 
 In this block, we plot the functional shape of the fitted equations, and compare the results for the different categories. We only plot this if all classes are using the same functional form.
 
-```{r,label='plot-fitted-points',message=FALSE,results='hide',warning=FALSE,fig.width=8, fig.height=6}
+```{r,label='plot-fitted-scatter',message=FALSE,results='hide',warning=FALSE,fig.width=8, fig.height=6}
 
 # Load some files which will likely be updated as the code is developed.
 source(file.path(util_path,"TRY_Allometry_Utils.r"),chdir=TRUE)
