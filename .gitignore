@@ -2,7 +2,6 @@
 # the generic rules at the top
 # ignore output files
 *.x
-
 # specific rules
 Adm1_GeoJSON
 ByAuthor
@@ -34,3 +33,8 @@ docs/UniqueTrait
 AdditionalData/NGEE-Tropics.csv
 AdditionalData/Panama_Extra.csv
 .Rhistory
+.Rproj.user
+Adm1_GeoJSON
+.RData
+TraitAllom1.Rproj
+.DS_Store

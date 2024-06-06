@@ -37,12 +37,13 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+main_path       = file.path(home_path,"dev","TraitAllom1")
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
 rdata_path      = file.path(main_path,"RData")
 br_state_shp    = file.path(main_path,"BrazilianStatesMap","BrazilianStates.shp")
+
 ```
 
 Settings for reloading or rerunning multiple steps of this script. These are all logical variables, with `TRUE` meaning to reload previous calculations, and `FALSE` meaning to calculate the step again. If the RData file is not found, these variables will be ignored.
@@ -61,6 +62,7 @@ reload_cluster    = c(FALSE,TRUE)[2L]
 ```
 
 This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves.
+--> the variable plastic_sun_only is being set to FALSE, indicating that observations from traits showing high light plasticity should not be excluded
 
 ```{r,label='set-light',message=FALSE,results='hide',warning=FALSE}
 plastic_sun_only = c(FALSE,TRUE)[2L]
@@ -131,6 +133,8 @@ The following block defines some settings for the standardised major axis for mo
 
     -   `"NeoTropical"`. South and Central America
     -   `"PanTropical"`. All continents.
+    -   `"AfricaTropical"`. Africa
+    -   `"AsiaTropical"`. Asia
 
 -   **fit_taxon**. Which taxonomic level of detail to use for SMA analyses? Options are:
 
@@ -173,13 +177,13 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical")[3L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
 ```
 
-Settings for Kendall correlation table
+Settings for Kendall correlation table. 
 
 - **n_kendall_min**.  This is the minimum number of valid pairs of variables for computing correlation.
 - **pmax_kendall_show**. Maximum p-value for which correlations are written to the CSV file.
@@ -374,7 +378,6 @@ Load all countries and Brazilian states to include in the plot.
 # Load countries and Brazilian states
 all_countries = sf::st_as_sf(maps::map("world2",plot=FALSE,fill=TRUE,wrap=c(-180,180)))
 br_states     = sf::st_as_sf(st_read(br_state_shp))
-
 ```
 
 Load the harmonised trait data set, stored in file `rdata_TidyTRY`. This is the output of script `TidyTraitAllomDB.Rmd` so make sure to run that pre-processing first.
@@ -504,6 +507,8 @@ LabelLife = switch( use_lifeclass
 LabelRealm = switch( use_realm
                    , NeoTropical = "Neotropical"
                    , PanTropical = "Pantropical"
+                   , AfricaTropical = "AfricaTropical"
+                   , AsiaTropical = "AsiaTropical"
                    , stop("Unrecognised realm.")
                    )#end switch
 
