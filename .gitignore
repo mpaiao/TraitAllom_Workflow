@@ -2,7 +2,6 @@
 # the generic rules at the top
 # ignore output files
 *.x
-
 # specific rules
 ByAuthor
 ClusterRData
@@ -32,3 +31,8 @@ docs/UniqueTrait
 AdditionalData/NGEE-Tropics.csv
 AdditionalData/Panama_Extra.csv
 .Rhistory
+.Rproj.user
+Adm1_GeoJSON
+TRY_Harmonise_Utils_Trisha.r
+.DS_Store
+.RDataTmp

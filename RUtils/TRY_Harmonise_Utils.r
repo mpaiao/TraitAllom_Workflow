@@ -196,39 +196,33 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    #---~---
 
 
-
    #---~---
    #   Retrieve spatial points.
    #---~---
-   PointsSP = data.frame(x=lon,y=lat)
-   PointsSP = SpatialPoints( PointsSP
-                            , proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs")
-                            )#end SpatialPoints
-   PointsSP = spTransform(PointsSP,CRSobj=proj4string(CountriesSP))
+   PointsSP    = vect(data.frame(x=lon,y=lat),geom=c("x","y"),crs="EPSG:4326")
+   PointsSF    = st_as_sf(PointsSP)
+   CountriesSF = st_as_sf(CountriesSP)
+   dummy       = sf_use_s2(FALSE)
+   GeoInfo   = as_tibble(st_join(PointsSF,CountriesSF))
+   dummy       = sf_use_s2(TRUE)
+   
    #---~---
-
-   #---~---
-   #   Find the countries.
-   #---~---
-   GeoInfo = over(PointsSP,CountriesSP)
-   #---~---
-
-
+   
    #---~---
    #   For some reason French Guiana doesn't belong to any continent.
    #---~---
    GeoInfo$Stern[GeoInfo$NAME %in% "French Guiana"] = "South America"
    #---~---
-
-
+   
+   
    #---~---
    #   Get indices of the polygons object containing each point.s
    #---~---
    Country   = as.character(GeoInfo$NAME)
    Continent = as.character(GeoInfo$Stern)
    #---~---
-
-
+   
+   
    #---~---
    #   Standardise countries
    #---~---
@@ -246,9 +240,9 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    Country[Country %in% "Somaliland"               ] = "Somalia"
    Country[Country %in% "Swaziland"                ] = "Eswatini"
    #---~---
-
-
-
+   
+   
+   
    #---~---
    #   For every large country, identify the sub-national region if any data 
    # are from the country.
@@ -257,39 +251,34 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    LargeCountries = LargeCountries[LargeCountries %in% Country]
    for (Large in LargeCountries){
       cat0("      > Assign sub-national region for data from ",Large,".")
-      #---~---
-      #   Select data from the large country
-      #---~---
-      IsLarge  = Country %in% Large
-      PointsSP = data.frame(x=lon[IsLarge],y=lat[IsLarge])
-      PointsSP = SpatialPoints( PointsSP
-                              , proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs")
-                              )#end SpatialPoints
-      PointsSP = spTransform(PointsSP,CRSobj=proj4string(CountriesSP))
-      #---~---
-
-
-      #---~---
-      #   Convert country data into a spatial polygon
-      #---~---
-      LargeSP = sf::as_Spatial(get(paste0(gsub(pattern=" ",replacement="",x=Large),"SP")))
-      LargeSP = spTransform(LargeSP,CRSobj=proj4string(CountriesSP))
-      #---~---
-
-
-      #---~---
-      #   Append sub-national label to data.
-      #---~---
-      LargeInfo        = over(PointsSP,LargeSP)
-      SubNational      = as.character(LargeInfo$shapeISO)
-      Append           = ! is.na(SubNational)
-      Country[IsLarge] = ifelse( test = Append
-                               , yes  = paste(Country[IsLarge],SubNational)
-                               , no   = Country[IsLarge]
-                               )#end ifelse
-      #---~---
+     #---~---
+     #   Select data from the large country
+     #---~---
+     IsLarge  = Country %in% Large
+     PointsSP = vect(data.frame(x=lon[IsLarge],y=lat[IsLarge]),geom=c("x","y"),crs="EPSG:4326")
+     PointsSF    = st_as_sf(PointsSP)
+     #---~---
+     
+     #---~---
+     #   Convert country data into a spatial polygon
+     #---~---
+     LargeSF = sf::st_as_sf(get(paste0(gsub(pattern=" ",replacement="",x=Large),"SP")))
+     LargeSF = st_transform(LargeSF,crs(CountriesSF))
+     #---~---
+     #---~---
+     #   Append sub-national label to data.
+     #---~---
+     dummy       = sf_use_s2(FALSE)
+     LargeInfo        = as_tibble(st_join(PointsSF, LargeSF))
+     dummy       = sf_use_s2(TRUE)
+     SubNational      = as.character(LargeInfo$shapeISO)
+     Append           = ! is.na(SubNational)
+     Country[IsLarge] = ifelse( test = Append
+                                , yes  = paste(Country[IsLarge],SubNational)
+                                , no   = Country[IsLarge]
+     )#end ifelse
+     #---~---
    }#end for (Large in LargeCountries)
-   #---~---
 
 
    #---~---
@@ -648,8 +637,43 @@ SelectNeoTropical <<- function(x){
 }#end SelectNeoTropical
 #---~---
 
+#---~---
+#     This function selects West US (sensu strictu) observations.
+#---~---
+SelectWestUS <<- function(x){
+  
+  #---~---
+  #   First step: List climates represented in West US.
+  #---~---
+  WestUSClimates   = c("Csa", "Csb", "Dsb", "Dsc", "Dfa", "Dfc")
+  #---~---
 
-
+  #---~---
+  #   We first select the observations based on longitude and latitude. If not, then we
+  # rely on climates and biomes.
+  #---~---
+  IsCoord_WestUS     = ( x$lon %wr% c(-126,-114) ) &  ( x$lat %wr% c(32,49) )
+  MissCoord         = is.na(x$lat) | is.na(x$lon)
+  IsWestUSClimate  = MissCoord & ( x$climate   %in% WestUSClimates )
+ # IsWestUSBiome    = MissCoord & ( x$biome     %in% WestUSBiomes )
+  #---~---
+ 
+  #---~---
+  #   Select likely WestUS observations. We will assess the inclusion/exclusion
+  # based on how many data we end up with. We will seek to have as many as possible 
+  # without risking adding sites that shouldn't be included.
+  #---~---
+  IsWestUS = (( IsCoord_WestUS ) & ( IsWestUSClimate
+                    )
+  )#end IsWestUS
+  #---~---
+  
+  return(IsWestUS)
+}#end SelectWestUS
+#---~---
+  
+  
+  
 
 #---~---
 #   This function assigns growth forms to individuals using harmonised species and 
