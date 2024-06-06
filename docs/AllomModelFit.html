@@ -389,26 +389,24 @@ next chunk.</li>
 <li><strong>AllomConfInt</strong>. Confidence interval for allometric
 equations.</li>
 <li><strong>AllomFitXIC</strong>. Which information criterion to use
-when comparing models? Options are AIC (default), BIC or mR2Adj
-(negative of <span class="math inline">\(R^2\)</span> adjusted for the
-number of parameters).</li>
-<li><strong>AllomMaxItGain</strong>. Maximum number of iterations for
-calling the main optimiser for seeking a better maximum using the
-previous optimised set of parameters. This sometimes helps improving the
-model, but it typically stabilises after a handful of iterations (about
-5).</li>
+when comparing models? Options are AIC (default) or BIC.</li>
 <li><strong>AllomMaxItOptim</strong>. Maximum number of iterations
 before giving up optimising the model. This is actually what controls
 the search for the optimal point, and should be relatively high
 (1000–5000) as sometimes the initial guess is too far from the actual
 optimal.</li>
-<li><strong>AllomTolGain</strong>. Relative tolerance for successive
-calls of the main optimiser. Values of the order of <span
-class="math inline">\(10^{-5}\)</span> are typically sufficient.</li>
+<li><strong>AllomMaxItGain</strong>. Maximum number of iterations for
+calling the main optimiser for seeking a better maximum using the
+previous optimised set of parameters. This sometimes helps improving the
+model, but it typically stabilises after a handful of iterations (about
+5).</li>
 <li><strong>AllomTolOptim</strong>. Relative tolerance for model
 fitting. This controls the error tolerance of the optimiser itself and
 should be stricter (<span class="math inline">\(10^{-7}\)</span>) or
 less).</li>
+<li><strong>AllomTolGain</strong>. Relative tolerance for successive
+calls of the main optimiser. Values of the order of <span
+class="math inline">\(10^{-5}\)</span> are typically sufficient.</li>
 <li><strong>UseFixedModel</strong>. If <code>TRUE</code>, use global
 observations to define the best model formulation (equation type), and
 use this one for all classes and categories. If <code>FALSE</code>, use
@@ -424,13 +422,14 @@ CntAllomMax   = Inf       # Maximum number of points for fitting allometric mode
 AllomConfInt  = 0.95      # Confidence interval for allometric model fittings.
 
 # Information criterion for selecting the best model
-AllomFitXIC     = c(&quot;AIC&quot;,&quot;BIC&quot;,&quot;mR2Adj&quot;)[2L]
+AllomFitXIC     = c(&quot;AIC&quot;,&quot;BIC&quot;)[1L]
 
 # Settings for non-linear heteroscedastic model fitting.
-AllomMaxItGain  = 4L      # Maximum number of iterations for calling the optimiser
-AllomMaxItOptim = 10000L  # Maximum number of iterations for finding the optimal point
-AllomTolGain    = 1.e-3   # Tolerance for accepting convergence of multiple optimiser calls.
-AllomTolOptim   = 1.e-8   # Tolerance for finding the optimum within each optimiser call.
+AllomMaxItOptim  = 10000L   # Max. # of iterations for the gnls optimisation
+AllomMaxItGain   = 5L       # Max. # of iterations for the nls optimisation step 
+AllomTolOptim    = 1.e-8    # Tolerance for convergence in the gnls algorithm
+AllomTolGain     = 1.e-4    # Tolerance for convergence criterion in nls step
+
 
 
 # Settings for predicting values.
@@ -1042,10 +1041,10 @@ then select the one that has the best predictive power.</p>
                         , CntAllomMin     = CntAllomMin
                         , CntAllomMax     = CntAllomMax
                         , AllomConfInt    = AllomConfInt
-                        , AllomMaxItGain  = AllomMaxItGain
                         , AllomMaxItOptim = AllomMaxItOptim
-                        , AllomTolGain    = AllomTolGain
+                        , AllomMaxItGain  = AllomMaxItGain
                         , AllomTolOptim   = AllomTolOptim
+                        , AllomTolGain    = AllomTolGain
                         , AllomCntPred    = AllomCntPred
                         , AllomQuantPred  = AllomQuantPred
                         , AllomCntBoot    = AllomCntBoot
@@ -1131,14 +1130,14 @@ which may be easier for lidar applications.</p>
                      , CntAllomMin     = CntAllomMin
                      , CntAllomMax     = CntAllomMax
                      , AllomConfInt    = AllomConfInt
-                     , AllomMaxItGain  = AllomMaxItGain
                      , AllomMaxItOptim = AllomMaxItOptim
-                     , AllomTolGain    = AllomTolGain
+                     , AllomMaxItGain  = AllomMaxItGain
                      , AllomTolOptim   = AllomTolOptim
+                     , AllomTolGain    = AllomTolGain
                      , AllomCntPred    = AllomCntPred
                      , AllomQuantPred  = AllomQuantPred
                      , AllomCntBoot    = AllomCntBoot
-                     , UseSizeBins     = UseSizeBins
+                     , UseSizeBins     = FALSE
                      , xSample         = WDSize
                      , xLogSmp         = TRUE
                      , MinSmpPerBin    = MinSmpPerBin
@@ -1207,12 +1206,12 @@ be easier for lidar applications.</p>
                        , &quot;OneLogLinear&quot; , Height , NA_character_ , BLeaf
                        , &quot;OneLogLinear&quot; , Size   , NA_character_ , BLeaf
                        , &quot;OneLogLinear&quot; , LMSize , NA_character_ , BLeaf
-                       , &quot;TwoMixLinear&quot; , DBH    , LMA           , BLeaf
-                       , &quot;TwoLogLinear&quot; , DBH    , SLA           , BLeaf
-                       , &quot;TwoMixLinear&quot; , Height , LMA           , BLeaf
-                       , &quot;TwoLogLinear&quot; , Height , SLA           , BLeaf
-                       , &quot;TwoMixLinear&quot; , Size   , LMA           , BLeaf
-                       , &quot;TwoLogLinear&quot; , Size   , SLA           , BLeaf
+#                       , &quot;TwoMixLinear&quot; , DBH    , LMA           , BLeaf
+#                       , &quot;TwoLogLinear&quot; , DBH    , SLA           , BLeaf
+#                       , &quot;TwoMixLinear&quot; , Height , LMA           , BLeaf
+#                       , &quot;TwoLogLinear&quot; , Height , SLA           , BLeaf
+#                       , &quot;TwoMixLinear&quot; , Size   , LMA           , BLeaf
+#                       , &quot;TwoLogLinear&quot; , Size   , SLA           , BLeaf
                        )#end tribble
 
    # Find the suite of allometric models and uncertainties
@@ -1226,10 +1225,10 @@ be easier for lidar applications.</p>
                        , CntAllomMin     = CntAllomMin
                        , CntAllomMax     = CntAllomMax
                        , AllomConfInt    = AllomConfInt
-                       , AllomMaxItGain  = AllomMaxItGain
                        , AllomMaxItOptim = AllomMaxItOptim
-                       , AllomTolGain    = AllomTolGain
+                       , AllomMaxItGain  = AllomMaxItGain
                        , AllomTolOptim   = AllomTolOptim
+                       , AllomTolGain    = AllomTolGain
                        , AllomCntPred    = AllomCntPred
                        , AllomQuantPred  = AllomQuantPred
                        , AllomCntBoot    = AllomCntBoot
@@ -1306,10 +1305,10 @@ for lidar applications.</p>
                           , CntAllomMin     = CntAllomMin
                           , CntAllomMax     = CntAllomMax
                           , AllomConfInt    = AllomConfInt
-                          , AllomMaxItGain  = AllomMaxItGain
                           , AllomMaxItOptim = AllomMaxItOptim
-                          , AllomTolGain    = AllomTolGain
+                          , AllomMaxItGain  = AllomMaxItGain
                           , AllomTolOptim   = AllomTolOptim
+                          , AllomTolGain    = AllomTolGain
                           , AllomCntPred    = AllomCntPred
                           , AllomQuantPred  = AllomQuantPred
                           , AllomCntBoot    = AllomCntBoot
@@ -1386,10 +1385,10 @@ easier for lidar applications.</p>
                            , CntAllomMin     = CntAllomMin
                            , CntAllomMax     = CntAllomMax
                            , AllomConfInt    = AllomConfInt
-                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomMaxItOptim = AllomMaxItOptim
-                           , AllomTolGain    = AllomTolGain
+                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomTolOptim   = AllomTolOptim
+                           , AllomTolGain    = AllomTolGain
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
@@ -1454,10 +1453,10 @@ purely linear function.</p>
                             , CntAllomMin     = CntAllomMin
                             , CntAllomMax     = CntAllomMax
                             , AllomConfInt    = AllomConfInt
-                            , AllomMaxItGain  = AllomMaxItGain
                             , AllomMaxItOptim = AllomMaxItOptim
-                            , AllomTolGain    = AllomTolGain
+                            , AllomMaxItGain  = AllomMaxItGain
                             , AllomTolOptim   = AllomTolOptim
+                            , AllomTolGain    = AllomTolGain
                             , AllomCntPred    = AllomCntPred
                             , AllomQuantPred  = AllomQuantPred
                             , AllomCntBoot    = AllomCntBoot
@@ -1525,14 +1524,14 @@ DBH or height, potentially scaled by wood density.</p>
                            , CntAllomMin     = CntAllomMin
                            , CntAllomMax     = CntAllomMax
                            , AllomConfInt    = AllomConfInt
-                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomMaxItOptim = AllomMaxItOptim
-                           , AllomTolGain    = AllomTolGain
+                           , AllomMaxItGain  = AllomMaxItGain
                            , AllomTolOptim   = AllomTolOptim
+                           , AllomTolGain    = AllomTolGain
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = UseSizeBins
+                           , UseSizeBins     = FALSE
                            , xSample         = DBH
                            , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin
@@ -2410,7 +2409,7 @@ if (gg_screen &amp;&amp; (cnt_gg_funct %gt% 0L)){
    gg_show = sort(sample.int(n=cnt_gg_funct,size=min(cnt_gg_funct,3L),replace=FALSE))
    gg_funct[gg_show]
 }#end if (gg_screen &amp;&amp; (cnt_gg_funct %gt% 0L))</code></pre>
-<p><img src="AllomModelFit_files/figure-html/plot-fitted-points-1.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-points-2.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-points-3.png" width="768" /></p>
+<p><img src="AllomModelFit_files/figure-html/plot-fitted-scatter-1.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-scatter-2.png" width="768" /><img src="AllomModelFit_files/figure-html/plot-fitted-scatter-3.png" width="768" /></p>
 </div>
 </div>
 <div id="create-a-summary-table-with-the-allometry"

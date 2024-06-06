@@ -18,7 +18,7 @@
 <script src="site_libs/header-attrs-2.25/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -32,7 +32,7 @@
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
-<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
 <style type="text/css">
@@ -60,6 +60,7 @@ if (window.hljs) {
 
 
 
+<link rel="stylesheet" href="styles.css" type="text/css" />
 
 
 
@@ -1151,7 +1152,7 @@ once, unless a new version of data request is being used.</p>
       # Load author file.
       cat0(&quot;   - Read file &quot;,try_base,&quot;.&quot;)
       TRYdbNow = read_csv( file      = try_file
-                         , col_types = paste(rep(&quot;c&quot;,times=27),collapse=&quot;&quot;)
+                         , col_types = paste(rep(&quot;c&quot;,times=28L),collapse=&quot;&quot;)
                          )#end read_csv
 
       # Identify which lines contain traits.
@@ -1307,6 +1308,7 @@ tibble object, with one row for each observation.</p>
    # Initialise the tidy TRY object.
    cat0(&quot; + Initialise the tidy TRY object containing traits and ancillary variables.&quot;)
    TidyTRY = tibble( ObservationID  = integer(0L)
+                   , DatasetID      = character(0L)
                    , ScientificName = character(0L)
                    , Genus          = character(0L)
                    , Family         = character(0L)
@@ -1377,15 +1379,24 @@ tibble object, with one row for each observation.</p>
       # Load author file.
       cat0(&quot;   - &quot;,sprintf(&quot;%4.4i of %4.4i&quot;,f,n_try_file_list),&quot;: Read file &quot;,try_base,&quot;.&quot;)
       trydb_now = read_csv( file      = try_file
-                          , col_types = paste(rep(&quot;c&quot;,times=27),collapse=&quot;&quot;)
+                          , col_types = paste(rep(&quot;c&quot;,times=28L),collapse=&quot;&quot;)
                           )#end read_csv
 
       # Remove invalid characters
       trydb_now = trydb_now %&gt;%
          mutate_all(~ iconv(.x,to=UTF8_System,sub=&quot;byte&quot;))
 
-      # Standardise value kind names, and delete unwanted statistics (e.g., min/max)
-      trydb_now = TRY_Fix_ValueKindName(trydb_now,discard_rm=TRUE)
+      #    Standardise TRY Dataset identifiers. We append TRY to all of them.
+      trydb_now = trydb_now %&gt;%
+         mutate( DatasetID = ifelse( test = ! is.na(suppressWarnings(as.integer(DatasetID)))
+                                   , yes  = sprintf(&quot;TRY%4.4i&quot;,suppressWarnings(as.integer(DatasetID)))
+                                   , no   = DatasetID
+                                   )#end ifelse
+               )#end mutate
+      
+      #    Standardise value kind names, and delete unwanted statistics (e.g., min/max) and
+      # duplicated observations (as flagged by TRY itself)
+      trydb_now = TRY_Fix_ValueKindName(trydb_now,discard_rm=TRUE,duplicate_rm=TRUE)
       # Make sure value kind is ordered
       if (! is.ordered(TidyTRY$ValueKind)){
          TidyTRY$ValueKind = ordered(TidyTRY$ValueKind,levels=levels(trydb_now$ValueKindName))
@@ -1465,6 +1476,7 @@ tibble object, with one row for each observation.</p>
 
          # Load useful variables that will be needed regardless of whether we use the 
          # original or standardised data.
+         DatasetID  = trydb_now$DatasetID    [sel]
          NameOrig   = trydb_now$OriglName    [sel]
          AuthorName = paste(trydb_now$FirstName[sel],trydb_now$LastName[sel])
          TraitVKind = trydb_now$ValueKindName[sel]
@@ -1565,7 +1577,7 @@ tibble object, with one row for each observation.</p>
          }#end if (any(TraitMess))
 
          
-         # Append scientific name and author (in case the information hasn&#39;t been already added).
+         # Append scientific name, author and dataset ID (in case the information hasn&#39;t been already added).
          TidyTRY$ScientificName[idx] = ifelse( test = is.na(TidyTRY$ScientificName[idx])
                                                     &amp; (! is.na(trydb_now$AccSpeciesName[sel]))
                                              , yes  = trydb_now$AccSpeciesName[sel]
@@ -1575,6 +1587,10 @@ tibble object, with one row for each observation.</p>
          TidyTRY$Author        [idx] = ifelse( test = is.na(TidyTRY$Author[idx]) &amp; (! is.na(AuthorName))
                                              , yes  = AuthorName
                                              , no   = TidyTRY$Author[idx]
+                                             )#end ifelse
+         TidyTRY$DatasetID     [idx] = ifelse( test = is.na(TidyTRY$DatasetID[idx]) &amp; (! is.na(DatasetID))
+                                             , yes  = DatasetID
+                                             , no   = TidyTRY$DatasetID[idx]
                                              )#end ifelse
       }#end for (z in sequence(CntWhichTrait))
    }#end for ( f in seq_along(try_file_list))
@@ -1638,7 +1654,7 @@ tibble object, with one row for each observation.</p>
       # Load author file.
       cat0(&quot;   - &quot;,sprintf(&quot;%4.4i of %4.4i&quot;,f,n_try_file_list),&quot;: Read file &quot;,try_base,&quot;.&quot;)
       trydb_now = read_csv( file      = try_file
-                          , col_types = paste(rep(&quot;c&quot;,times=27),collapse=&quot;&quot;)
+                          , col_types = paste(rep(&quot;c&quot;,times=28L),collapse=&quot;&quot;)
                           )#end read_csv
       # Remove invalid characters
       trydb_now = trydb_now %&gt;%
@@ -1759,6 +1775,9 @@ tibble object, with one row for each observation.</p>
             AncilTrait   = AncilFixed$Trait
             AncilAncilID = AncilFixed$AncilID
             AncilAncil   = AncilFixed$Ancil
+
+            # Also return the list of standard values, if present.
+            AncilLevels  = attr(AncilFixed,&quot;Levels&quot;)
          }#end if (UseStdUnitNow)
 
          # Change variable type. In case the variable is numeric, apply variable transformation too.
@@ -1799,12 +1818,30 @@ tibble object, with one row for each observation.</p>
             # is still NA, and only if the filling variable has information (we do this to
             # because many lines of the code may be associated with the same ancillary variable
             # and observation ID, but often only one has meaningful information). The only exception
-            # is if the variable is an experiment. In this case, we update treatment if there is 
-            # indication of a more substantial treatment than previously indicated.
+            # is if the variable is an experiment. In this case, we update treatment if there was 
+            # previous (incorrect) indication that this was not an experiment. If we identify
+            # multiple experiments, we set the value to &quot;other&quot;.
             for (OutputNameNow in OutputName){
                if (OutputNameNow %in% TreatmentName){
-                  AncilIndex = as.integer(gsub(pattern=&quot;\\ .*&quot;,replacement=&quot;&quot;,x=AncilValue              ))
-                  ReferIndex = as.integer(gsub(pattern=&quot;\\ .*&quot;,replacement=&quot;&quot;,x=TidyTRY[[OutputNameNow]]))
+                  # Number of levels for treatment, and which are not &quot;major&quot; experiments
+                  CntAncilLevels = length(AncilLevels)
+                  MajorIndices   = 
+                     which(! ( grepl(pattern=&quot;control&quot;,x=AncilLevels,ignore.case=TRUE)
+                             | grepl(pattern=&quot;minor&quot;  ,x=AncilLevels,ignore.case=TRUE) )
+                          )#end which
+
+                  # Match indices for ancillary and reference
+                  AncilIndex = match(AncilValue              ,AncilLevels)
+                  ReferIndex = match(TidyTRY[[OutputNameNow]],AncilLevels)
+                  
+                  # Update new index in case there are multiple experiments
+                  IsMultiple             = ( ( AncilIndex %in% MajorIndices )
+                                           &amp; ( ReferIndex %in% MajorIndices ) )
+                  AncilValue[IsMultiple] = AncilLevels[CntAncilLevels]
+                  AncilIndex[IsMultiple] = CntALevels
+
+                  # Fill in information when new experiment information exists, or if
+                  # the new information indicates higher levels of experiments.
                   fill       = ( ( is.na(ReferIndex) | ( AncilIndex %gt% ReferIndex ) ) 
                                &amp; ( AncilVName %in% OutputNameNow )
                                )#end fill
@@ -2073,7 +2110,7 @@ traits must be standardised beforehand).</p>
 standardise scientific names (always use the accepted name), make sure
 countries/continents are consistent with coordinates, and fix taxonomy
 to the best extent possible.</p>
-<pre class="r"><code>if (file.exists(Rdata_GeolocationTRY)){
+<pre class="r"><code>if (FALSE &amp; file.exists(Rdata_GeolocationTRY)){
    # Load data.
    cat0(&quot; + Reload TRY with harmonised geolocation from &quot;,basename(Rdata_GeolocationTRY),&quot;.&quot;)
    dummy = load(Rdata_GeolocationTRY)
@@ -2113,6 +2150,7 @@ to the best extent possible.</p>
       TidyTRY[[Country  ]][sel] = GeoHarm$Country
       TidyTRY[[Continent]][sel] = GeoHarm$Continent
    }#end if (IsGeoCoord &amp; IsLocation)
+
 
    # Save look-up tables
    cat0(&quot;   - Save geolocation-corrected TRY data base to &quot;,basename(Rdata_GeolocationTRY))
@@ -2335,10 +2373,10 @@ these requires local knowledge.</p>
 
    }else if (! is.na(taxon_file)){
       cat0(&quot;     ~ File &quot;,basename(taxon_file),&quot; not found! Retrieve taxonomic information online.&quot;)
-      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+      IdxUniq = rep(NA_integer_,times=length(UniqScientific))
    }else{
       cat0(&quot;     ~ No taxonomic look-up table provided.  Retrieve taxonomic information online.&quot;)
-      IdxUniq = match(UniqScientific,TaxonList$TRYName)
+      IdxUniq = rep(NA_integer_,times=length(UniqScientific))
    }#end if (file.exists(taxon_file))
 
       
@@ -2392,7 +2430,9 @@ these requires local knowledge.</p>
    # Assign growth form in case they are available, then complement with taxa that can be related to growth form
    # Note that setting Poaceae to grass is not recommended, as we distinguish grasses from bamboos.
    cat0(&quot;     ~ Fill in growth form when they are synonym of a taxonomic group&quot;)
-   if (&quot;GrowthForm&quot; %in% names(TaxonList)) UniqTaxon$GrowthForm[sel] = TaxonList$GrowthForm[IdxUniq[sel]]
+   if (&quot;TaxonList&quot; %in% ls()){
+      if (&quot;GrowthForm&quot; %in% names(TaxonList)) UniqTaxon$GrowthForm[sel] = TaxonList$GrowthForm[IdxUniq[sel]]
+   }#end if (&quot;TaxonList&quot; %in% ls())
    UniqTaxon$GrowthForm[UniqTaxon$Family %in% &quot;Arecaceae&quot;       ] = &quot;Palm&quot;
    UniqTaxon$GrowthForm[UniqTaxon$Class  %in% &quot;Polypodiopsida&quot;  ] = &quot;Fern&quot;
 

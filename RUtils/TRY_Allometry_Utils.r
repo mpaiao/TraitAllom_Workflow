@@ -998,11 +998,13 @@ Allom_Fit <<- function( DataTRY
       zParam        = coef(zFit)
       names(zParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(zParam))
       names(zParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(zParam))
+      names(zParam) = gsub(pattern="sigma0"  ,replacement="s0",x=names(zParam))
       if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
       if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
-      if (! "s0" %in% names(zParam)) zParam["s0"] = zFit$sigma0
+      if (! "s0" %in% names(zParam)) zParam["s0"] = mean(zFit$sigma)
       if (! "s1" %in% names(zParam)) zParam["s1"] = 0.
       zParam        = zParam[c("a0","a1","a2","s0","s1")]
+      zSigma0       = zFit$sigma0
       #---~---
 
 
@@ -1058,6 +1060,7 @@ Allom_Fit <<- function( DataTRY
       SummAllom$wR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
                                               , yPred  = yPred
                                               , ySigma = ySigma
+                                              , Sigma0 = zSigma0
                                               , nParam = zCntParam
                                               )#end Allom_R2Adj
       SummAllom$oR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
@@ -1118,9 +1121,10 @@ Allom_Fit <<- function( DataTRY
          bParam        = zFit$coeff.boot[b,]
          names(bParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(bParam))
          names(bParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(bParam))
+         names(bParam) = gsub(pattern="sigma0"  ,replacement="s0",x=names(bParam))
          if (! "a1" %in% names(bParam)) bParam["a1"] = NA_real_
          if (! "a2" %in% names(bParam)) bParam["a2"] = NA_real_
-         if (! "s0" %in% names(bParam)) bParam["s0"] = zFit$sigma0.boot[b]
+         if (! "s0" %in% names(bParam)) bParam["s0"] = mean(zFit$sigma.boot[,b])
          if (! "s1" %in% names(bParam)) bParam["s1"] = 0.
          bParam        = bParam[c("a0","a1","a2","s0","s1")]
          #---~---
@@ -1320,35 +1324,62 @@ Allom_Pred <<- function( x
 #---~---
 #     This function computes the adjusted R2 for allometric models. This is intended to be
 # used for full-model assessment only, as it inherently assumes that the model is unbiased.
+# If standard deviation of residuals (Sigma) and reference sigma (Sigma0) are provided, R2
+# is computed using the weighting factors (WN88).
 #
 # Input variables:
 # yOrig  - vector with original values of variable y
 # yPred  - vector with predicted values of variable y
 # ySigma - vector with the predicted values of standard deviation of the residuals.
+# Sigma0 - reference standard deviation of residuals, obtained from the model fitting.
 # nParam - number of model parameters
+#
+#
+# Reference:
+# 
+# Willett, J. B., and J. D. Singer, 1988: Another cautionary note about r2: Its use in 
+#    weighted least-squares regression analysis. Am. Stat., 42 (3), 236-238,
+#    doi:10.1080/00031305.1988.10475573 (WN88).
+#
 #---~---
-Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,nParam){
+Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,Sigma0=NULL,nParam){
+
+   #---~---
+   #   Assign a default sigma0 if it is missing.
+   #---~---
+   if (is.null(Sigma0)){
+      yKeep  = is.finite(yOrig) & is.finite(yPred)
+      nKeep  = sum(yKeep)
+      Sigma0 = sqrt( sum( (yOrig[yKeep]-yPred[yKeep])^2,na.rm=TRUE) / (nKeep - nParam) )
+   }#end if (is.null(Sigma0))
+   #---~---
+
+
 
    #---~---
    #   Assign a default sigma if it is missing.
    #---~---
-   if (is.null(ySigma)) ySigma = 0*yOrig + sd(yOrig-yPred,na.rm=TRUE)
+   if (is.null(ySigma)){
+      ySigma  = Sigma0 + 0 * yOrig
+   }#end if (is.null(ySigma))
    #---~---
 
 
    #---~---
-   #   Keep only the entries in which both yOrig and yPred are valid
+   #   Keep only the entries in which all yOrig, yPred and ySigma are valid
    #---~---
-   yKeep = is.finite(yOrig) & is.finite(yPred) & is.finite(ySigma)
-   yOrig = yOrig[yKeep]
-   yPred = yPred[yKeep]
+   yKeep  = is.finite(yOrig) & is.finite(yPred) & is.finite(ySigma)
+   nData  = sum(yKeep)
+   yOrig  = yOrig[yKeep]
+   yPred  = yPred[yKeep]
    #---~---
 
 
    #---~---
-   #   Find the weights and transform the data.
+   #   Find the weights and transform the data. Note that we define weights as the 
+   # inverse of WN88's W term.
    #---~---
-   yWeight  = ( sd(yOrig-yPred) / ySigma )^2
+   yWeight  = (1./ySigma)^2
    ysOrig   = sqrt(yWeight) * yOrig
    ysPred   = sqrt(yWeight) * yPred
    #---~---
@@ -1358,7 +1389,6 @@ Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,nParam){
    #   Find the average of the transformed data.
    #---~---
    ysMean = mean(ysOrig)
-   nData  = length(ysOrig)
    #---~---
 
 
