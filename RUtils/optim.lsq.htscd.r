@@ -74,7 +74,6 @@
 # - sig.formula:   Formula to represent the error                                          #
 # - df:            Degrees of freedom                                                      #
 # - coefficients:  Coefficients and summary table with error estimate                      #
-# - sigma0:        Scaling factor for heteroscedastic model                                #
 # - x.best:        Optimised values (same as first column of coefficients)                 #
 # - hessian:       Hessian matrix                                                          #
 # - coeff.boot:    Coefficients for each realisation (bootstrap only)                      #
@@ -197,10 +196,43 @@ optim.lsq.htscd <<- function( lsq.formula
    # and extract variable names from formula.                                              #
    #---------------------------------------------------------------------------------------#
    if (! skip.sigma){
+      #----- Test formula. ----------------------------------------------------------------#
       sig.formula = try(as.formula(sig.formula),silent=TRUE)
       if ("try-error" %in% is(sig.formula)){
          sig.formula = as.formula(eval(sig.formula))
       }#end if
+      #------------------------------------------------------------------------------------#
+
+
+
+      #----- Append sigma0 to sig.formula. ------------------------------------------------#
+      if (! "sigma0" %in% all.vars(sig.formula)){
+         #----- Append sigma0 to formula and to first guess. ------------------------------#
+         sig.formula = attr(x=terms(sig.formula),which="term.labels")
+         if (grepl(pattern="^I\\(",x=sig.formula) && grepl(pattern="\\)$",x=sig.formula)){
+            sig.formula = gsub(pattern="^I\\(",replacement="",x=sig.formula)
+            sig.formula = gsub(pattern="\\)$" ,replacement="",x=sig.formula)
+            sig.formula = as.formula(paste0("~ I(sigma0*",sig.formula,")"))
+         }else{
+            sig.formula = as.formula(paste0("~ I(sigma0*",sig.formula,")"))
+         }#end if
+         #---------------------------------------------------------------------------------#
+
+
+         #---------------------------------------------------------------------------------#
+         #     Evaluate the first guess then use residuals to estimate sigma0.             #
+         #---------------------------------------------------------------------------------#
+         zero      = optim.lsq.htscd( lsq.formula = lsq.formula
+                                    , sig.formula = NULL
+                                    , data        = data
+                                    , lsq.first   = lsq.first
+                                    , err.method  = "hess"
+                                    )#end optim.lsq.htscd
+         sig.first = c(list(sigma0=mean(zero$sigma)),sig.first)
+         #---------------------------------------------------------------------------------#
+      }#end if
+      #------------------------------------------------------------------------------------#
+
 
       #----- Get variable names. ----------------------------------------------------------#
       sig.vars      = all.vars(sig.formula)
@@ -573,6 +605,15 @@ optim.lsq.htscd <<- function( lsq.formula
          #---------------------------------------------------------------------------------#
       }#end if ("try-error" %in% is(opt.1st))
       #------------------------------------------------------------------------------------#
+
+
+      #------------------------------------------------------------------------------------#
+      #    In case the first guess of sigma0 is far off, make it smaller and try again.    #
+      #------------------------------------------------------------------------------------#
+      if ((! success) && (! skip.sigma)){
+         x.1st["sig.sigma0"] = x.1st["sig.sigma0"] / 2
+      }#end if
+      #------------------------------------------------------------------------------------#
    }#end while(! success & (i1st < i1st.max))
    #---------------------------------------------------------------------------------------#
 
@@ -809,7 +850,6 @@ optim.lsq.htscd <<- function( lsq.formula
                            , ncol     = n.par
                            , dimnames = list(NULL,names(x.1st))
                            )#end matrix
-      sigma0.boot  = rep(x=NA_real_,times=n.boot)
       support.boot = rep(x=NA_real_,times=n.boot)
       xval.boot    = matrix( data = NA_real_
                            , ncol = n.boot
@@ -945,7 +985,6 @@ optim.lsq.htscd <<- function( lsq.formula
                                           , data        = opt.data[idx,,drop=FALSE]
                                           , ...
                                           )#end evaluate.lsq.htscd
-               sigma0.boot[ ib] = ypred$sigma0[1L]
                tpred.boot [,ib] = ypred$yhat
                tsigma.boot[,ib] = ypred$sigma
             }#end if
@@ -993,7 +1032,6 @@ optim.lsq.htscd <<- function( lsq.formula
       ans$coefficients[,3] = ans$coefficients[,1] / ans$coefficients[,2]
       ans$coefficients[,4] = 2.0 * pt(-abs(ans$coefficients[,3]),df=ans$df)
       ans$coeff.boot       = coeff.boot
-      ans$sigma0.boot      = sigma0.boot
       ans$support.boot     = support.boot
       #------------------------------------------------------------------------------------#
    }#end if (err.short %in% "h")
@@ -1015,7 +1053,6 @@ optim.lsq.htscd <<- function( lsq.formula
                             , ncol     = n.par
                             , dimnames = list(NULL,names(x.1st))
                             )#end matrix
-      sigma0.sxobs  = rep(NA_real_,times=n.sxobs)
       support.sxobs = rep(NA_real_,times=n.sxobs)
       eval.sxobs    = matrix( data     = NA
                             , ncol     = n.sxobs
@@ -1103,7 +1140,6 @@ optim.lsq.htscd <<- function( lsq.formula
                                                     , data        = sim.data
                                                     , ...
                                                     )#end evaluate.lsq.htscd
-            sigma0.sxobs[ isx]  = xpred$sigma0[1L]
             eval.sxobs  [,isx]  = xpred$yhat
             #------------------------------------------------------------------------------#
 
@@ -1133,7 +1169,6 @@ optim.lsq.htscd <<- function( lsq.formula
       keep.sxobs        = is.finite(support.sxobs)
       ans$sx.data       = sx.data      [,keep.sxobs,,drop=FALSE]
       ans$coeff.sxobs   = coeff.sxobs  [ keep.sxobs,,drop=FALSE]
-      ans$sigma0.sxobs  = sigma0.sxobs [ keep.sxobs]
       ans$support.sxobs = support.sxobs[ keep.sxobs]
       ans$eval.sxobs    = eval.sxobs   [,keep.sxobs ,drop=FALSE]
       ans$n.sxobs       = sum(keep.sxobs)
@@ -1160,7 +1195,6 @@ optim.lsq.htscd <<- function( lsq.formula
                             , ncol     = n.par
                             , dimnames = list(NULL,names(x.1st))
                             )#end matrix
-      sigma0.syobs  = rep(NA_real_,times=n.syobs)
       support.syobs = rep(NA_real_,times=n.syobs)
       eval.syobs    = matrix( data     = NA_real_
                             , ncol     = n.syobs
@@ -1246,7 +1280,6 @@ optim.lsq.htscd <<- function( lsq.formula
                                                     , data        = sim.data
                                                     , ...
                                                     )#end evaluate.lsq.htscd
-            sigma0.syobs [ isy] = ypred$sigma0[1L]
             eval.syobs   [,isy] = ypred$yhat
             #------------------------------------------------------------------------------#
 
@@ -1276,7 +1309,6 @@ optim.lsq.htscd <<- function( lsq.formula
       keep.syobs        = is.finite(support.syobs)
       ans$sy.data       = sy.data      [,keep.syobs ,drop=FALSE]
       ans$coeff.syobs   = coeff.syobs  [ keep.syobs,,drop=FALSE]
-      ans$sigma0.syobs  = sigma0.syobs [ keep.syobs]
       ans$support.syobs = support.syobs[ keep.syobs]
       ans$eval.syobs    = eval.syobs   [,keep.syobs ,drop=FALSE]
       ans$n.syobs       = sum(keep.syobs)
@@ -1305,18 +1337,17 @@ optim.lsq.htscd <<- function( lsq.formula
                                          , data        = out.data
                                          , ...
                                          )#end evaluate.lsq.htscd
-   ans$support       = support.lsq.htscd( x           = ans$x.best
-                                        , lsq.formula = lsq.formula
-                                        , sig.formula = sig.formula
-                                        , data        = out.data
-                                        , ...
-                                        )#end support.lsq.htscd
+   ans$support       = support.lsq.htscd ( x           = ans$x.best
+                                         , lsq.formula = lsq.formula
+                                         , sig.formula = sig.formula
+                                         , data        = out.data
+                                         , ...
+                                         )#end support.lsq.htscd
    ans$data          = out.data
    ans$actual.values = ypred$yact
    ans$fitted.values = ypred$yhat
    ans$residuals     = ypred$yres
    ans$sigma         = ypred$sigma
-   ans$sigma0        = ypred$sigma0[1L]
 
 
    ans$goodness      = test.goodness( x.mod        = ans$fitted.values
@@ -1517,12 +1548,10 @@ predict.lsq.htscd <<- function( object
    #---------------------------------------------------------------------------------------#
    if (verbose) cat("   - Find expected value and prediction error.","\n")
    x      = object$x.best
-   sigma0 = object$sigma0
    now    = evaluate.lsq.htscd( x           = x
                               , lsq.formula = lsq.formula
                               , sig.formula = sig.formula
                               , data        = data
-                              , sigma0      = sigma0
                               , ...
                               )#end evaluate.lsq.htscd
    yhat  = now$yhat
@@ -2507,9 +2536,8 @@ print.lsq.htscd <<- function(object){
 #                          yact   -- The actual values.                                    #
 #                          yres   -- Residuals                                             #
 #                          sigma  -- Local estimate of sigma.                              #
-#                          sigma0 -- Scaling coefficient for sigma                         #
 #------------------------------------------------------------------------------------------#
-evaluate.lsq.htscd <<- function(x,lsq.formula,sig.formula,data,sigma0=NULL,...){
+evaluate.lsq.htscd <<- function(x,lsq.formula,sig.formula,data,...){
 
    #----- Split the coefficients. ---------------------------------------------------------#
    x.lsq        = x[grepl(pattern="^lsq\\.",x=names(x))]
@@ -2617,24 +2645,20 @@ evaluate.lsq.htscd <<- function(x,lsq.formula,sig.formula,data,sigma0=NULL,...){
    # environment.                                                                          #
    #---------------------------------------------------------------------------------------#
    if (is.null(sig.formula)){
-      sigma    = rep(sqrt( sum(yres^2,na.rm=TRUE) / (n.use - n.par) ),times=length(yres))
-      dummy    = assign(x="sigma",value=sigma  ,envir=modeval)
-      sigma0   = 0.*sigma + 1.
-   }else if (is.null(sigma0)){
-      sigbar   = sqrt( sum(yres^2,na.rm=TRUE) / (n.use - n.par) )
-      sigscale = eval(expr=parse(text=sig.expr),envir=modeval)
-      sigma0   = sigbar / sqrt(mean(sigscale^2))
-      sigma    = sigma0 * sigscale
+      sigma   = rep(sqrt( sum(yres^2,na.rm=TRUE) / (n.use - n.par) ),times=length(yres))
+      dummy   = assign(x="sigma",value=sigma  ,envir=modeval)
    }else{
-      sigscale = eval(expr=parse(text=sig.expr),envir=modeval)
-      sigma0   = sigma0 + 0. * sigscale
-      sigma    = sigma0 * sigscale
+      sigma   = eval(expr=parse(text=sig.expr),envir=modeval)
    }#end if
    #---------------------------------------------------------------------------------------#
 
 
    #----- Append data to a data frame. ----------------------------------------------------#
-   ans = data.frame( yhat = yhat, yact = yact, yres = yres, sigma = sigma, sigma0 = sigma0)
+   ans = data.frame( yhat   = yhat   # Fitted value
+                   , yact   = yact   # Observed value
+                   , yres   = yres   # Residual
+                   , sigma  = sigma  # Standard deviation of residual
+                   )#end data.frame
    #---------------------------------------------------------------------------------------#
 
 
@@ -2720,10 +2744,11 @@ yhat.lsq.htscd <<- function(x,lsq.formula,data,...){
 
 #==========================================================================================#
 #==========================================================================================#
-#    support.lsq.htscd -- The function that evaluates the support for a given set of       #
-#                         parameters, using the least square estimator.  This is           #
-#                         essentially the same as a "normal" least squares, except that it #
-#                         uses different values of sigma for each data point.              #
+#    support.lsq.htscd -- The function that evaluates the support (log-likelihood) for a   #
+#                         given set of parameters, using the complete expression of the    #
+#                         log-likelihood function. This is very similar to the function    #
+#                         sum.nls.htscd, except that the reference sigma and the constant  #
+#                         offsets are also computed.                                       #
 #------------------------------------------------------------------------------------------#
 support.lsq.htscd <<- function(x,lsq.formula,sig.formula,data,...){
 
@@ -2737,6 +2762,6 @@ support.lsq.htscd <<- function(x,lsq.formula,sig.formula,data,...){
 
    return(support)
    #---------------------------------------------------------------------------------------#
-}#end fit.nls.htscd
+}#end support.lsq.htscd
 #==========================================================================================#
 #==========================================================================================#

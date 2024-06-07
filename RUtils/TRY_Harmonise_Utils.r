@@ -199,15 +199,14 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    #---~---
    #   Retrieve spatial points.
    #---~---
-   PointsSP    = vect(data.frame(x=lon,y=lat),geom=c("x","y"),crs="EPSG:4326")
+   PointsSP    = vect(x=data.frame(x=lon,y=lat),geom=c("x","y"),crs="EPSG:4326")
    PointsSF    = st_as_sf(PointsSP)
    CountriesSF = st_as_sf(CountriesSP)
    dummy       = sf_use_s2(FALSE)
-   GeoInfo   = as_tibble(st_join(PointsSF,CountriesSF))
+   GeoInfo     = as_tibble(st_join(PointsSF,CountriesSF))
    dummy       = sf_use_s2(TRUE)
-   
    #---~---
-   
+
    #---~---
    #   For some reason French Guiana doesn't belong to any continent.
    #---~---
@@ -216,10 +215,10 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    
    
    #---~---
-   #   Get indices of the polygons object containing each point.s
+   #   Get indices of the polygons object containing each point.
    #---~---
-   Country   = as.character(GeoInfo$NAME)
-   Continent = as.character(GeoInfo$Stern)
+   Country   = str_to_title(as.character(GeoInfo$NAME))
+   Continent = str_to_title(as.character(GeoInfo$Stern))
    #---~---
    
    
@@ -232,13 +231,17 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    Country[Country %in% "Dominican Rep."           ] = "Dominican Republic"
    Country[Country %in% "Eq. Guinea"               ] = "Equatorial Guinea"
    Country[Country %in% "Fr. Polynesia"            ] = "French Polynesia"
+   Country[Country %in% "Guinea Bissau"            ] = "Guinea-Bissau"
    Country[Country %in% "Macedonia"                ] = "North Macedonia"
+   Country[Country %in% "N. Cyprus"                ] = "Cyprus (Northern Cyprus)"
    Country[Country %in% "N. Korea"                 ] = "North Korea"
+   Country[Country %in% "Nz"                       ] = "New Zealand"
    Country[Country %in% "S. Geo. and S. Sandw. Is."] = "South Georgia and the South Sandwich Islands"
    Country[Country %in% "S. Korea"                 ] = "South Korea"
    Country[Country %in% "Solomon Is."              ] = "Solomon Islands"
    Country[Country %in% "Somaliland"               ] = "Somalia"
    Country[Country %in% "Swaziland"                ] = "Eswatini"
+   Country[Country %in% "Zaire"                    ] = "Congo (Kinshasa)"
    #---~---
    
    
@@ -251,33 +254,47 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    LargeCountries = LargeCountries[LargeCountries %in% Country]
    for (Large in LargeCountries){
       cat0("      > Assign sub-national region for data from ",Large,".")
-     #---~---
-     #   Select data from the large country
-     #---~---
-     IsLarge  = Country %in% Large
-     PointsSP = vect(data.frame(x=lon[IsLarge],y=lat[IsLarge]),geom=c("x","y"),crs="EPSG:4326")
-     PointsSF    = st_as_sf(PointsSP)
-     #---~---
-     
-     #---~---
-     #   Convert country data into a spatial polygon
-     #---~---
-     LargeSF = sf::st_as_sf(get(paste0(gsub(pattern=" ",replacement="",x=Large),"SP")))
-     LargeSF = st_transform(LargeSF,crs(CountriesSF))
-     #---~---
-     #---~---
-     #   Append sub-national label to data.
-     #---~---
-     dummy       = sf_use_s2(FALSE)
-     LargeInfo        = as_tibble(st_join(PointsSF, LargeSF))
-     dummy       = sf_use_s2(TRUE)
-     SubNational      = as.character(LargeInfo$shapeISO)
-     Append           = ! is.na(SubNational)
-     Country[IsLarge] = ifelse( test = Append
-                                , yes  = paste(Country[IsLarge],SubNational)
-                                , no   = Country[IsLarge]
-     )#end ifelse
-     #---~---
+
+      #---~---
+      #   Select data from the large country
+      #---~---
+      IsLarge  = Country %in% Large
+      PointsSP = vect( x    = data.frame(x=lon[IsLarge],y=lat[IsLarge])
+                     , geom = c("x","y")
+                     , crs  = "EPSG:4326"
+                     )#end vect
+      #---~---
+
+
+      #---~---
+      #   Convert country data into a spatial polygon
+      #---~---
+      LargeSF = sf::st_as_sf(get(paste0(gsub(pattern=" ",replacement="",x=Large),"SP")))
+      LargeSF = st_transform(LargeSF,crs(CountriesSF))
+      #---~---
+
+
+      #---~---
+      #   Append sub-national label to data.
+      #---~---
+      dummy            = sf_use_s2(FALSE)
+      LargeInfo        = as_tibble(st_join(PointsSF,LargeSF))
+      dummy            = sf_use_s2(TRUE)
+      SubNational      = as.character(LargeInfo$shapeISO)
+      Append           = ! is.na(SubNational)
+      Country[IsLarge] = ifelse( test = Append
+                               , yes  = paste(Country[IsLarge],SubNational)
+                               , no   = Country[IsLarge]
+                               )#end ifelse
+
+      LargeInfo        = over(PointsSP,LargeSP)
+      SubNational      = as.character(LargeInfo$shapeISO)
+      Append           = ! is.na(SubNational)
+      Country[IsLarge] = ifelse( test = Append
+                               , yes  = paste(Country[IsLarge],SubNational)
+                               , no   = Country[IsLarge]
+                               )#end ifelse
+      #---~---
    }#end for (Large in LargeCountries)
 
 
@@ -307,6 +324,94 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    return(ans)
 }#end TRY_LonLatToGeoInfo
 #---~---
+
+
+
+#---~---
+#     This function selects African observations.
+#---~---
+SelectAfricaTropical <<- function(x){
+
+   #---~---
+   #   First step: List countries with considerable amount of land in the African tropics.
+   #---~---
+   AfricanCountries = c( "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi"
+                       , "Cameroon","Cape Verde", "Central African Republic", "Chad"
+                       , "Congo (Brazzaville)", "Congo (Kinshasa)", "Djibouti"
+                       , "Equatorial Guinea", "Ethiopia", "Gabon", "Gambia", "Ghana"
+                       , "Guinea-Bissau", "Ivory Coast", "Kenya", "Liberia", "Madagascar"
+                       , "Malawi", "Mali", "Mauritania", "Mozambique", "Namibia", "Niger"
+                       , "Nigeria", "Rwanda", "Senegal", "Seychelles", "Sierra Leone"
+                       , "Somalia", "Sudan", "Tanzania", "Togo", "Uganda", "Zambia"
+                       , "Zimbabwe"
+                       )#end c
+   AfricanContinents = c( "Africa")
+   #---~--- 
+
+
+   #---~---
+   #   Second step: List climates considered tropical.  For tropical deserts, we apply
+   # a somewhat more strict criterion to exclude non-tropical deserts to the extent 
+   # possible.
+   #---~---
+   TropicalClimates   = c("Af","Am","As","Aw")
+   TropDesertClimates = c("BSh","BWh")
+   #---~---
+
+
+   #---~---
+   #   Third step: List tropical biomes.
+   #---~---
+   TropicalBiomes   = c( "02 - Tropical Grassland", "03 - Tropical Scrubland"
+                       , "04 - Tropical Savannah", "05 - Tropical Dry Forest"
+                       , "06 - Tropical Moist Forest", "07 - Mangroves"
+                       )#end c
+   DesertBiomes     = c("01 - Desert/Semi-arid")
+   #---~---
+
+
+   #---~---
+   #   We first select the observations based on longitude and latitude. If not, then we
+   # rely on countries, climates and biomes. We use 23.5 as a proxy for the intertropical
+   # zone.
+   #---~---
+   IsAfricanCoord     = ( x$lon %wr% c(-20, 57) ) &  ( x$lat %wr% c(-23.5,23.5) )
+   MissCoord          = is.na(x$lat) | is.na(x$lon)
+   IsAfricanCountry   = MissCoord & ( x$country   %in% AfricanCountries  )
+   IsAfricanContinent = MissCoord & ( x$continent %in% AfricanContinents )
+   IsTropicalClimate  = MissCoord & ( x$climate   %in% TropicalClimates  )
+   IsTropicalBiome    = MissCoord & ( x$biome     %in% TropicalBiomes    )
+   #---~---
+
+
+   #---~---
+   #   For deserts, they must have hot summers and some indication that they are indeed 
+   # tropical. This may miss montane tropical regions, unfortunately.
+   #---~---
+   IsTropicalDesert  = ( MissCoord & (x$climate_pft %in% "tropical" )
+                         & ( ( x$climate %in% TropDesertClimates )
+                             | ( x$biome   %in% DesertBiomes       )
+                         )#end IsTropicalDesert
+                       )#end IsTropicalDesert
+   #---~---
+
+
+   #---~---
+   #   Select likely African observations. We will assess the inclusion/exclusion
+   # based on how many data we end up with. We will seek to have as many as possible 
+   # without risking adding sites that shouldn't be included.
+   #---~---
+   IsAfricantropical = ( IsAfricanCoord |  IsAfricanCountry 
+                       | ( IsAfricanContinent
+                         & ( IsTropicalClimate | IsTropicalBiome | IsTropicalDesert )
+                         )#end IsAfricanContinent
+                       )#end IsAfricantropical
+   #---~---
+
+   return(IsAfricantropical)
+}#end function SelectAfricaTropical
+#---~---
+
 
 
 
@@ -634,28 +739,39 @@ SelectNeoTropical <<- function(x){
    #---~---
 
    return(IsNeotropical)
-}#end SelectNeoTropical
+}#end function SelectNeoTropical
 #---~---
 
 #---~---
 #     This function selects West US (sensu strictu) observations.
 #---~---
 SelectWestUS <<- function(x){
+  #---~---
+  #   First step: List country/state of interest.
+  #---~---
+  WestUSStates = c("United States CA", "United States OR", "United States WA")
+  WestUSCountry = c("United States")
+  WestUSContinent = c("North America")
+  #---~--- 
+  
   
   #---~---
-  #   First step: List climates represented in West US.
+  #   Second step: List climates represented in West US.
   #---~---
   WestUSClimates   = c("Csa", "Csb", "Dsb", "Dsc", "Dfa", "Dfc")
   #---~---
-
+  
+  
   #---~---
   #   We first select the observations based on longitude and latitude. If not, then we
-  # rely on climates and biomes.
+  # rely on state, country, and climate.
   #---~---
-  IsCoord_WestUS     = ( x$lon %wr% c(-126,-114) ) &  ( x$lat %wr% c(32,49) )
-  MissCoord         = is.na(x$lat) | is.na(x$lon)
-  IsWestUSClimate  = MissCoord & ( x$climate   %in% WestUSClimates )
- # IsWestUSBiome    = MissCoord & ( x$biome     %in% WestUSBiomes )
+  IsWestUSCoord      = ( x$lon %wr% c(-126,-114) ) &  ( x$lat %wr% c(32,49) )
+  MissCoord          = is.na(x$lat) | is.na(x$lon)
+  IsWestUSState      = MissCoord & (x$country   %in% WestUSStates)
+  IsWestUSCountry    = MissCoord & (x$country   %in% WestUSCountry)
+  IsWestUSContinent  = MissCoord & (x$continent %in% WestUSContinent)
+  IsWestUSClimate    = MissCoord & (x$climate   %in% WestUSClimates )
   #---~---
  
   #---~---
@@ -663,8 +779,8 @@ SelectWestUS <<- function(x){
   # based on how many data we end up with. We will seek to have as many as possible 
   # without risking adding sites that shouldn't be included.
   #---~---
-  IsWestUS = (( IsCoord_WestUS ) & ( IsWestUSClimate
-                    )
+  IsWestUS = ( IsWestUSCoord | IsWestUSState
+               | ( IsWestUSContinent & IsWestUSCountry & IsWestUSClimate)
   )#end IsWestUS
   #---~---
   

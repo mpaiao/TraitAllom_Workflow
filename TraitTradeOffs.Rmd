@@ -43,6 +43,7 @@ summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
 rdata_path      = file.path(main_path,"RData")
 br_state_shp    = file.path(main_path,"BrazilianStatesMap","BrazilianStates.shp")
+
 ```
 
 Settings for reloading or rerunning multiple steps of this script. These are all logical variables, with `TRUE` meaning to reload previous calculations, and `FALSE` meaning to calculate the step again. If the RData file is not found, these variables will be ignored.
@@ -61,6 +62,7 @@ reload_cluster    = c(FALSE,TRUE)[2L]
 ```
 
 This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves.
+--> the variable plastic_sun_only is being set to FALSE, indicating that observations from traits showing high light plasticity should not be excluded
 
 ```{r,label='set-light',message=FALSE,results='hide',warning=FALSE}
 plastic_sun_only = c(FALSE,TRUE)[2L]
@@ -86,7 +88,7 @@ This flag defines whether to keep only woody plants, and how strict we should be
 
 - **tree_only**. Only trees (sensu stricto) are included. This will exclude shrubs, lianas, hemiepiphytes and tree-like forms (e.g., palms, yucca "trees").
 - **woody_ss_free**. All free-standing woody plants (sensu stricto) are included. This will include trees and shrubs, but exclude lianas, hemiepiphytes, and tree-like forms.
-- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.
+- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.Summ
 - **woody_sl_free**. All free-standing woody plants (sensu lato) are included. This will include trees, shrubs and tree-like forms, but exclude lianas and hemiepiphytes.
 - **woody_sl_all**. All woody plants (sensu lato) are included. This will include trees, lianas, shrubs, palms and hemiepiphytes.
 - **all_plants**. All plants will be retained.
@@ -131,6 +133,8 @@ The following block defines some settings for the standardised major axis for mo
 
     -   `"NeoTropical"`. South and Central America
     -   `"PanTropical"`. All continents.
+    -   `"AfricaTropical"`. Africa
+    -   `"AsiaTropical"`. Asia
     -   `"WestUS"`. Western US
 
 -   **fit_taxon**. Which taxonomic level of detail to use for SMA analyses? Options are:
@@ -141,7 +145,7 @@ The following block defines some settings for the standardised major axis for mo
 
 ```{r, label='set-sma-options',message=FALSE,results='hide',warning=FALSE}
 # Variable to use as X axis for trait SMA analyses?
-xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_c2n=146L,leaf_n_area=50L)[2L]
+xsma_TraitID    = c(SLA=3117L,wood_dens=4L,leaf_c2n=146L,leaf_n_area=50L)[1L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
 xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
@@ -174,13 +178,13 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "WestUS")[3L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
 ```
 
-Settings for Kendall correlation table
+Settings for Kendall correlation table. 
 
 - **n_kendall_min**.  This is the minimum number of valid pairs of variables for computing correlation.
 - **pmax_kendall_show**. Maximum p-value for which correlations are written to the CSV file.
@@ -297,7 +301,7 @@ CntCategInfo = nrow(CategInfo)
 Set up some flags to skip plotting sets of figures if they are not needed
 
 ```{r,label='plot-switches',message=FALSE,results='hide',warning=FALSE}
-plot_violin         = c(FALSE,TRUE)[2L] # Violin plots for different groups?
+plot_violin         = c(FALSE,TRUE)[1L] # Violin plots for different groups?
 plot_abund_map      = c(FALSE,TRUE)[2L] # Maps with trait abundance?
 plot_stat_cluster   = c(FALSE,TRUE)[2L] # Plot statistics for generating the optimal number of clusters?
 plot_wgt_cluster    = c(FALSE,TRUE)[2L] # Plot weights for cluster analysis?
@@ -375,7 +379,6 @@ Load all countries and Brazilian states to include in the plot.
 # Load countries and Brazilian states
 all_countries = sf::st_as_sf(maps::map("world2",plot=FALSE,fill=TRUE,wrap=c(-180,180)))
 br_states     = sf::st_as_sf(st_read(br_state_shp))
-
 ```
 
 Load the harmonised trait data set, stored in file `rdata_TidyTRY`. This is the output of script `TidyTraitAllomDB.Rmd` so make sure to run that pre-processing first.
@@ -460,6 +463,7 @@ species_summ    = file.path(summ_path,paste0("TRY_SpeciesSumm_"   ,use_suffix  ,
 genus_summ      = file.path(summ_path,paste0("TRY_GenusSumm_"     ,use_suffix  ,".csv"))
 distr_summ      = file.path(summ_path,paste0("TRY_InfoDistr_"     ,base_suffix ,".csv"))
 SMA_summ        = file.path(summ_path,paste0("TRY_InfoSMA_"       ,trait_suffix,".csv"))
+SMAPhoto_summ   = file.path(summ_path,paste0("TRY_InfoSMA_"       ,photo_suffix,".csv"))
 corr_summ       = file.path(summ_path,paste0("TRY_InfoCorr_"      ,base_suffix ,".csv"))
 cluster_medoid  = file.path(summ_path,paste0("TRY_ClusterMedoid_" ,base_suffix ,".csv"))
 cluster_medians = file.path(summ_path,paste0("TRY_ClusterMedians_",base_suffix ,".csv"))
@@ -504,6 +508,8 @@ LabelLife = switch( use_lifeclass
 LabelRealm = switch( use_realm
                    , NeoTropical = "Neotropical"
                    , PanTropical = "Pantropical"
+                   , AfricaTropical = "AfricaTropical"
+                   , AsiaTropical = "AsiaTropical"
                    , WestUS = "WestUS"
                    , stop("Unrecognised realm.")
                    )#end switch
@@ -2398,6 +2404,13 @@ if (reload_SMA_photo && file.exists(rdata_SMA_photo)){
                , compression_level = 9
                )#end save
 }#end if (reload_SMA_photo && file.exists(rdata_SMA_photo))
+
+
+
+# Write CSV files with trait summaries
+cat0(" + Write CSV file with SMA information for photosynthesis traits.")
+dummy = write_csv( x = InfoPhoto, file = SMAPhoto_summ, na = "")
+
 
 ```
 

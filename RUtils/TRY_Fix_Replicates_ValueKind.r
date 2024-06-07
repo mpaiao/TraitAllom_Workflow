@@ -21,15 +21,18 @@
 # - RawTRY       -- The tibble with the raw TRY data (i.e., the one when we read the 
 #                   input TRY csv files).
 # - discard_rm   -- Remove rows flagged as discard?
+# - duplicate_rm -- Remove rows flagged as duplicates?
 # - ValueKind    -- Column that contains the value kind names. Default is the name used
 #                   in the TRY data base.
 # - Count        -- Column that countains the data count. Default is the name used in the
 #                   TRY data base.
 #---~---
 TRY_Fix_ValueKindName <<- function( RawTRY
-                                  , discard_rm = TRUE
-                                  , ValueKind  = "ValueKindName"
-                                  , Count      = "Replicates"
+                                  , discard_rm   = TRUE
+                                  , duplicate_rm = TRUE
+                                  , ValueKind    = "ValueKindName"
+                                  , Count        = "Replicates"
+                                  , OrigObsID    = "OrigObsDataID"
                                   ){
 
    #---~---
@@ -112,9 +115,18 @@ TRY_Fix_ValueKindName <<- function( RawTRY
    #---~---
    #   If wanted, suppress lines where that contain values we are not seeking.
    #---~---
-   OutTRY               = OutTRY[! ( IsDiscard & discard_rm ),,drop=FALSE]
+   OutTRY      = OutTRY[! ( IsDiscard & discard_rm ),,drop=FALSE]
    #---~---
 
+
+   #---~---
+   #   We also duplicate observations that have been identified as duplicates.
+   #---~---
+   if (OrigObsID %in% names(OutTRY)){
+      IsDuplicate = ! is.na(OutTRY[[OrigObsID]])
+      OutTRY      = OutTRY[! ( IsDuplicate & duplicate_rm ),,drop=FALSE]
+   }#end if (OrigObsID %in% names(OutTRY))
+   #---~---
 
    #---~---
    #   Return standardised tibble.

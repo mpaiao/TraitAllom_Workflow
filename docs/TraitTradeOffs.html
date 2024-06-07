@@ -364,7 +364,7 @@ This will exclude shrubs, lianas, hemiepiphytes and tree-like forms
 exclude lianas, hemiepiphytes, and tree-like forms.</li>
 <li><strong>woody_ss_all</strong>. All woody plants (sensu stricto) are
 included. This will include trees, lianas, shrubs and hemiepiphytes, but
-exclude tree-like forms.</li>
+exclude tree-like forms.Summ</li>
 <li><strong>woody_sl_free</strong>. All free-standing woody plants
 (sensu lato) are included. This will include trees, shrubs and tree-like
 forms, but exclude lianas and hemiepiphytes.</li>
@@ -447,7 +447,7 @@ SMA (useful for somewhat sparse measurements).</li>
 </ul></li>
 </ul>
 <pre class="r"><code># Variable to use as X axis for trait SMA analyses?
-xsma_TraitID    = c(wood_dens=4L,SLA=3117L,leaf_c2n=146L,leaf_n_area=50L)[2L]
+xsma_TraitID    = c(SLA=3117L,wood_dens=4L,leaf_c2n=146L,leaf_n_area=50L)[1L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
 xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
@@ -657,7 +657,7 @@ CategInfo = tidyr::tribble( ~TraitID, ~Class, ~TRYClass                     ,   
 CntCategInfo = nrow(CategInfo)</code></pre>
 <p>Set up some flags to skip plotting sets of figures if they are not
 needed</p>
-<pre class="r"><code>plot_violin         = c(FALSE,TRUE)[2L] # Violin plots for different groups?
+<pre class="r"><code>plot_violin         = c(FALSE,TRUE)[1L] # Violin plots for different groups?
 plot_abund_map      = c(FALSE,TRUE)[2L] # Maps with trait abundance?
 plot_stat_cluster   = c(FALSE,TRUE)[2L] # Plot statistics for generating the optimal number of clusters?
 plot_wgt_cluster    = c(FALSE,TRUE)[2L] # Plot weights for cluster analysis?
@@ -804,6 +804,7 @@ species_summ    = file.path(summ_path,paste0(&quot;TRY_SpeciesSumm_&quot;   ,use
 genus_summ      = file.path(summ_path,paste0(&quot;TRY_GenusSumm_&quot;     ,use_suffix  ,&quot;.csv&quot;))
 distr_summ      = file.path(summ_path,paste0(&quot;TRY_InfoDistr_&quot;     ,base_suffix ,&quot;.csv&quot;))
 SMA_summ        = file.path(summ_path,paste0(&quot;TRY_InfoSMA_&quot;       ,trait_suffix,&quot;.csv&quot;))
+SMAPhoto_summ   = file.path(summ_path,paste0(&quot;TRY_InfoSMA_&quot;       ,photo_suffix,&quot;.csv&quot;))
 corr_summ       = file.path(summ_path,paste0(&quot;TRY_InfoCorr_&quot;      ,base_suffix ,&quot;.csv&quot;))
 cluster_medoid  = file.path(summ_path,paste0(&quot;TRY_ClusterMedoid_&quot; ,base_suffix ,&quot;.csv&quot;))
 cluster_medians = file.path(summ_path,paste0(&quot;TRY_ClusterMedians_&quot;,base_suffix ,&quot;.csv&quot;))
@@ -2712,7 +2713,13 @@ if (reload_SMA_photo &amp;&amp; file.exists(rdata_SMA_photo)){
                , compress          = &quot;xz&quot;
                , compression_level = 9
                )#end save
-}#end if (reload_SMA_photo &amp;&amp; file.exists(rdata_SMA_photo))</code></pre>
+}#end if (reload_SMA_photo &amp;&amp; file.exists(rdata_SMA_photo))
+
+
+
+# Write CSV files with trait summaries
+cat0(&quot; + Write CSV file with SMA information for photosynthesis traits.&quot;)
+dummy = write_csv( x = InfoPhoto, file = SMAPhoto_summ, na = &quot;&quot;)</code></pre>
 <p>In this part, we find rank correlation amongst traits.</p>
 <pre class="r"><code># Check whether to reload data or find correlation matrix again.
 if (reload_corr_trait &amp;&amp; file.exists(rdata_corr_trait)){
@@ -3161,7 +3168,6 @@ if (gg_screen &amp;&amp; (cnt_gg_violin %gt% 0L)){
    gg_show = sort(sample.int(n=cnt_gg_violin,size=min(cnt_gg_violin,3L),replace=FALSE))
    gg_violin[gg_show]
 }#end if (gg_screen &amp;&amp; (length(gg_violin) %gt% 0L))</code></pre>
-<p><img src="TraitTradeOffs_files/figure-html/plot-violins-1.png" width="768" /><img src="TraitTradeOffs_files/figure-html/plot-violins-2.png" width="768" /><img src="TraitTradeOffs_files/figure-html/plot-violins-3.png" width="768" /></p>
 </div>
 <div id="gap-statistics-and-silhouette-plots" class="section level2">
 <h2>Gap statistics and silhouette plots</h2>
