@@ -59,9 +59,9 @@ The following block defines some settings that were used for defining clusters a
 
     -   `"NeoTropical"`. South and Central America
     -   `"PanTropical"`. All continents.
-    -   `"WestUS"`. Western US
     -   `"AfricaTropical"`. Africa
     -   `"AsiaTropical"`. Asia
+    -   `"WestUS"`. Western US
 
 ```{r, label='set-sma-options',message=FALSE,results='hide',warning=FALSE}
 
@@ -69,7 +69,7 @@ The following block defines some settings that were used for defining clusters a
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "WestUS","AfricaTropical", "AsiaTropical")[3L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 
 # Taxonomic level of detail for SMA analyses. This is used to retrieve the correct "Tidy TRY" data set
 # with the cluster assignment. Allometric models are always developed from individual observations.
