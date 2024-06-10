@@ -264,6 +264,7 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
                      , geom = c("x","y")
                      , crs  = "EPSG:4326"
                      )#end vect
+      PointsSF = st_as_sf(PointsSP)
       #---~---
 
 
@@ -281,14 +282,6 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
       dummy            = sf_use_s2(FALSE)
       LargeInfo        = as_tibble(st_join(PointsSF,LargeSF))
       dummy            = sf_use_s2(TRUE)
-      SubNational      = as.character(LargeInfo$shapeISO)
-      Append           = ! is.na(SubNational)
-      Country[IsLarge] = ifelse( test = Append
-                               , yes  = paste(Country[IsLarge],SubNational)
-                               , no   = Country[IsLarge]
-                               )#end ifelse
-
-      LargeInfo        = over(PointsSP,LargeSP)
       SubNational      = as.character(LargeInfo$shapeISO)
       Append           = ! is.na(SubNational)
       Country[IsLarge] = ifelse( test = Append

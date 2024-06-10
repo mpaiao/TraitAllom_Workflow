@@ -3684,10 +3684,11 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
 
-   }else if(TraitID %in% c(191L,710L)){
+   }else if(TraitID %in% c(191L,710L,1097L)){
       #---~---
       #   Leaf water content apoplastic
       #   Leaf water content at turgor loss point
+      #   Wood (sapwood) water content
       #---~---
 
       #--- Make sure all data have the same units (%).
@@ -5162,6 +5163,64 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
       # so the code crashes and we can identify the missing classes.
       #---~---
       IsValid          = Valid & ( IsPersistent | IsDeciduous )
+      Value[! IsValid] = NA_character_
+      #---~---
+
+   }else if (TraitID %in% c(1096L)){
+      #---~---
+      #   Wood (sapwood) specific conductivity (stem specific conductivity)
+      #---~---
+
+
+      #---~---
+      #   Peter Hietz. They calculated the theoretical hydraulic conductivity based on the
+      # vessel size using the Hagen-Poiseuille equation for laminar flow of fluids with
+      # known viscosity. This approach yields substantially higher conductivity as it 
+      # does not account for the impact of water flow through vessel walls in reducing the
+      # conductivity.  We discard the data as they are not comparable to other measurements
+      #---~---
+      IsAuthor = ( ( AuthorName %in% "Peter Hietz" )
+                 & ( NameOrig   %in% "hydraulic conductivity" )
+                 )#end IsAuthor
+      Value[IsAuthor] = NA_character_
+      Valid[IsAuthor] = FALSE
+      VName[IsAuthor] = NA_character_
+      #---~---
+
+      #--- Make sure all data have the same units (kg m-1 s-1 MPa-1).
+      kgomosompa_sel        =  UnitOrig %in% c( "kg m-1 s-1 MPa-1", "kg m-1 s-1 MPa -1"
+                                              , "kg m-1 MPa-1 s-1", "kg/m/s/Mpa"
+                                              )#end c
+      Value[kgomosompa_sel] = as.character( as.numeric(Value[kgomosompa_sel]) )
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & ( kgomosompa_sel)
+      Value[! IsValid] = NA_character_
+      #---~---
+
+   }else if (TraitID %in% c(1098L)){
+      #---~---
+      #   Wood (sapwood) water storage capacity
+      #---~---
+
+      #--- Make sure all data have the same units (kg m-3 MPa-1).
+      kgom3ompa_sel        =  UnitOrig %in% c( "kg m-3 MPa-1" )
+      Value[kgom3ompa_sel] = as.character( as.numeric(Value[kgom3ompa_sel]) )
+      #---~---
+
+
+
+      #---~---
+      #   In case some units have not been accounted for, set data to NA but keep it valid,
+      # so the code crashes and we can identify the missing classes.
+      #---~---
+      IsValid          = Valid & ( kgom3ompa_sel)
       Value[! IsValid] = NA_character_
       #---~---
 

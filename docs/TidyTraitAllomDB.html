@@ -1610,7 +1610,7 @@ tibble object, with one row for each observation.</p>
       cat0(&quot;   - Do not save trait data. Make sure \&quot;loop_list\&quot; starts at 1 and run chunk again.&quot;)
       stop(&quot; Trait loading set in debug mode. Stop for now.&quot;)
    }#end if (loop_list[1] == 1L)
-}# if (reload_TidyTRY &amp;&amp; file.exists(rdata_TidyTRY))</code></pre>
+}#end if (reload_TidyTRY &amp;&amp; file.exists(rdata_TidyTRY))</code></pre>
 <p>In this block we incorporate ancillary data to the data base.</p>
 <pre class="r"><code>if (load_ancil){
    # Reload TRY_Fix_OrigValue_Str.r as this is often developed as variables are loaded (and crash).

@@ -1075,7 +1075,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
       cat0("   - Do not save trait data. Make sure \"loop_list\" starts at 1 and run chunk again.")
       stop(" Trait loading set in debug mode. Stop for now.")
    }#end if (loop_list[1] == 1L)
-}# if (reload_TidyTRY && file.exists(rdata_TidyTRY))
+}#end if (reload_TidyTRY && file.exists(rdata_TidyTRY))
 ```
 
 
@@ -2530,5 +2530,3 @@ if (file.exists(Rdata_TidyTRY)){
                )#end save
 }#end if (file.exists(Rdata_TidyTRY))
 ```
-
-
