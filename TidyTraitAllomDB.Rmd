@@ -1,6 +1,6 @@
 ---
 title: "Trait/Allometry Database Pre-processor"
-author: "Marcos Longo"
+authors: "Marcos Longo, Mara St. Amant, Trisha Venkatesh"
 date: '2022-09-27'
 output: html_document
 ---
@@ -306,16 +306,16 @@ The following block defines some settings for the standardised major axis for mo
    * `"Plantae"`. All plants, everywhere
 * **use_realm**. Which realm to retain from the original data set. Current options are:
    * `"NeoTropical"`. South and Central America
-   * `"PanTropical"`. All continents.
-   * `"WestUS"`. Western US
+   * `"PanTropical"`. All continents
    * '"AfricaTropical"'. Africa 
    * '"AsiaTropical"'. Asia
+   * `"WestUS"`. Western US
 ```{r, label='set-sma-options'}
 # Life-form/phylogenetic level to use for SMA and allometry analyses.
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA and allometry analyses.
-use_realm  = c("NeoTropical","PanTropical", "WestUS","AfricaTropical", "AsiaTropical")[3]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 ```
 
 The following block defines variables useful for harmonising traits:
@@ -769,7 +769,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
    n_try_file_list = length(try_file_list)
    file_first      = 1L
    file_last       = n_try_file_list
-   loop_list       = seq(from=file_first,to=n_try_file_list)
+   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
 
    # Initialise the tidy TRY object.
    cat0(" + Initialise the tidy TRY object containing traits and ancillary variables.")
@@ -1108,7 +1108,7 @@ if (load_ancil){
    # variable to prevent saving the R object unless we are reading every file.
    file_first      = 1L
    file_last       = n_try_file_list
-   loop_list       = seq(from=file_first,to=n_try_file_list)
+   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
 
    # List of data sets that describe treatment (experiment)
    TreatmentID   = try_ancil$DataID %in% c(238L,308L,319L,324L,363L,490L,4052L,4695L)
