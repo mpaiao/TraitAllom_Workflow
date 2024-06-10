@@ -196,7 +196,6 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    #---~---
 
 
-
    #---~---
    #   Retrieve spatial points.
    #---~---
@@ -208,22 +207,21 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    dummy       = sf_use_s2(TRUE)
    #---~---
 
-
    #---~---
    #   For some reason French Guiana doesn't belong to any continent.
    #---~---
    GeoInfo$Stern[GeoInfo$NAME %in% "French Guiana"] = "South America"
    #---~---
-
-
+   
+   
    #---~---
    #   Get indices of the polygons object containing each point.
    #---~---
    Country   = str_to_title(as.character(GeoInfo$NAME))
    Continent = str_to_title(as.character(GeoInfo$Stern))
    #---~---
-
-
+   
+   
    #---~---
    #   Standardise countries
    #---~---
@@ -245,9 +243,9 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    Country[Country %in% "Swaziland"                ] = "Eswatini"
    Country[Country %in% "Zaire"                    ] = "Congo (Kinshasa)"
    #---~---
-
-
-
+   
+   
+   
    #---~---
    #   For every large country, identify the sub-national region if any data 
    # are from the country.
@@ -256,6 +254,7 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
    LargeCountries = LargeCountries[LargeCountries %in% Country]
    for (Large in LargeCountries){
       cat0("      > Assign sub-national region for data from ",Large,".")
+
       #---~---
       #   Select data from the large country
       #---~---
@@ -290,7 +289,6 @@ TRY_LonLatToGeoInfo <<- function(lon,lat,geo_adm1_path,simplified=TRUE){
                                )#end ifelse
       #---~---
    }#end for (Large in LargeCountries)
-   #---~---
 
 
    #---~---
@@ -737,8 +735,54 @@ SelectNeoTropical <<- function(x){
 }#end function SelectNeoTropical
 #---~---
 
-
-
+#---~---
+#     This function selects West US (sensu strictu) observations.
+#---~---
+SelectWestUS <<- function(x){
+  #---~---
+  #   First step: List country/state of interest.
+  #---~---
+  WestUSStates = c("United States CA", "United States OR", "United States WA")
+  WestUSCountry = c("United States")
+  WestUSContinent = c("North America")
+  #---~--- 
+  
+  
+  #---~---
+  #   Second step: List climates represented in West US.
+  #---~---
+  WestUSClimates   = c("Csa", "Csb", "Dsb", "Dsc", "Dfa", "Dfc")
+  #---~---
+  
+  
+  #---~---
+  #   We first select the observations based on longitude and latitude. If not, then we
+  # rely on state, country, and climate.
+  #---~---
+  IsWestUSCoord      = ( x$lon %wr% c(-126,-114) ) &  ( x$lat %wr% c(32,49) )
+  MissCoord          = is.na(x$lat) | is.na(x$lon)
+  IsWestUSState      = MissCoord & (x$country   %in% WestUSStates)
+  IsWestUSCountry    = MissCoord & (x$country   %in% WestUSCountry)
+  IsWestUSContinent  = MissCoord & (x$continent %in% WestUSContinent)
+  IsWestUSClimate    = MissCoord & (x$climate   %in% WestUSClimates )
+  #---~---
+ 
+  #---~---
+  #   Select likely WestUS observations. We will assess the inclusion/exclusion
+  # based on how many data we end up with. We will seek to have as many as possible 
+  # without risking adding sites that shouldn't be included.
+  #---~---
+  IsWestUS = ( IsWestUSCoord | IsWestUSState
+               | ( IsWestUSContinent & IsWestUSCountry & IsWestUSClimate)
+  )#end IsWestUS
+  #---~---
+  
+  return(IsWestUS)
+}#end SelectWestUS
+#---~---
+  
+  
+  
 
 #---~---
 #   This function assigns growth forms to individuals using harmonised species and 

@@ -1,6 +1,6 @@
 ---
 title: "Trait/Allometry Database Pre-processor"
-author: "Marcos Longo"
+authors: "Marcos Longo, Mara St. Amant, Trisha Venkatesh"
 date: '2022-09-27'
 output: html_document
 ---
@@ -70,7 +70,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings'}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+main_path       = file.path(home_path,"Downloads", "SPUR","TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 orig_path       = file.path(main_path,"Original")
 quote_path      = file.path(main_path,"Quoted")
@@ -175,8 +175,9 @@ Users may have additional data sets with trait information that are not part of 
 
 ```{r, label='ancil-trait-extra'}
 # List of files containing additional trait information.
-extra_file_base = c("LT-Brazil_Extra.csv","FrenchGuiana_Extra.csv"
-                   ,"PuertoRico_Extra.csv","TalloNeoTropical.csv","SLBrazil_AllometryData.csv") #, "africadatanew.csv")
+extra_file_base = c("LT-Brazil_Extra.csv","FrenchGuiana_Extra.csv","PuertoRico_Extra.csv","TalloNeoTropical.csv",
+                    "SLBrazil_AllometryData.csv", "Tallo_WestUS.csv") #, "africadatanew.csv")
+                   
 extra_file_list = file.path(main_path,"AdditionalData",extra_file_base)
 ```
 
@@ -305,15 +306,16 @@ The following block defines some settings for the standardised major axis for mo
    * `"Plantae"`. All plants, everywhere
 * **use_realm**. Which realm to retain from the original data set. Current options are:
    * `"NeoTropical"`. South and Central America
-   * `"PanTropical"`. All continents.
-   * '"AfricaTropical"'. Africa 
-   * '"AsiaTropical"'. Asia
+   * `"PanTropical"`. All continents
+   * `"AfricaTropical"`. Africa 
+   * `"AsiaTropical"`. Asia
+   * `"WestUS"`. Western US
 ```{r, label='set-sma-options'}
 # Life-form/phylogenetic level to use for SMA and allometry analyses.
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA and allometry analyses.
-use_realm  = c("NeoTropical","PanTropical","AfricaTropical", "AsiaTropical")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 ```
 
 The following block defines variables useful for harmonising traits:
@@ -1656,56 +1658,57 @@ We now harmonise some geographical data (e.g., climate, topography) for measurem
 
 ```{r, label='harmonise-geodata',results='hide',message=FALSE}
 if (file.exists(Rdata_GeodataTRY)){
-   # Load data.
-   cat0(" + Reload TRY with harmonised geographic data from ",basename(Rdata_GeodataTRY),".")
-   dummy = load(Rdata_GeodataTRY)
+  # Load data.
+  cat0(" + Reload TRY with harmonised geographic data from ",basename(Rdata_GeodataTRY),".")
+  dummy = load(Rdata_GeodataTRY)
 }else{
-   cat0(" + Harmonise geographic information.")
+  cat0(" + Harmonise geographic information.")
   
-   # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
-   IsClimate = any(try_trait$TraitID %in% 825L)
-   IsGeoCoord = all(c(59L,60L) %in% try_ancil$DataID)
-   if (IsGeoCoord & IsClimate){
-      cat0("   - Harmonise climate information.")
-    
-      # Select climate variable.
-      Climate = try_trait$Name[try_trait$TraitID %in% 825L]
-      Lon     = try_ancil$Name[try_ancil$DataID  %in% 60L ]
-      Lat     = try_ancil$Name[try_ancil$DataID  %in% 59L ]
-    
-      # Read the climate data base
-      KoppenID  = terra::rast(koppen_raster) # KoppenID  = raster::raster(koppen_raster)
-      KoppenFun = function(x,koppen_class) ifelse(x %in% koppen_class,x,NA_integer_)
-      KoppenID  = terra::app(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)}) # KoppenID  = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
-      KoppenID = as.factor(KoppenID)
-    
-      # Find observations with geolocation
-      GeoIndex = is.finite(TidyTRY[[Lon]]) & is.finite(TidyTRY[[Lat]])
-      TRYPoints = vect(x=TidyTRY[GeoIndex, c(Lon, Lat)],crs="EPSG:4326")
-      TRYPoints = project(TRYPoints, crs(KoppenID))
   
-      # Extract data from raster
-      KoppenTRY  = terra::extract(KoppenID,TRYPoints, cells=FALSE, xy=FALSE, ID=FALSE)
-      KoppenTRY = as.integer(KoppenTRY$lyr.1)
-      KoppenTRY = ifelse( test = KoppenTRY %in% koppen_class
-                        , yes  = names(koppen_class)[KoppenTRY]
-                        , no   = NA_character_
-                        )#end ifelse
+  # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
+  IsClimate = any(try_trait$TraitID %in% 825L)
+  IsGeoCoord = all(c(59L,60L) %in% try_ancil$DataID)
+  if (IsGeoCoord & IsClimate){
+    cat0("   - Harmonise climate information.")
+    
+    # Select climate variable.
+    Climate = try_trait$Name[try_trait$TraitID %in% 825L]
+    Lon     = try_ancil$Name[try_ancil$DataID  %in% 60L ]
+    Lat     = try_ancil$Name[try_ancil$DataID  %in% 59L ]
+    
+    # Read the climate data base
+    KoppenID  = terra::rast(koppen_raster) # KoppenID  = raster::raster(koppen_raster)
+    KoppenFun = function(x,koppen_class) ifelse(x %in% koppen_class,x,NA_integer_)
+    KoppenID  = terra::app(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)}) # KoppenID  = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
+    KoppenID = as.factor(KoppenID)
+    
+    # Find observations with geolocation
+    GeoIndex = is.finite(TidyTRY[[Lon]]) & is.finite(TidyTRY[[Lat]])
+    TRYPoints = vect(TidyTRY[GeoIndex, c(Lon, Lat)], crs="EPSG:4326")
+    TRYPoints = project(TRYPoints, crs(KoppenID))
+  
+    # Extract data from raster
+    KoppenTRY  = terra::extract(KoppenID,TRYPoints, cells=FALSE, xy=FALSE, ID=FALSE)
+    KoppenTRY = as.integer(KoppenTRY$lyr.1)
+    KoppenTRY = ifelse( test = KoppenTRY %in% koppen_class
+                         , yes  = names(koppen_class)[KoppenTRY]
+                         , no   = NA_character_
+    )#end ifelse
+    
+    # Update climate classification
+    TidyTRY[[Climate]][GeoIndex] = KoppenTRY
+  }#end if (any(try_trait$TraitID %in% 825L))
+  
+  
+  # Harmonise additional data by using external maps for observations with geolocation.
+  for (o in sequence(nrow(owrite_data))){
+    VarIDNow   = owrite_data$VarID  [o]
+    TraitNow   = owrite_data$Trait  [o]
+    GeoTIFFNow = owrite_data$GeoTIFF[o]
+    Add0Now    = owrite_data$Add0   [o]
+    MultNow    = owrite_data$Mult   [o]
 
-      # Update climate classification
-      TidyTRY[[Climate]][GeoIndex] = KoppenTRY
-   }#end if (any(try_trait$TraitID %in% 825L))
-  
-  
-   # Harmonise additional data by using external maps for observations with geolocation.
-   for (o in sequence(nrow(owrite_data))){
-      VarIDNow   = owrite_data$VarID  [o]
-      TraitNow   = owrite_data$Trait  [o]
-      GeoTIFFNow = owrite_data$GeoTIFF[o]
-      Add0Now    = owrite_data$Add0   [o]
-      MultNow    = owrite_data$Mult   [o]
-    
-      # Look for the variable and whether or not it is loaded.
+  # Look for the variable and whether or not it is loaded.
       if (TraitNow){
          IsVar = any(try_trait$TraitID %in% VarIDNow)
       }else{
@@ -1766,42 +1769,42 @@ if (file.exists(Rdata_TaxonomyTRY)){
 }else{
    cat0(" + Harmonise taxonomic information.")
 
-   # Keep only the tropical measurements before we attempt to harmonise the names.
-   
-  cat0("   - Subset tropical observations in the NeoTropics.")
-  # Create a shorter TRY data base with standard names
-  Lon        = try_ancil$Name[try_ancil$DataID  %in% 60L  ]
-  Lat        = try_ancil$Name[try_ancil$DataID  %in% 59L  ]
-  Site       = try_ancil$Name[try_ancil$DataID  %in% 114L ]
-  Country    = try_ancil$Name[try_ancil$DataID  %in% 1412L]
-  Continent  = try_ancil$Name[try_ancil$DataID  %in% 1413L]
-  Climate    = try_trait$Name[try_trait$TraitID %in% 825L ]
-  ClimatePFT = try_ancil$Name[try_ancil$DataID  %in% 4736L]
-  Biome      = try_ancil$Name[try_ancil$DataID  %in% 193L ]
-  Empty      = rep(NA,times=nrow(TidyTRY))
+   # Keep only the measurements from selected realm before we attempt to harmonise the names.
+      cat0("   - Subset tropical observations in the NeoTropics.")
+      # Create a shorter TRY data base with standard names
+      Lon        = try_ancil$Name[try_ancil$DataID  %in% 60L  ]
+      Lat        = try_ancil$Name[try_ancil$DataID  %in% 59L  ]
+      Site       = try_ancil$Name[try_ancil$DataID  %in% 114L ]
+      Country    = try_ancil$Name[try_ancil$DataID  %in% 1412L]
+      Continent  = try_ancil$Name[try_ancil$DataID  %in% 1413L]
+      Climate    = try_trait$Name[try_trait$TraitID %in% 825L ]
+      ClimatePFT = try_ancil$Name[try_ancil$DataID  %in% 4736L]
+      Biome      = try_ancil$Name[try_ancil$DataID  %in% 193L ]
+      Empty      = rep(NA,times=nrow(TidyTRY))
 
-  SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
-                    , lat         = if(length(Lat       ) == 0L){Empty}else{TidyTRY[[Lat       ]]}
-                    , site        = if(length(Site      ) == 0L){Empty}else{TidyTRY[[Site      ]]}
-                    , country     = if(length(Country   ) == 0L){Empty}else{TidyTRY[[Country   ]]}
-                    , continent   = if(length(Continent ) == 0L){Empty}else{TidyTRY[[Continent ]]}
-                    , climate     = if(length(Climate   ) == 0L){Empty}else{TidyTRY[[Climate   ]]}
-                    , climate_pft = if(length(ClimatePFT) == 0L){Empty}else{TidyTRY[[ClimatePFT]]}
-                    , biome       = if(length(Biome     ) == 0L){Empty}else{TidyTRY[[Biome     ]]}
-                    )#end tibble
-  
-   if (use_realm %in% "NeoTropical"){
+      SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
+                        , lat         = if(length(Lat       ) == 0L){Empty}else{TidyTRY[[Lat       ]]}
+                        , site        = if(length(Site      ) == 0L){Empty}else{TidyTRY[[Site      ]]}
+                        , country     = if(length(Country   ) == 0L){Empty}else{TidyTRY[[Country   ]]}
+                        , continent   = if(length(Continent ) == 0L){Empty}else{TidyTRY[[Continent ]]}
+                        , climate     = if(length(Climate   ) == 0L){Empty}else{TidyTRY[[Climate   ]]}
+                        , climate_pft = if(length(ClimatePFT) == 0L){Empty}else{TidyTRY[[ClimatePFT]]}
+                        , biome       = if(length(Biome     ) == 0L){Empty}else{TidyTRY[[Biome     ]]}
+                        )#end tibble
+      
+    if (use_realm %in% "WestUS"){
+      KeepObs = SelectWestUS(SubsetTRY)
+
+    }else if (use_realm %in% "NeoTropical"){
       KeepObs = SelectNeoTropical(SubsetTRY)
-   }else if (use_realm %in% "AfricaTropical"){
+    }else if (use_realm %in% "AfricaTropical"){
       KeepObs = SelectAfricaTropical(SubsetTRY)
-      ### will add an asia elif too
-   }else{
+    }else{
       stop(" Pantropical filter still needs to be implemented.")
       # KeepObs = SelectPanTropical(TidyTRY)
    }#end if (fitrealm %in% "NeoTropical")
-
-   # Filter data to remove sites outside the domain of interest
-   TidyTRY = TidyTRY[KeepObs,,drop=FALSE]
+      # Filter data to remove sites outside the domain of interest
+      TidyTRY = TidyTRY[KeepObs,,drop=FALSE]
 
    ## Harmonise scientific names
    cat0("   - Harmonise scientific names.")

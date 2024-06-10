@@ -37,7 +37,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"dev","TraitAllom1")
+main_path       = file.path(home_path,"Downloads", "SPUR","TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
@@ -135,6 +135,7 @@ The following block defines some settings for the standardised major axis for mo
     -   `"PanTropical"`. All continents.
     -   `"AfricaTropical"`. Africa
     -   `"AsiaTropical"`. Asia
+    -   `"WestUS"`. Western US
 
 -   **fit_taxon**. Which taxonomic level of detail to use for SMA analyses? Options are:
 
@@ -177,7 +178,7 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical")[3L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
@@ -509,6 +510,7 @@ LabelRealm = switch( use_realm
                    , PanTropical = "Pantropical"
                    , AfricaTropical = "AfricaTropical"
                    , AsiaTropical = "AsiaTropical"
+                   , WestUS = "WestUS"
                    , stop("Unrecognised realm.")
                    )#end switch
 
