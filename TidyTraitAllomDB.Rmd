@@ -307,8 +307,8 @@ The following block defines some settings for the standardised major axis for mo
 * **use_realm**. Which realm to retain from the original data set. Current options are:
    * `"NeoTropical"`. South and Central America
    * `"PanTropical"`. All continents
-   * '"AfricaTropical"'. Africa 
-   * '"AsiaTropical"'. Asia
+   * `"AfricaTropical"`. Africa 
+   * `"AsiaTropical"`. Asia
    * `"WestUS"`. Western US
 ```{r, label='set-sma-options'}
 # Life-form/phylogenetic level to use for SMA and allometry analyses.
