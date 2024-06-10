@@ -1,5 +1,3 @@
-new change
-
 Scripts to tidy trait and allometry data bases. These scripts are intended to work particularly the [TRY data base](https://www.try-db.org/TryWeb/Home.php), but it provides a framework to incorporate data from additional sources.
 
 For additional details on these scripts (the "knitted" R Markdown), check the [documentation here](https://mpaiao.github.io/TraitAllom_Workflow/index.html).
