@@ -9,7 +9,6 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Marcos Longo" />
 
 <meta name="date" content="2022-09-27" />
 
@@ -270,7 +269,6 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Trait/Allometry Database Pre-processor</h1>
-<h4 class="author">Marcos Longo</h4>
 <h4 class="date">2022-09-27</h4>
 
 </div>
@@ -597,8 +595,9 @@ in column ScientificName, and author name (first name and last name) in
 column <strong>Author</strong>. It is highly recommended to include the
 reference and the doi to keep track of contributors.</p>
 <pre class="r"><code># List of files containing additional trait information.
-extra_file_base = c(&quot;LT-Brazil_Extra.csv&quot;,&quot;FrenchGuiana_Extra.csv&quot;
-                   ,&quot;PuertoRico_Extra.csv&quot;,&quot;TalloNeoTropical.csv&quot;,&quot;SLBrazil_AllometryData.csv&quot;) #, &quot;africadatanew.csv&quot;)
+extra_file_base = c(&quot;LT-Brazil_Extra.csv&quot;,&quot;FrenchGuiana_Extra.csv&quot;,&quot;PuertoRico_Extra.csv&quot;,&quot;TalloNeoTropical.csv&quot;,
+                    &quot;SLBrazil_AllometryData.csv&quot;, &quot;Tallo_WestUS.csv&quot;) #, &quot;africadatanew.csv&quot;)
+                   
 extra_file_list = file.path(main_path,&quot;AdditionalData&quot;,extra_file_base)</code></pre>
 <p>Optionally, it is possible to load a text file with pre-set taxonomic
 information through variable <code>taxon_file</code>. If not provided, R
@@ -680,8 +679,19 @@ Geonoma stricta subsp. arundinacea,Geonoma stricta,Geonoma,Arecaceae,Arecales,Li
 Heterotrichum cymosum,Miconia eggersii,Miconia,Melastomataceae,Myrtales,Magnoliopsida,Tracheophyta,,Name is accepted in WFO; considered synonym in GBIF
 Leaves random species,,,,,,,,Too generic description
 Siparudecipiens,Siparuna decipiens,Siparuna,Siparunaceae,Laurales,Magnoliopsida,Tracheophyta,,Some sources manually removed NA from data sources; affecting the scientific names</code></pre>
+<p>In addition, if using a taxonomic file, the user can specify whether
+to only use taxa listed in the file or if the code can fill in remaining
+taxa from online resources, by setting variable
+<code>taxa_must_be_in_file=TRUE</code>. This may be desirable if user
+has a list of taxa, and also may help with reproducibility as scientific
+names do change over time due to phylogenetic updates. If
+<code>taxa_must_be_in_file=FALSE</code> or if <code>taxon_file</code> is
+missing, then the code will search for names online.</p>
 <pre class="r"><code># List of TRY taxonomic information, set it to NA_character_ if no file exists.
-taxon_file = c(NA_character_ , file.path(list_path,&quot;TRY_TaxonomyList_2024-01-16.csv&quot;))[2L]</code></pre>
+taxon_file = c(NA_character_ , file.path(list_path,&quot;TRY_TaxonomyList_2024-01-16.csv&quot;))[2L]
+
+# If taxon_file is not NA_character_,check whether all taxonomic info must be provided in the file.
+taxa_must_be_in_file = c(FALSE,TRUE)[2L]</code></pre>
 <p>For “categorical traits” (like photosynthetic path, or growth form),
 it is possible to provide some ancillary data for specific traits that
 will be applied to existing observations — but mind that they must be
@@ -769,15 +779,15 @@ the script rewrite the quoted files? * <strong>owrite_author</strong>.
 Should the script rewrite the files by author? *
 <strong>reload_lookup</strong>. Reload the look-up table? *
 <strong>reload_TidyTRY</strong>. Reload the tidy data base for TRY?</p>
-<pre class="r"><code>owrite_quote   = c(FALSE,TRUE)[1]
-owrite_author  = c(FALSE,TRUE)[1]
-reload_lookup  = c(FALSE,TRUE)[2]
-reload_TidyTRY = c(FALSE,TRUE)[2]</code></pre>
+<pre class="r"><code>owrite_quote   = c(FALSE,TRUE)[1L]
+owrite_author  = c(FALSE,TRUE)[1L]
+reload_lookup  = c(FALSE,TRUE)[2L]
+reload_TidyTRY = c(FALSE,TRUE)[2L]</code></pre>
 <p>Settings for generating look-up tables for categorical traits and
 ancillary variables.</p>
 <pre class="r"><code># Generate unique label table for categorical traits and ancillary variables?
-gen_unique_trait = c(FALSE,TRUE)[2]
-gen_unique_ancil = c(FALSE,TRUE)[2]</code></pre>
+gen_unique_trait = c(FALSE,TRUE)[2L]
+gen_unique_ancil = c(FALSE,TRUE)[2L]</code></pre>
 <p>The following block defines some settings for the standardised major
 axis for most traits and photosynthesis traits:</p>
 <ul>
@@ -798,16 +808,17 @@ Pinopsida, Cycadopsida, Gnetopsida, Ginkgopsida)</li>
 data set. Current options are:
 <ul>
 <li><code>"NeoTropical"</code>. South and Central America</li>
-<li><code>"PanTropical"</code>. All continents.</li>
-<li>‘“AfricaTropical”’. Africa</li>
-<li>‘“AsiaTropical”’. Asia</li>
+<li><code>"PanTropical"</code>. All continents</li>
+<li><code>"AfricaTropical"</code>. Africa</li>
+<li><code>"AsiaTropical"</code>. Asia</li>
+<li><code>"WestUS"</code>. Western US</li>
 </ul></li>
 </ul>
 <pre class="r"><code># Life-form/phylogenetic level to use for SMA and allometry analyses.
 use_lifeclass  = c(&quot;FlowerTrees&quot;,&quot;Shrubs&quot;,&quot;Grasses&quot;,&quot;FlowerPlants&quot;,&quot;Pinopsida&quot;,&quot;SeedPlants&quot;,&quot;Plantae&quot;)[4L]
 
 # Realm to use for SMA and allometry analyses.
-use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;,&quot;AfricaTropical&quot;, &quot;AsiaTropical&quot;)[1L]</code></pre>
+use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;, &quot;AfricaTropical&quot;, &quot;AsiaTropical&quot;, &quot;WestUS&quot;)[1L]</code></pre>
 <p>The following block defines variables useful for harmonising
 traits:</p>
 <ul>
@@ -2171,29 +2182,30 @@ for measurements with geographic information.</p>
    dummy = load(Rdata_GeodataTRY)
 }else{
    cat0(&quot; + Harmonise geographic information.&quot;)
-  
+
+   
    # Harmonise climate by using an external Koppen-Geiger map for observations with geolocation.
    IsClimate = any(try_trait$TraitID %in% 825L)
    IsGeoCoord = all(c(59L,60L) %in% try_ancil$DataID)
    if (IsGeoCoord &amp; IsClimate){
       cat0(&quot;   - Harmonise climate information.&quot;)
-    
+      
       # Select climate variable.
       Climate = try_trait$Name[try_trait$TraitID %in% 825L]
       Lon     = try_ancil$Name[try_ancil$DataID  %in% 60L ]
       Lat     = try_ancil$Name[try_ancil$DataID  %in% 59L ]
-    
+      
       # Read the climate data base
       KoppenID  = terra::rast(koppen_raster) # KoppenID  = raster::raster(koppen_raster)
       KoppenFun = function(x,koppen_class) ifelse(x %in% koppen_class,x,NA_integer_)
       KoppenID  = terra::app(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)}) # KoppenID  = calc(KoppenID,function(x){KoppenFun(x,koppen_class=koppen_class)})
       KoppenID = as.factor(KoppenID)
-    
+      
       # Find observations with geolocation
       GeoIndex = is.finite(TidyTRY[[Lon]]) &amp; is.finite(TidyTRY[[Lat]])
-      TRYPoints = vect(x=TidyTRY[GeoIndex, c(Lon, Lat)],crs=&quot;EPSG:4326&quot;)
+      TRYPoints = vect(TidyTRY[GeoIndex, c(Lon, Lat)], crs=&quot;EPSG:4326&quot;)
       TRYPoints = project(TRYPoints, crs(KoppenID))
-  
+      
       # Extract data from raster
       KoppenTRY  = terra::extract(KoppenID,TRYPoints, cells=FALSE, xy=FALSE, ID=FALSE)
       KoppenTRY = as.integer(KoppenTRY$lyr.1)
@@ -2201,7 +2213,7 @@ for measurements with geographic information.</p>
                         , yes  = names(koppen_class)[KoppenTRY]
                         , no   = NA_character_
                         )#end ifelse
-
+    
       # Update climate classification
       TidyTRY[[Climate]][GeoIndex] = KoppenTRY
    }#end if (any(try_trait$TraitID %in% 825L))
@@ -2214,14 +2226,14 @@ for measurements with geographic information.</p>
       GeoTIFFNow = owrite_data$GeoTIFF[o]
       Add0Now    = owrite_data$Add0   [o]
       MultNow    = owrite_data$Mult   [o]
-    
+      
       # Look for the variable and whether or not it is loaded.
       if (TraitNow){
          IsVar = any(try_trait$TraitID %in% VarIDNow)
       }else{
          IsVar = any(try_ancil$DataID  %in% VarIDNow)
       }#end if (TraitNow)
-    
+      
       # Replace data if both the geographic coordinates and the variable are loaded.
       if (IsGeoCoord &amp; IsVar){
          if (TraitNow){
@@ -2234,17 +2246,17 @@ for measurements with geographic information.</p>
          Lon     = try_ancil$Name[try_ancil$DataID %in% 60L ]
          Lat     = try_ancil$Name[try_ancil$DataID %in% 59L ]
          cat0(&quot;   - Harmonise &quot;,VarDesc,&quot;.&quot;)
-      
+         
          # Read the variable data base
          VarRaster = terra::rast(GeoTIFFNow)
          VarFun    = function(x,add0,mult) add0 + mult * x
          VarValue  = terra::app(VarRaster,function(x){VarFun(x,add0=Add0Now,mult=MultNow)})
-      
+         
          # Find observations with geolocation
          GeoIndex  = is.finite(TidyTRY[[Lon]]) &amp; is.finite(TidyTRY[[Lat]])
          TRYPoints = vect(x=TidyTRY[GeoIndex, c(Lon, Lat)],crs=&quot;EPSG:4326&quot;)
          TRYPoints = project(TRYPoints, crs(KoppenID))
-      
+         
          # Extract data from raster
          VarTRY = terra::extract(VarValue, TRYPoints, cells=FALSE, xy=FALSE, ID=FALSE)
          VarTRY = VarTRY$lyr.1
@@ -2274,44 +2286,45 @@ these requires local knowledge.</p>
 }else{
    cat0(&quot; + Harmonise taxonomic information.&quot;)
 
-   # Keep only the tropical measurements before we attempt to harmonise the names.
-   
-  cat0(&quot;   - Subset tropical observations in the NeoTropics.&quot;)
-  # Create a shorter TRY data base with standard names
-  Lon        = try_ancil$Name[try_ancil$DataID  %in% 60L  ]
-  Lat        = try_ancil$Name[try_ancil$DataID  %in% 59L  ]
-  Site       = try_ancil$Name[try_ancil$DataID  %in% 114L ]
-  Country    = try_ancil$Name[try_ancil$DataID  %in% 1412L]
-  Continent  = try_ancil$Name[try_ancil$DataID  %in% 1413L]
-  Climate    = try_trait$Name[try_trait$TraitID %in% 825L ]
-  ClimatePFT = try_ancil$Name[try_ancil$DataID  %in% 4736L]
-  Biome      = try_ancil$Name[try_ancil$DataID  %in% 193L ]
-  Empty      = rep(NA,times=nrow(TidyTRY))
+   # Keep only the measurements from selected realm before we attempt to harmonise the names.
+   cat0(&quot;   - Subset observations in the region of interest.&quot;)
+   # Create a shorter TRY data base with standard names
+   Lon        = try_ancil$Name[try_ancil$DataID  %in% 60L  ]
+   Lat        = try_ancil$Name[try_ancil$DataID  %in% 59L  ]
+   Site       = try_ancil$Name[try_ancil$DataID  %in% 114L ]
+   Country    = try_ancil$Name[try_ancil$DataID  %in% 1412L]
+   Continent  = try_ancil$Name[try_ancil$DataID  %in% 1413L]
+   Climate    = try_trait$Name[try_trait$TraitID %in% 825L ]
+   ClimatePFT = try_ancil$Name[try_ancil$DataID  %in% 4736L]
+   Biome      = try_ancil$Name[try_ancil$DataID  %in% 193L ]
+   Empty      = rep(NA,times=nrow(TidyTRY))
 
-  SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
-                    , lat         = if(length(Lat       ) == 0L){Empty}else{TidyTRY[[Lat       ]]}
-                    , site        = if(length(Site      ) == 0L){Empty}else{TidyTRY[[Site      ]]}
-                    , country     = if(length(Country   ) == 0L){Empty}else{TidyTRY[[Country   ]]}
-                    , continent   = if(length(Continent ) == 0L){Empty}else{TidyTRY[[Continent ]]}
-                    , climate     = if(length(Climate   ) == 0L){Empty}else{TidyTRY[[Climate   ]]}
-                    , climate_pft = if(length(ClimatePFT) == 0L){Empty}else{TidyTRY[[ClimatePFT]]}
-                    , biome       = if(length(Biome     ) == 0L){Empty}else{TidyTRY[[Biome     ]]}
-                    )#end tibble
-  
-   if (use_realm %in% &quot;NeoTropical&quot;){
+   SubsetTRY = tibble( lon         = if(length(Lon       ) == 0L){Empty}else{TidyTRY[[Lon       ]]}
+                     , lat         = if(length(Lat       ) == 0L){Empty}else{TidyTRY[[Lat       ]]}
+                     , site        = if(length(Site      ) == 0L){Empty}else{TidyTRY[[Site      ]]}
+                     , country     = if(length(Country   ) == 0L){Empty}else{TidyTRY[[Country   ]]}
+                     , continent   = if(length(Continent ) == 0L){Empty}else{TidyTRY[[Continent ]]}
+                     , climate     = if(length(Climate   ) == 0L){Empty}else{TidyTRY[[Climate   ]]}
+                     , climate_pft = if(length(ClimatePFT) == 0L){Empty}else{TidyTRY[[ClimatePFT]]}
+                     , biome       = if(length(Biome     ) == 0L){Empty}else{TidyTRY[[Biome     ]]}
+                     )#end tibble
+
+   # Select the approach subset function based on the realm.
+   if (use_realm %in% &quot;WestUS&quot;){
+      KeepObs = SelectWestUS(SubsetTRY)
+   }else if (use_realm %in% &quot;NeoTropical&quot;){
       KeepObs = SelectNeoTropical(SubsetTRY)
    }else if (use_realm %in% &quot;AfricaTropical&quot;){
       KeepObs = SelectAfricaTropical(SubsetTRY)
-      ### will add an asia elif too
    }else{
       stop(&quot; Pantropical filter still needs to be implemented.&quot;)
       # KeepObs = SelectPanTropical(TidyTRY)
-   }#end if (fitrealm %in% &quot;NeoTropical&quot;)
+   }#end if (fitrealm %in% &quot;WestUS&quot;)
 
    # Filter data to remove sites outside the domain of interest
    TidyTRY = TidyTRY[KeepObs,,drop=FALSE]
-
-   ## Harmonise scientific names
+   
+   # Harmonise scientific names
    cat0(&quot;   - Harmonise scientific names.&quot;)
    # Remove &quot;x &quot; from scientific names
    cat0(&quot;     ~ Remove \&quot;x\&quot; from scientific names.&quot;)
@@ -2333,7 +2346,7 @@ these requires local knowledge.</p>
    # If a taxonomic table is provided, use it first.
    if (file.exists(taxon_file)){
       cat0(&quot;     ~ Retrieve taxonomic information from file &quot;,basename(taxon_file),&quot;.&quot;)
-
+      
       # Read in taxonomic information.
       TaxonList = read_csv(file = taxon_file,show_col_types = FALSE)
       
@@ -2346,7 +2359,7 @@ these requires local knowledge.</p>
       if (&quot;AcceptedClass&quot;  %in% names(TaxonList)) TaxonList$AcceptedClass  = str_to_title(TaxonList$AcceptedClass )
       if (&quot;AcceptedPhylum&quot; %in% names(TaxonList)) TaxonList$AcceptedPhylum = str_to_title(TaxonList$AcceptedPhylum)
       if (&quot;GrowthForm&quot;     %in% names(TaxonList)) TaxonList$GrowthForm     = str_to_title(TaxonList$GrowthForm    )
-
+      
       # Search the species in the look-up table.ta
       cat0(&quot;     ~ Search species in the look-up table.&quot;)
       IdxUniq = match(UniqScientific,TaxonList$TRYName)
@@ -2381,11 +2394,25 @@ these requires local knowledge.</p>
       cat0(&quot;     ~ No taxonomic look-up table provided.  Retrieve taxonomic information online.&quot;)
       IdxUniq = rep(NA_integer_,times=length(UniqScientific))
    }#end if (file.exists(taxon_file))
+
+      
+   # Check for missing species.
+   UniqMiss    = which(is.na(IdxUniq))
+   CntUniqMiss = length(UniqMiss)
    
-   # Fill in unresolved taxa.
-   UniqMiss = which(is.na(IdxUniq))
-   #if (length(UniqMiss) %gt% 0L) stop(&quot;Check for missing species!&quot;)
-   if (length(UniqMiss) %gt% 0L){
+   # Decide whether to fill in any missing taxonomic information or stop the run.
+   if ( ( CntUniqMiss %gt% 0L ) &amp;&amp; file.exists(taxon_file) &amp;&amp; taxa_must_be_in_file ){
+      # User does not want to fill in taxonomy online. Stop execution.
+      cat0(&quot;---~---&quot;)
+      cat0(&quot;   File &quot;,basename(taxon_file),&quot; does not list all species in data base.&quot;)
+      cat0(&quot;   Number of missing species: &quot;,CntUniqMiss,&quot;.&quot;)
+      cat0(&quot;   To see missing species, check variable \&quot;UniqMiss\&quot;.&quot;)
+      cat0(&quot;   &quot;)
+      cat0(&quot;   If you prefer to fill in missing species online, set \&quot;taxa_must_be_in_file=FALSE\&quot; or&quot;)
+      cat0(&quot;      or ignore taxonomic file by setting \&quot;taxon_file=NA_character_\&quot;.&quot;)
+      cat0(&quot;---~---&quot;)
+      stop(&quot;   Missing species in taxonomic data base.&quot;)
+   }else if (length(UniqMiss) %gt% 0L){
       cat0(&quot;     ~ Search remaining species online.&quot;)
       UniqCheck = tibble( name    = UniqScientific[UniqMiss]
                         , kingdom = &quot;Plantae&quot;
