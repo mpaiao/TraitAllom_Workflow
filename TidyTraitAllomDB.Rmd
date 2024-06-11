@@ -70,7 +70,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings'}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+main_path       = file.path(home_path,"Downloads", "Data","TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 orig_path       = file.path(main_path,"Original")
 quote_path      = file.path(main_path,"Quoted")
@@ -321,7 +321,7 @@ The following block defines some settings for the standardised major axis for mo
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA and allometry analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 ```
 
 The following block defines variables useful for harmonising traits:
@@ -775,7 +775,7 @@ if (reload_TidyTRY && file.exists(Rdata_RawTRY)){
    n_try_file_list = length(try_file_list)
    file_first      = 1L
    file_last       = n_try_file_list
-   loop_list       = seq(from=file_first,to=n_try_file_list,by=1)
+   loop_list       = seq(from=file_first,to=n_try_file_list)
 
    # Initialise the tidy TRY object.
    cat0(" + Initialise the tidy TRY object containing traits and ancillary variables.")
