@@ -312,7 +312,7 @@ The following block defines some settings for the standardised major axis for mo
    * `"WestUS"`. Western US
 ```{r, label='set-sma-options'}
 # Life-form/phylogenetic level to use for SMA and allometry analyses.
-use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
+use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA and allometry analyses.
 use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
@@ -1889,7 +1889,7 @@ if (file.exists(Rdata_TaxonomyTRY)){
       MissLevel   = c("species","genus","family","order","class","phylum")
       MissLevel   = MissLevel[! MissLevel %in% names(UniqResolve)]
       UniqResolve = UniqResolve                         %>% 
-         mutate( across(c(MissLevel), ~ NA_character_)) %>%
+         mutate( across(all_of(MissLevel), ~ NA_character_)) %>%
          mutate( acceptedName = ifelse(test=is.na(species),yes=genus,no=species) )
       
       UniqTaxon$ScientificName[UniqMiss] = UniqResolve$acceptedName
@@ -1916,7 +1916,7 @@ if (file.exists(Rdata_TaxonomyTRY)){
       MissLevel   = c("family","order","class","phylum")
       MissLevel   = MissLevel[! MissLevel %in% names(UniqResolve)]
       UniqResolve = UniqResolve                         %>% 
-         mutate( across(c(MissLevel), ~ NA_character_))
+         mutate( across(all_of(MissLevel), ~ NA_character_))
       UniqTaxon$Family[UniqSel] = UniqResolve$family[UniqIndex[UniqSel]]
       UniqTaxon$Order [UniqSel] = UniqResolve$order [UniqIndex[UniqSel]]
       UniqTaxon$Class [UniqSel] = UniqResolve$class [UniqIndex[UniqSel]]

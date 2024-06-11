@@ -88,13 +88,13 @@ This flag defines whether to keep only woody plants, and how strict we should be
 
 - **tree_only**. Only trees (sensu stricto) are included. This will exclude shrubs, lianas, hemiepiphytes and tree-like forms (e.g., palms, yucca "trees").
 - **woody_ss_free**. All free-standing woody plants (sensu stricto) are included. This will include trees and shrubs, but exclude lianas, hemiepiphytes, and tree-like forms.
-- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.Summ
+- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.
 - **woody_sl_free**. All free-standing woody plants (sensu lato) are included. This will include trees, shrubs and tree-like forms, but exclude lianas and hemiepiphytes.
 - **woody_sl_all**. All woody plants (sensu lato) are included. This will include trees, lianas, shrubs, palms and hemiepiphytes.
 - **all_plants**. All plants will be retained.
 
 ```{r,label='set-woody',message=FALSE,results='hide',warning=FALSE}
-use_woody_level = c("tree_only","woody_ss_free","woody_ss_all","woody_sl_free","woody_sl_all","all_plants")[2L]
+use_woody_level = c("tree_only","woody_ss_free","woody_ss_all","woody_sl_free","woody_sl_all","all_plants")[5L]
 ```
 
 The following block defines some settings for the standardised major axis for most traits and photosynthesis traits:
@@ -175,7 +175,7 @@ SMA_Robust      = FALSE
 SMA_MaxIter     = 10L
 
 # Life-form/phylogenetic level to use for SMA analyses.
-use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
+use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
 use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
@@ -213,13 +213,13 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 
 ```{r, label='set-pca',message=FALSE,results='hide',warning=FALSE}
 # Run imputation and cluster analyses in test mode?
-impute_cluster_test = c(FALSE,TRUE)[1L]
+impute_cluster_test = c(FALSE,TRUE)[2L]
 
 # Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have a few traits
-n_row_numtrait_impute = 3L
+n_row_numtrait_impute = 6L
 
 # Minimum fraction of complete observations (relative to the most abundant numeric trait) for being considered in the imputation
-f_col_trait_impute = 1./6.
+f_col_trait_impute = 1./8.
 
 # Minimum variability of the variable to be included in the imputation. Variability is sd(x)/mean(abs(x)) for numeric traits and
 #    evenness for categorical traits (including ordered, integers, logical variables, and characters).
