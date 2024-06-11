@@ -20,6 +20,30 @@ pre code {
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Reset session
+
+Use this chunk to fully reset R.
+```{r, label = 'reset-R',message=FALSE, results='hide'}
+# Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) > 0){
+   dummy = sapply(X=paste0("package:",plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) > 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())
+```
+
 # Introduction.
 
 This script seeks to establish trait trade-off relationships for different plant functional groups.
@@ -37,7 +61,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Downloads", "SPUR","TraitAllom_Workflow")
+main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
@@ -61,9 +85,7 @@ reload_impute     = c(FALSE,TRUE)[2L]
 reload_cluster    = c(FALSE,TRUE)[2L]
 ```
 
-This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves.
---> the variable plastic_sun_only is being set to FALSE, indicating that observations from traits showing high light plasticity should not be excluded
-
+This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves. If `plastic_sun_only=TRUE`, the code will exclude traits that are considered photo-plastic, unless there is high likelihood that the trait measurements used leaves in full sun (the exception being shrubs living in closed canopy habitats, which are assumed to be understorey specialists). If `plastic_sun_only=FALSE`, the code will keep all trait measurements.
 ```{r,label='set-light',message=FALSE,results='hide',warning=FALSE}
 plastic_sun_only = c(FALSE,TRUE)[2L]
 ```
@@ -178,7 +200,7 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
@@ -506,11 +528,11 @@ LabelLife = switch( use_lifeclass
 
 # Label for floristic realm
 LabelRealm = switch( use_realm
-                   , NeoTropical = "Neotropical"
-                   , PanTropical = "Pantropical"
+                   , NeoTropical    = "Neotropical"
+                   , PanTropical    = "Pantropical"
                    , AfricaTropical = "AfricaTropical"
-                   , AsiaTropical = "AsiaTropical"
-                   , WestUS = "WestUS"
+                   , AsiaTropical   = "AsiaTropical"
+                   , WestUS         = "WestUS"
                    , stop("Unrecognised realm.")
                    )#end switch
 
@@ -657,11 +679,11 @@ if (! use_woody_level %in% "all_plants"){
                         , woody_sl_all  = c("Hemiepiphyte","Liana","Palm","Shrub","Tree")
                         )#end switch
    ClassLevels  = switch( EXPR           = use_woody_level
-                        , tree_only      = c("Magnoliopsida")
-                        , woody_ss_free  = c("Magnoliopsida")
-                        , woody_ss_all   = c("Magnoliopsida")
-                        , woody_sl_free  = c("Magnoliopsida","Liliopsida")
-                        , woody_sl_all   = c("Magnoliopsida","Liliopsida")
+                        , tree_only      = c("Ginkgoopsida","Gnetopsida","Magnoliopsida","Pinopsida") # Not sure about "Cycadopsida"
+                        , woody_ss_free  = c("Ginkgoopsida","Gnetopsida","Magnoliopsida","Pinopsida") # Not sure about "Cycadopsida"
+                        , woody_ss_all   = c("Ginkgoopsida","Gnetopsida","Magnoliopsida","Pinopsida") # Not sure about "Cycadopsida"
+                        , woody_sl_free  = c("Cycadopsida","Ginkgoopsida","Gnetopsida","Liliopsida","Magnoliopsida","Pinopsida","Polypodiopsida")
+                        , woody_sl_all   = c("Cycadopsida","Ginkgoopsida","Gnetopsida","Liliopsida","Magnoliopsida","Pinopsida","Polypodiopsida")
                         )#end switch
 
    IsWoodiness   = if(AnyWoodiness ){TidyTRY[[Woodiness ]] %in% WoodyLevels }else{AllTrue}

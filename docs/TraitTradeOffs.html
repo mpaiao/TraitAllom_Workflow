@@ -285,6 +285,28 @@ pre code {
   white-space: pre;
 }
 </style>
+<div id="reset-session" class="section level1">
+<h1>Reset session</h1>
+<p>Use this chunk to fully reset R.</p>
+<pre class="r"><code># Unload all packages except for the R default ones
+plist = names(sessionInfo()$otherPkgs)
+if (length(plist) &gt; 0){
+   dummy = sapply(X=paste0(&quot;package:&quot;,plist),FUN=detach,character.only=TRUE,unload=TRUE)
+}#end if (length(plist) &gt; 0)
+
+
+# Remove all variables
+rm(list=ls())
+
+# Reset warnings
+options(warn=0)
+
+# Close all plots
+invisible(graphics.off())
+
+# Clean up
+invisible(gc())</code></pre>
+</div>
 <div id="introduction." class="section level1">
 <h1>Introduction.</h1>
 <p>This script seeks to establish trait trade-off relationships for
@@ -332,7 +354,13 @@ reload_corr_trait = c(FALSE,TRUE)[2L]
 reload_impute     = c(FALSE,TRUE)[2L]
 reload_cluster    = c(FALSE,TRUE)[2L]</code></pre>
 <p>This flag defines whether to exclude observations from traits that
-show high light plasticity but were not collected from sunny leaves.</p>
+show high light plasticity but were not collected from sunny leaves. If
+<code>plastic_sun_only=TRUE</code>, the code will exclude traits that
+are considered photo-plastic, unless there is high likelihood that the
+trait measurements used leaves in full sun (the exception being shrubs
+living in closed canopy habitats, which are assumed to be understorey
+specialists). If <code>plastic_sun_only=FALSE</code>, the code will keep
+all trait measurements.</p>
 <pre class="r"><code>plastic_sun_only = c(FALSE,TRUE)[2L]</code></pre>
 <p>This flag defines the levels of experiments to be included (missing
 values are always assumed natural and thus included). -
@@ -433,6 +461,9 @@ original data set. Current options are:</p>
 <ul>
 <li><code>"NeoTropical"</code>. South and Central America</li>
 <li><code>"PanTropical"</code>. All continents.</li>
+<li><code>"AfricaTropical"</code>. Africa</li>
+<li><code>"AsiaTropical"</code>. Asia</li>
+<li><code>"WestUS"</code>. Western US</li>
 </ul></li>
 <li><p><strong>fit_taxon</strong>. Which taxonomic level of detail to
 use for SMA analyses? Options are:</p>
@@ -480,11 +511,11 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c(&quot;FlowerTrees&quot;,&quot;Shrubs&quot;,&quot;Grasses&quot;,&quot;FlowerPlants&quot;,&quot;Pinopsida&quot;,&quot;SeedPlants&quot;,&quot;Plantae&quot;)[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;)[1L]
+use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;, &quot;AfricaTropical&quot;, &quot;AsiaTropical&quot;, &quot;WestUS&quot;)[1L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c(&quot;Individual&quot;,&quot;Species&quot;,&quot;Genus&quot;)[2L]</code></pre>
-<p>Settings for Kendall correlation table</p>
+<p>Settings for Kendall correlation table.</p>
 <ul>
 <li><strong>n_kendall_min</strong>. This is the minimum number of valid
 pairs of variables for computing correlation.</li>
@@ -843,8 +874,11 @@ LabelLife = switch( use_lifeclass
 
 # Label for floristic realm
 LabelRealm = switch( use_realm
-                   , NeoTropical = &quot;Neotropical&quot;
-                   , PanTropical = &quot;Pantropical&quot;
+                   , NeoTropical    = &quot;Neotropical&quot;
+                   , PanTropical    = &quot;Pantropical&quot;
+                   , AfricaTropical = &quot;AfricaTropical&quot;
+                   , AsiaTropical   = &quot;AsiaTropical&quot;
+                   , WestUS         = &quot;WestUS&quot;
                    , stop(&quot;Unrecognised realm.&quot;)
                    )#end switch
 
@@ -986,11 +1020,11 @@ if (! use_woody_level %in% &quot;all_plants&quot;){
                         , woody_sl_all  = c(&quot;Hemiepiphyte&quot;,&quot;Liana&quot;,&quot;Palm&quot;,&quot;Shrub&quot;,&quot;Tree&quot;)
                         )#end switch
    ClassLevels  = switch( EXPR           = use_woody_level
-                        , tree_only      = c(&quot;Magnoliopsida&quot;)
-                        , woody_ss_free  = c(&quot;Magnoliopsida&quot;)
-                        , woody_ss_all   = c(&quot;Magnoliopsida&quot;)
-                        , woody_sl_free  = c(&quot;Magnoliopsida&quot;,&quot;Liliopsida&quot;)
-                        , woody_sl_all   = c(&quot;Magnoliopsida&quot;,&quot;Liliopsida&quot;)
+                        , tree_only      = c(&quot;Ginkgoopsida&quot;,&quot;Gnetopsida&quot;,&quot;Magnoliopsida&quot;,&quot;Pinopsida&quot;) # Not sure about &quot;Cycadopsida&quot;
+                        , woody_ss_free  = c(&quot;Ginkgoopsida&quot;,&quot;Gnetopsida&quot;,&quot;Magnoliopsida&quot;,&quot;Pinopsida&quot;) # Not sure about &quot;Cycadopsida&quot;
+                        , woody_ss_all   = c(&quot;Ginkgoopsida&quot;,&quot;Gnetopsida&quot;,&quot;Magnoliopsida&quot;,&quot;Pinopsida&quot;) # Not sure about &quot;Cycadopsida&quot;
+                        , woody_sl_free  = c(&quot;Cycadopsida&quot;,&quot;Ginkgoopsida&quot;,&quot;Gnetopsida&quot;,&quot;Liliopsida&quot;,&quot;Magnoliopsida&quot;,&quot;Pinopsida&quot;,&quot;Polypodiopsida&quot;)
+                        , woody_sl_all   = c(&quot;Cycadopsida&quot;,&quot;Ginkgoopsida&quot;,&quot;Gnetopsida&quot;,&quot;Liliopsida&quot;,&quot;Magnoliopsida&quot;,&quot;Pinopsida&quot;,&quot;Polypodiopsida&quot;)
                         )#end switch
 
    IsWoodiness   = if(AnyWoodiness ){TidyTRY[[Woodiness ]] %in% WoodyLevels }else{AllTrue}
