@@ -61,7 +61,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+main_path       = file.path(home_path,"Downloads", "SPUR", "TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
@@ -87,7 +87,7 @@ reload_cluster    = c(FALSE,TRUE)[2L]
 
 This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves. If `plastic_sun_only=TRUE`, the code will exclude traits that are considered photo-plastic, unless there is high likelihood that the trait measurements used leaves in full sun (the exception being shrubs living in closed canopy habitats, which are assumed to be understorey specialists). If `plastic_sun_only=FALSE`, the code will keep all trait measurements.
 ```{r,label='set-light',message=FALSE,results='hide',warning=FALSE}
-plastic_sun_only = c(FALSE,TRUE)[2L]
+plastic_sun_only = c(FALSE,TRUE)[1L]
 ```
 
 This flag defines the levels of experiments to be included (missing values are always assumed natural and thus included).
@@ -116,7 +116,7 @@ This flag defines whether to keep only woody plants, and how strict we should be
 - **all_plants**. All plants will be retained.
 
 ```{r,label='set-woody',message=FALSE,results='hide',warning=FALSE}
-use_woody_level = c("tree_only","woody_ss_free","woody_ss_all","woody_sl_free","woody_sl_all","all_plants")[5L]
+use_woody_level = c("tree_only","woody_ss_free","woody_ss_all","woody_sl_free","woody_sl_all","all_plants")[2L]
 ```
 
 The following block defines some settings for the standardised major axis for most traits and photosynthesis traits:
@@ -200,7 +200,7 @@ SMA_MaxIter     = 10L
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
@@ -238,10 +238,10 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 impute_cluster_test = c(FALSE,TRUE)[2L]
 
 # Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have a few traits
-n_row_numtrait_impute = 6L
+n_row_numtrait_impute = 8L
 
 # Minimum fraction of complete observations (relative to the most abundant numeric trait) for being considered in the imputation
-f_col_trait_impute = 1./8.
+f_col_trait_impute = 1./6.
 
 # Minimum variability of the variable to be included in the imputation. Variability is sd(x)/mean(abs(x)) for numeric traits and
 #    evenness for categorical traits (including ordered, integers, logical variables, and characters).
@@ -576,44 +576,44 @@ Here we decide whether or not to eliminate traits that are known to be highly ph
 ```{r,label='remove-shaded',message=FALSE,results='hide',warning=FALSE}
 # Remove trait values from shaded individuals in case this is a sun trait.
 if (plastic_sun_only){
-   cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
-   PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
-   SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
-   Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
-   GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
-   Raunkiaer     = try_trait$Name[try_trait$TraitID %in% c( 343L)                  ]
-
-   EmptyChar     = rep(NA_character_,nrow(TidyTRY))
-   if(length(SunShade  ) == 0L){SunShade   = EmptyChar}else{SunShade   = TidyTRY[[SunShade  ]]}
-   if(length(Biome     ) == 0L){Biome      = EmptyChar}else{Biome      = TidyTRY[[Biome     ]]}
-   if(length(GrowthForm) == 0L){GrowthForm = EmptyChar}else{GrowthForm = TidyTRY[[GrowthForm]]}
-   if(length(Raunkiaer ) == 0L){Raunkiaer  = EmptyChar}else{Raunkiaer  = TidyTRY[[Raunkiaer ]]}
-
-   # Save logical variables that will help setting conditions for keeping/discarding data.
-   IsSun    = SunShade %in% "03 - Mostly Sun-Exposed"
-   IsShade  = SunShade %in% c("01 - Mostly Shaded","02 - Partially Shaded")
-   IsOpen   = ( grepl(pattern="Desert"   ,x=Biome)
-              | grepl(pattern="Grassland",x=Biome)
-              | grepl(pattern="Scrubland",x=Biome)
-              | grepl(pattern="Savannah" ,x=Biome)
-              | grepl(pattern="Tundra"   ,x=Biome)
-              | grepl(pattern="Pastures" ,x=Biome)
-              )#end IsOpen
-   IsClosed = grepl(pattern="Moist Forest",x=Biome)
-   IsShrub  = ( ( GrowthForm %in% c("SHB","Shrub") )
-              | ( Raunkiaer  %in% c("Microphanerophyte","Nanophanerophyte") )
-              )#end IsShrub
-
-   # Filter photo-plastic traits
-   for (w in seq_along(PlasticTraits)){
-      # Select trait
-      PlasticNow            = PlasticTraits[w]
-      
-      # Remove observations that are not (presumably) from sun leaves.
-      Keep                  = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
-      TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA)
-   }#end for (w in PlasticTraits)
-}#end if (plastic_sun_only)
+    cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
+    PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
+    SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
+    Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
+    GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
+    Raunkiaer     = try_trait$Name[try_trait$TraitID %in% c( 343L)                  ]
+ 
+    EmptyChar     = rep(NA_character_,nrow(TidyTRY))
+    if(length(SunShade  ) == 0L){SunShade   = EmptyChar}else{SunShade   = TidyTRY[[SunShade  ]]}
+    if(length(Biome     ) == 0L){Biome      = EmptyChar}else{Biome      = TidyTRY[[Biome     ]]}
+    if(length(GrowthForm) == 0L){GrowthForm = EmptyChar}else{GrowthForm = TidyTRY[[GrowthForm]]}
+    if(length(Raunkiaer ) == 0L){Raunkiaer  = EmptyChar}else{Raunkiaer  = TidyTRY[[Raunkiaer ]]}
+ 
+    # Save logical variables that will help setting conditions for keeping/discarding data.
+    IsSun    = SunShade %in% "03 - Mostly Sun-Exposed"
+    IsShade  = SunShade %in% c("01 - Mostly Shaded","02 - Partially Shaded")
+    IsOpen   = ( grepl(pattern="Desert"   ,x=Biome)
+               | grepl(pattern="Grassland",x=Biome)
+               | grepl(pattern="Scrubland",x=Biome)
+               | grepl(pattern="Savannah" ,x=Biome)
+               | grepl(pattern="Tundra"   ,x=Biome)
+               | grepl(pattern="Pastures" ,x=Biome)
+               )#end IsOpen
+    IsClosed = grepl(pattern="Moist Forest",x=Biome)
+    IsShrub  = ( ( GrowthForm %in% c("SHB","Shrub") )
+               | ( Raunkiaer  %in% c("Microphanerophyte","Nanophanerophyte") )
+               )#end IsShrub
+ 
+    # Filter photo-plastic traits
+    for (w in seq_along(PlasticTraits)){
+       # Select trait
+       PlasticNow            = PlasticTraits[w]
+       
+       # Remove observations that are not (presumably) from sun leaves.
+       Keep                  = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
+       TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA)
+    }#end for (w in PlasticTraits)
+ }#end if (plastic_sun_only)
 ```
 
 
