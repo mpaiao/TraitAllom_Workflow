@@ -61,7 +61,9 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
+
 main_path       = file.path(home_path,"Downloads", "SPUR", "TraitAllom_Workflow")
+
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
@@ -170,7 +172,7 @@ The following block defines some settings for the standardised major axis for mo
 xsma_TraitID    = c(SLA=3117L,wood_dens=4L,leaf_c2n=146L,leaf_n_area=50L)[1L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
-xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
+xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[1L]  
 
 # Minimum number for plotting violins
 n_violin_min    = 10L
@@ -235,10 +237,12 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 
 ```{r, label='set-pca',message=FALSE,results='hide',warning=FALSE}
 # Run imputation and cluster analyses in test mode?
-impute_cluster_test = c(FALSE,TRUE)[2L]
+impute_cluster_test = c(FALSE,TRUE)[1L]
 
 # Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have a few traits
-n_row_numtrait_impute = 8L
+
+n_row_numtrait_impute = 4L
+
 
 # Minimum fraction of complete observations (relative to the most abundant numeric trait) for being considered in the imputation
 f_col_trait_impute = 1./6.
@@ -253,7 +257,7 @@ rseed_impute = 6L
 # Select the minimum and maximum number of clusters to consider.
 cluster_kmin = 3L
 cluster_kmax = 20L
-cluster_kfix = 4L
+cluster_kfix = 5L
 
 # Minimum weight (first guess) below which the traits will be disregarded for cluster analysis
 min_weight_cluster = 1./6.
@@ -268,10 +272,10 @@ n_mcarlo_cluster = 100L
 method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "globalmax")[5L]
 
 # Method to be used for selecting the optimum number of clusters.
-cluster_method = c("sil","gap","fix")[2L]
+cluster_method = c("sil","gap","fix")[3L]
 
 # Minimum number of valid points for running a PCA.
-n_pca_min = 500L
+n_pca_min = 30L
 ```
 
 The following tibble object sets colours and shapes for categorical traits that will be used for analysis. Only the classes included in this list will be displayed. This tibble should contain the following columns:
@@ -1244,7 +1248,7 @@ if (update_cluster){
    ExcludeAncilID = try_ancil$DataID [! try_ancil$Cluster]
    ExcludeName    = c( try_trait$Name[try_trait$TraitID %in% ExcludeTraitID]
                      , try_ancil$Name[try_ancil$DataID  %in% ExcludeAncilID]
-                     , TaxonAll
+#                   , TaxonAll
                      )#end c
    ExcludeName    = names(ImputedTRY)[names(ImputedTRY) %in% ExcludeName]
       
