@@ -71,7 +71,7 @@ Set paths and file names for input and output.
 # Set useful paths and file names
 home_path       = path.expand("~")
 
-main_path       = file.path(home_path,"Downloads", "SPUR", "TraitAllom_Workflow")
+main_path       = file.path(home_path,"Downloads", "Data", "TraitAllom_Workflow")
 
 util_path       = file.path(main_path,"RUtils")
 orig_path       = file.path(main_path,"Original")

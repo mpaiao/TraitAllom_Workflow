@@ -62,7 +62,7 @@ Set paths and file names for input and output.
 # Set useful paths and file names
 home_path       = path.expand("~")
 
-main_path       = file.path(home_path,"Downloads", "SPUR", "TraitAllom_Workflow")
+main_path       = file.path(home_path,"Downloads", "Data", "TraitAllom_Workflow")
 
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
@@ -3362,7 +3362,7 @@ if (plot_radar_cluster){
       # Decide whether the distribution needs two or three parameters
       if (vDistr %in% "skew-normal"){
          RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond,vThird)
-      }else if (! is.na(zDistr)){
+      }else if (! is.na(vDistr)){
          RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond)
       }#end if (zDistr %in% "skew-normal")
 
