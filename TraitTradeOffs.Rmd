@@ -172,7 +172,7 @@ The following block defines some settings for the standardised major axis for mo
 xsma_TraitID    = c(SLA=3117L,wood_dens=4L,leaf_c2n=146L,leaf_n_area=50L)[1L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
-xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[1L]  
+xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[1L]
 
 # Minimum number for plotting violins
 n_violin_min    = 10L
@@ -1064,6 +1064,14 @@ if (update_impute){
          arrange(Frac,Variability) %>%
          mutate(Frac=-Frac,Variability=-Variability)
 
+      # Make sure variable chosen for the x axis for trait SMA analyses of photosynthesis traits (xphoto_TraitID) has data
+      xphoto_TraitID_count <- TallyTRY[TallyTRY$Name == xphoto_name, "Cnt"]
+      if (xphoto_TraitID_count == 0) {
+        cat0(" + The count of observations for trait ", xphoto_name, " is 0.") 
+        stop(paste("Reset xphoto_TraitID to trait with >0 observations in TallyTRY"))
+      }#end if (TallyTRY[TallyTRY$Name == xphoto_TraitID, "Cnt"] == 0)
+        
+      
       # Alias for traits that will go through imputation.
       EveryImpute = TallyTRY$Name[TallyTRY$Impute]
 
