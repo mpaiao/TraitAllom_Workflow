@@ -89,7 +89,7 @@ reload_cluster    = c(FALSE,TRUE)[2L]
 
 This flag defines whether to exclude observations from traits that show high light plasticity but were not collected from sunny leaves. If `plastic_sun_only=TRUE`, the code will exclude traits that are considered photo-plastic, unless there is high likelihood that the trait measurements used leaves in full sun (the exception being shrubs living in closed canopy habitats, which are assumed to be understorey specialists). If `plastic_sun_only=FALSE`, the code will keep all trait measurements.
 ```{r,label='set-light',message=FALSE,results='hide',warning=FALSE}
-plastic_sun_only = c(FALSE,TRUE)[1L]
+plastic_sun_only = c(FALSE,TRUE)[2L]
 ```
 
 This flag defines the levels of experiments to be included (missing values are always assumed natural and thus included).
@@ -581,7 +581,19 @@ Here we decide whether or not to eliminate traits that are known to be highly ph
 # Remove trait values from shaded individuals in case this is a sun trait.
 if (plastic_sun_only){
     cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
-    PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
+   
+   # Define photoplastic traits to filter for based on the chosen use_realm
+    if (use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")) {
+        PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
+    } else if (use_realm == "WestUS") {
+        PlasticTraits = c("SLA", "leaf_nitrogen", "leaf_n_area", "single_leaf_area", "huber", "m_amax", "a_amax", "m_gsw", 
+                          "leaf_phosphorus", "leaf_p_area", "leaf_thick", "leaf_longevity", "leaf_dens") 
+    } else {
+        stop(paste("Unknown use_realm:", use_realm))
+    }#end if(use_realm == "NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")
+  
+    
+    
     SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
     Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
     GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
@@ -700,7 +712,7 @@ if (! use_woody_level %in% "all_plants"){
    
    KeepWoody     = IsWoodiness & ( IsGrowth | AssumeWoody ) 
    TidyTRY       = TidyTRY[KeepClass & KeepWoody,,drop=FALSE]
-}#end if (plastic_sun_only)
+}#end if (! use_woody_level %in% "all_plants")
 ```
 
 
