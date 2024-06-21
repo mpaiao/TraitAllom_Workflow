@@ -1,6 +1,6 @@
 ---
 title: "TRY traits trade-offs"
-author: "Marcos Longo"
+authors: "Marcos Longo, Mara St. Amant"
 date: "2022-04-25"
 output: html_document
 ---
@@ -1064,6 +1064,15 @@ if (update_impute){
          arrange(Frac,Variability) %>%
          mutate(Frac=-Frac,Variability=-Variability)
 
+      
+      # Make sure variable chosen for the x axis for trait SMA analyses (xsma_TraitID) has data
+      xsma_TraitID_count <- TallyTRY[TallyTRY$Name == xsma_name, "Cnt"]
+      if (xsma_TraitID_count == 0) {
+        cat0(" + The count of observations for trait ", xsma_name, " is 0.") 
+        stop(paste("Reset xsma_TraitID to trait with >0 observations in TallyTRY"))
+      }#end if (TallyTRY[TallyTRY$Name == xsma_TraitID, "Cnt"] == 0)
+      
+      
       # Make sure variable chosen for the x axis for trait SMA analyses of photosynthesis traits (xphoto_TraitID) has data
       xphoto_TraitID_count <- TallyTRY[TallyTRY$Name == xphoto_name, "Cnt"]
       if (xphoto_TraitID_count == 0) {
