@@ -1472,11 +1472,11 @@ for (p in GoodLoop){
                                                   )#end scale_fill_gradientn
          }else{
             gg_now = gg_now + geom_point( data    = PredPlot
-                                        , mapping = aes(x=yMod,y=yObs)
-                                        , colour  = PointColour
+                                        , mapping = aes(x=yMod,y=yObs, color = Class)
                                         , shape   = PointShape
                                         , size    = PointSize
                                         )#end geom_point
+            gg_now = gg_now + scale_colour_manual(values = colClasses)
          }#end if (DensObserv)
 
          if (PlotFit){
@@ -1489,7 +1489,6 @@ for (p in GoodLoop){
                                          , inherit.aes = FALSE
                                          , show.legend = FALSE
                                          )#end geom_line
-            gg_now = gg_now + scale_colour_manual(values=colClasses)
             gg_now = gg_now + labs( x        = desc.unit(desc=yDescMod,unit=untab[[yUnit]])
                                   , y        = desc.unit(desc=yDescObs,unit=untab[[yUnit]])
                                   , colour   = element_blank()

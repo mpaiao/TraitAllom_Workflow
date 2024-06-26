@@ -257,7 +257,7 @@ rseed_impute = 6L
 # Select the minimum and maximum number of clusters to consider.
 cluster_kmin = 3L
 cluster_kmax = 20L
-cluster_kfix = 5L
+cluster_kfix = 4L
 
 # Minimum weight (first guess) below which the traits will be disregarded for cluster analysis
 min_weight_cluster = 1./6.
@@ -581,18 +581,7 @@ Here we decide whether or not to eliminate traits that are known to be highly ph
 # Remove trait values from shaded individuals in case this is a sun trait.
 if (plastic_sun_only){
     cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
-   
-   # Define photoplastic traits to filter for based on the chosen use_realm
-    if (use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")) {
-        PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
-    } else if (use_realm == "WestUS") {
-        PlasticTraits = c("SLA", "leaf_nitrogen", "leaf_n_area", "single_leaf_area", "huber", "m_amax", "a_amax", "m_gsw", 
-                          "leaf_phosphorus", "leaf_p_area", "leaf_thick", "leaf_longevity", "leaf_dens") 
-    } else {
-        stop(paste("Unknown use_realm:", use_realm))
-    }#end if(use_realm == "NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")
-  
-    
+  PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
     
     SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
     Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
@@ -626,8 +615,15 @@ if (plastic_sun_only){
        PlasticNow            = PlasticTraits[w]
        
        # Remove observations that are not (presumably) from sun leaves.
-       Keep                  = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
-       TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA)
+       if (use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")) {
+        Keep = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
+       } else if (use_realm == "WestUS") {
+        Keep = !IsShade             
+       } else {
+        stop(paste("Add method for removing observation from shade for use_realm = ", use_realm))
+       }#end if(use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical"))
+         
+         TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA) 
     }#end for (w in PlasticTraits)
  }#end if (plastic_sun_only)
 ```
@@ -1077,11 +1073,11 @@ if (update_impute){
          mutate(Frac=-Frac,Variability=-Variability)
 
       
-      # Make sure variable chosen for the x axis for trait SMA analyses (xsma_TraitID) has data
+      # Make sure variable chosen for the x axis for trait SMA analyses (xsma_TraitID) has enough data
       xsma_TraitID_count <- TallyTRY[TallyTRY$Name == xsma_name, "Cnt"]
-      if (xsma_TraitID_count == 0) {
+      if (xsma_TraitID_count %le% n_fit_min) {
         cat0(" + The count of observations for trait ", xsma_name, " is 0.") 
-        stop(paste("Reset xsma_TraitID to trait with >0 observations in TallyTRY"))
+        stop(paste("Reset xsma_TraitID to trait with > ", n_fit_min, " observations in TallyTRY"))
       }#end if (TallyTRY[TallyTRY$Name == xsma_TraitID, "Cnt"] == 0)
       
       
