@@ -1319,8 +1319,6 @@ Allom_Pred <<- function( x
 }#end Allom_Pred
 #---~---
 
-
-
 #---~---
 #     This function computes the adjusted R2 for allometric models. This is intended to be
 # used for full-model assessment only, as it inherently assumes that the model is unbiased.

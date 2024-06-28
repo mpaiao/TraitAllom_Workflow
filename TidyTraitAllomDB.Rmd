@@ -227,7 +227,7 @@ In addition, if using a taxonomic file, the user can specify whether to only use
 taxon_file = c(NA_character_ , file.path(list_path,"TRY_TaxonomyList_2024-01-16.csv"))[2L]
 
 # If taxon_file is not NA_character_,check whether all taxonomic info must be provided in the file.
-taxa_must_be_in_file = c(FALSE,TRUE)[2L]
+taxa_must_be_in_file = c(FALSE,TRUE)[1L]
 ```
 
 For "categorical traits" (like photosynthetic path, or growth form), it is possible to provide some ancillary data for specific traits that will be applied to existing observations --- but mind that they must be pre-processed to be consistent with the standardised categories (i.e., the same categories as the output of functions listed in file `TRY_Fix_OrigValue_Str` in path `util_path`.  The ancillary file should contain a column **AcceptedName** with the names pre-standardised to accepted names and checked for misspellings, and columns with the TRY trait ID that this is supposed to provide additional information (e.g., for photosynthetic pathway, TRY trait number 22, the column must be named `TraitID_22`). Other columns may be present but will be ignored. If any value needs to be missing values, set them to `NA`. If no file with additional information for categorical traits is available, set `addinfo_categ=NA_character_`.

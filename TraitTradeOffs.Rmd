@@ -620,7 +620,7 @@ if (plastic_sun_only){
        } else if (use_realm == "WestUS") {
         Keep = !IsShade             
        } else {
-        stop(paste("Add method for removing observation from shade for use_realm = ", use_realm))
+        stop(paste("Add method for removing observations from shade for use_realm = ", use_realm))
        }#end if(use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical"))
          
          TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA) 
