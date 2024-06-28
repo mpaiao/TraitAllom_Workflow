@@ -19,7 +19,7 @@ bseeds,26,Seed oven-dry mass,numeric,0,1,1,TRUE,mg,FALSE,FALSE,TRUE,TRUE,TRUE,FA
 climate,825,Climate occurrence,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,identity,301,NA
 co2_gamma,479,Leaf photosynthesis CO2 compensation point,numeric,0,1,1,FALSE,umolomol,FALSE,TRUE,FALSE,FALSE,TRUE,FALSE,TRUE,identity,515,NA
 croot_longevity,1699,Coarse root longevity,numeric,0,1,1,FALSE,yr,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,814,NA
-crown_area,20,Crown area,numeric,0,1,1,TRUE,m2,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,5,NA
+crown_area,20,Crown area,numeric,0,cm2.2.m2,1,TRUE,m2,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,5,NA
 crown_depth,773,Crown depth,numeric,0,cm.2.m,1,FALSE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,7,NA
 crown_diam,324,Crown diameter horizontal,numeric,0,1,1,TRUE,m,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,6,NA
 dbh,21,Diameter at breast height,numeric,0,m.2.cm,1,TRUE,cm,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,log,1,NA
@@ -80,7 +80,7 @@ m_jmax,270,Mass-based electron transport capacity,numeric,0,kg2g,1,TRUE,umolokgo
 m_rdmax,41,Mass-based leaf dark respiration rate,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,506,NA
 m_vcmax,185,Mass-based carboxylation capacity,numeric,0,kg2g,1,TRUE,umolokgos,FALSE,TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,log,508,NA
 mycorrhiza,7,Mycorrhiza type,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,303,NA
-n_fixer,8,Nitrogen fixer,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,304,NA
+n_fixer,8,Nitrogen fixer,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,identity,304,NA
 pft,197,Plant functional type (PFT),character,0,1,1,FALSE,empty,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,302,NA
 photo_path,22,Leaf photosynthesis pathway,character,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,FALSE,FALSE,FALSE,identity,511,NA
 plant_hydcond,752,Plant hydraulic conductance,numeric,0,1,1,FALSE,molosompa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,213,NA
@@ -128,8 +128,8 @@ SLA_3115,3115,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TR
 SLA_3116,3116,Specific leaf area,numeric,0,mm2.2.m2*kg2mg,1,TRUE,m2lokg,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,log,104,SLA
 stem_dmc,1181,Stem dry matter content,numeric,0,1,1,FALSE,gokg,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,identity,212,NA
 wood_dens,4,Wood density,numeric,0,1,1,TRUE,gocm3,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,810,NA
-wood_hydcond,1096,Wood (sapwood) specific conductivity,numeric,0,1,1,TRUE,kgomompaos,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,214,NA
-wood_water_sat,1097,Wood (sapwood) water content,numeric,0,1,1,FALSE,empty,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,215,NA
+wood_hydcond,1096,Wood (sapwood) specific conductivity,numeric,0,1,1,FALSE,kgomompaos,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,log,214,NA
+wood_water_sat,1097,Wood (sapwood) water content,numeric,0,1,1,TRUE,kgwokg,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,215,NA
 wood_water_store,1098,Wood (sapwood) water storage capacity,numeric,0,1,1,FALSE,kgwom3ompa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,identity,216,NA
 xylem_pxx,719,Xylem pressure at xx% conductivity loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,TRUE,TRUE,FALSE,FALSE,neglog,217,xylem_p12;xylem_p20;xylem_p50;xylem_p80;xylem_p88
 xylem_pxx_3479,3479,Xylem pressure at xx% conductivity loss,numeric,0,1,1,FALSE,mpa,FALSE,FALSE,TRUE,FALSE,TRUE,FALSE,FALSE,neglog,217,xylem_p12;xylem_p20;xylem_p50;xylem_p80;xylem_p88
