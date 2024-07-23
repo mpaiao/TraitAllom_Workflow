@@ -36,7 +36,7 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Downloads", "Data","TraitAllom_Workflow")
+main_path       = file.path(home_path,"Data", "TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
@@ -69,7 +69,7 @@ The following block defines some settings that were used for defining clusters a
 use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
 
 # Taxonomic level of detail for SMA analyses. This is used to retrieve the correct "Tidy TRY" data set
 # with the cluster assignment. Allometric models are always developed from individual observations.
@@ -106,7 +106,9 @@ The following block defines some settings for model fitting.
 -  **CntAllomMin**. Minimum number of valid points to consider for maps.
 -  **CntAllomMax**. Maximum number of points to consider for fitting. This is used to limit the model fitting to a more manageable number of observations when allometric data are exceedingly large. If no cap is sought, set `CntAllomMax = +Inf`, which will ensure to always use the actual number of observations. This setting is independent on the data binning sampling described in the next chunk.
 -  **AllomConfInt**. Confidence interval for allometric equations.
--  **AllomFitXIC**. Which information criterion to use when comparing models? Options are AIC (default) or BIC.
+-  **AllomFitXIC**. Which information criterion to use when comparing models? Options are `"AIC"` (default) for Akaike Information Criterion, `"BIC"` for Bayesian Information Criterion, `"ARMSE"` for the adjusted root mean square error (accounting for the number of
+parameters) and `"mR2Adj"` for the negative adjusted coefficient of determination ($-R^2_\textrm{adj}$). The information criteria approaches will pick the model with the highest likelihood (corrected for additional parameters), whereas the `"aRMSE"` and `"wRMSE"` will heavily penalise biased models. As a consequence, information criteria approaches will be more likely to select heteroscedastic or log-normal models, and `"aRMSE"` will likely pick homoscedastic models. Option
+`"wRMSE"` is intended to account for both, but it is still experimental and can get the worst of both worlds instead of the best of both worlds.
 -  **AllomMaxItOptim**. Maximum number of iterations before giving up optimising the model. This is actually what controls the search for the optimal point, and should be relatively high (1000--5000) as sometimes the initial guess is too far from the actual optimal.
 -  **AllomMaxItGain**. Maximum number of iterations for calling the main optimiser for seeking a better maximum using the previous optimised set of parameters. This sometimes helps improving the model, but it typically stabilises after a handful of iterations (about 5).
 -  **AllomTolOptim**. Relative tolerance for model fitting. This controls the error tolerance of the optimiser itself and should be stricter ($10^{-7}$) or less).
@@ -120,7 +122,7 @@ CntAllomMax   = Inf       # Maximum number of points for fitting allometric mode
 AllomConfInt  = 0.95      # Confidence interval for allometric model fittings.
 
 # Information criterion for selecting the best model
-AllomFitXIC     = c("AIC","BIC")[1L]
+AllomFitXIC     = c("AIC","BIC","aRMSE","wRMSE")[1L]
 
 # Settings for non-linear heteroscedastic model fitting.
 AllomMaxItOptim  = 10000L   # Max. # of iterations for the gnls optimisation
@@ -162,12 +164,12 @@ rseed_bark_thick  = 42L  # Random seed - bark thickness
 
 Sampling parameters for the data binning.
 
-- **UseSizeBins**. Should the training date be resampled by size bins? 
+- **UseSizeBins**. Should the training date be resampled by size bins? Provide one value (`TRUE`|`FALSE`) for each predicting variable.
 - **MinSmpPerBin**. Minimum number of observations for each bin. Binning will not occur unless there are at least twice as many valid points (and possibly even more points in case of very imbalanced data sets).
 - **MaxCntBins**. Maximum number of bins to be considered.
 
 ```{r, label='set-binning-options',message=FALSE,results='hide',warning=FALSE}
-UseSizeBins  = c(FALSE,TRUE)[2L]
+UseSizeBins  = c(height=TRUE,agb=FALSE,bleaf=FALSE,leaf_area=FALSE,crown_area=TRUE,crown_depth=TRUE,bark_thick=FALSE)
 MinSmpPerBin = 100L
 MaxCntBins   = 50L
 ```
@@ -727,7 +729,7 @@ if (reload_height_allom && file.exists(rdata_height_allom)){
                         , AllomCntPred    = AllomCntPred
                         , AllomQuantPred  = AllomQuantPred
                         , AllomCntBoot    = AllomCntBoot
-                        , UseSizeBins     = UseSizeBins
+                        , UseSizeBins     = UseSizeBins["height"]
                         , xSample         = DBH
                         , xLogSmp         = FALSE
                         , MinSmpPerBin    = MinSmpPerBin
@@ -812,9 +814,9 @@ if (reload_agb_allom && file.exists(rdata_agb_allom)){
                      , AllomCntPred    = AllomCntPred
                      , AllomQuantPred  = AllomQuantPred
                      , AllomCntBoot    = AllomCntBoot
-                     , UseSizeBins     = FALSE
-                     , xSample         = WDSize
-                     , xLogSmp         = TRUE
+                     , UseSizeBins     = UseSizeBins["agb"]
+                     , xSample         = DBH
+                     , xLogSmp         = FALSE
                      , MinSmpPerBin    = MinSmpPerBin
                      , MaxCntBins      = MaxCntBins
                      , Verbose         = TRUE
@@ -897,9 +899,9 @@ if (reload_bleaf_allom && file.exists(rdata_bleaf_allom)){
                        , AllomCntPred    = AllomCntPred
                        , AllomQuantPred  = AllomQuantPred
                        , AllomCntBoot    = AllomCntBoot
-                       , UseSizeBins     = FALSE
-                       , xSample         = LMSize
-                       , xLogSmp         = TRUE
+                       , UseSizeBins     = UseSizeBins["bleaf"]
+                       , xSample         = DBH
+                       , xLogSmp         = FALSE
                        , MinSmpPerBin    = MinSmpPerBin
                        , MaxCntBins      = MaxCntBins
                        , Verbose         = TRUE
@@ -977,9 +979,9 @@ if (reload_leaf_area_allom && file.exists(rdata_leaf_area_allom)){
                           , AllomCntPred    = AllomCntPred
                           , AllomQuantPred  = AllomQuantPred
                           , AllomCntBoot    = AllomCntBoot
-                          , UseSizeBins     = FALSE
-                          , xSample         = Size
-                          , xLogSmp         = TRUE
+                          , UseSizeBins     = UseSizeBins["leaf_area"]
+                          , xSample         = DBH
+                          , xLogSmp         = FALSE
                           , MinSmpPerBin    = MinSmpPerBin
                           , MaxCntBins      = MaxCntBins
                           , Verbose         = TRUE
@@ -1053,9 +1055,9 @@ if (reload_crown_area_allom && file.exists(rdata_crown_area_allom)){
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = UseSizeBins
-                           , xSample         = Size
-                           , xLogSmp         = TRUE
+                           , UseSizeBins     = UseSizeBins["crown_area"]
+                           , xSample         = DBH
+                           , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin
                            , MaxCntBins      = MaxCntBins
                            , Verbose         = TRUE
@@ -1125,7 +1127,7 @@ if (reload_crown_depth_allom && file.exists(rdata_crown_depth_allom)){
                             , AllomCntPred    = AllomCntPred
                             , AllomQuantPred  = AllomQuantPred
                             , AllomCntBoot    = AllomCntBoot
-                            , UseSizeBins     = UseSizeBins
+                            , UseSizeBins     = UseSizeBins["crown_depth"]
                             , xSample         = Height
                             , xLogSmp         = FALSE
                             , MinSmpPerBin    = MinSmpPerBin
@@ -1199,7 +1201,7 @@ if (reload_bark_thick_allom && file.exists(rdata_bark_thick_allom)){
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = FALSE
+                           , UseSizeBins     = UseSizeBins["bark_thick"]
                            , xSample         = DBH
                            , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin
@@ -1601,11 +1603,10 @@ for (p in FunLoop){
           zDesc  = "Data-based cluster class"
        }else{
           z      = match(zTrait,try_trait$TraitID)
-          
-           if (is.na(z)) {
+          if (is.na(z)) {
              warning(paste("TraitID", zTrait, "not found in try_trait. Skipping."))
              next
-           }  
+          }#end if (is.na(z))
           
           zName  = try_trait$Name   [z]
           zDesc  = try_trait$Desc   [z]
@@ -1614,22 +1615,20 @@ for (p in FunLoop){
     
        # Select model and parameters
        zIdx   = which( ( ySumm$TraitClass %in% zName ) & (! is.na(ySumm$Function) ) )[1L]
-       
-          if (is.na(zIdx)) {
-           warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
-           next
-         }
+       if (is.na(zIdx)){
+          warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
+          next
+       }#end if (is.na(zIdx))
        zModel = ySumm$Function[zIdx]
        xName  = ySumm$xName   [zIdx]
        wName  = ySumm$wName   [zIdx]
     
        # Load information for X axis.
        x        = match(xName,try_trait$Name)
-       
-          if (is.na(x)) {
+       if (is.na(x)){
           warning(paste("X axis trait", xName, "not found in try_trait. Skipping."))
            next
-        }
+       }#end if (is.na(x))
        xTraitID = try_trait$TraitID[x]
        xLabel   = sprintf("ID_%+4.4i",xTraitID)
        xLabel   = gsub(pattern="\\+",replacement="p",x=xLabel)
@@ -1649,7 +1648,6 @@ for (p in FunLoop){
        xTrans   = if(xDefName %in% names(xTransAllom)){xTransAllom[xDefName]}else{"identity"}
        xTPlot   = switch( EXPR = xTrans, log = "log10", neglog="neglog10",xTrans)
 
-    }
          
    
       # Set path for this group of plots.
@@ -1817,7 +1815,7 @@ for (p in FunLoop){
          cat0(" + Skip plot for ",yDesc," by ",zDesc,": too few valid points.")
       }#end if (PlotAllom)
    }#end for (ct in seq_along(CategTrait))
-#end for (p in GoodLoop){
+}#end for (p in GoodLoop)
 
 # If sought, plot images on screen
 cnt_gg_funct = length(gg_funct)
@@ -1877,12 +1875,10 @@ for (p in FunLoop){
          zDesc  = "Data-based cluster class"
       }else{
          z      = match(zTrait,try_trait$TraitID)
-         
          if (is.na(z)) {
-             warning(paste("TraitID", zTrait, "not found in try_trait. Skipping."))
-             next
-           } 
-         
+            warning(paste("TraitID", zTrait, "not found in try_trait. Skipping."))
+            next
+         }#end if (is.na(z))         
          zName  = try_trait$Name   [z]
          zDesc  = try_trait$Desc   [z]
       }#end if (zTrait %in% 0L)
@@ -1890,23 +1886,21 @@ for (p in FunLoop){
 
       # Select model and parameters
       zIdx   = which( ( ySumm$TraitClass %in% zName ) & (! is.na(ySumm$Function) ) )[1L]
-      
-        if (is.na(zIdx)) {
-            warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
-            next
-           }
+      if (is.na(zIdx)) {
+         warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
+         next
+      }#end if (is.na(zIdx))
       
       zModel = ySumm$Function[zIdx]
       xName  = ySumm$xName   [zIdx]
       wName  = ySumm$wName   [zIdx]
 
       # Load information for X axis.
-      x        = match(xName,try_trait$Name)
-      
-        if (is.na(x)) {
-            warning(paste("X axis trait", xName, "not found in try_trait. Skipping."))
-            next
-         }
+      x      = match(xName,try_trait$Name)
+      if (is.na(x)){
+         warning(paste("X axis trait", xName, "not found in try_trait. Skipping."))
+         next
+      }#end if (is.na(x))
       
       xTraitID = try_trait$TraitID[x]
       xLabel   = sprintf("ID_%+4.4i",xTraitID)
@@ -2124,7 +2118,7 @@ for (p in FunLoop){
          cat0(" + Skip plot for ",yDesc," by ",zDesc,": too few valid points.")
       }#end if (PlotAllom)
    }#end for (ct in seq_along(CategTrait))
-}#end for (p in GoodLoop){
+}#end for (p in GoodLoop)
 
 # If sought, plot images on screen
 cnt_gg_funct = length(gg_funct)
@@ -2180,7 +2174,7 @@ for (p in sequence(CntPlotTRY)){
    
    AllomSumm = if (is.null(AllomSumm)){ySumm}else{rbind(AllomSumm,ySumm)}
    ABootSumm = if (is.null(ABootSumm)){yBoot}else{rbind(ABootSumm,yBoot)}
-}#end for (p in  sequence(CntPlotTRY)){
+}#end for (p in  sequence(CntPlotTRY))
 
 
 # Build file name for allometry summary.
@@ -2195,4 +2189,3 @@ cat0(" + Write CSV files with allometry model summaries:")
 dummy = write_csv( x = AllomSumm, file = allometry_summ, na = "" )
 dummy = write_csv( x = ABootSumm, file = allomboot_summ, na = "" )
 ```
-

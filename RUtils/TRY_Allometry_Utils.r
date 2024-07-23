@@ -30,23 +30,24 @@
 #                                     ~ MartinezCano: y = a0 * x^a1 / ( a2 + x^a1 )
 #                                     ~ Weibull     : y = a0 * (1 - exp (-a1 * x^a2 ))
 #                         - xName  -- Name of the first predictor variable, typically the
-#                                     one associated with size (DBH, Height, DBH^2*H). 
+#                                     one associated with size (DBH, Height, DBH^2*H).
 #                                     It must match a column name in "DataTRY".
 #                         - wName  -- Name of the second predictor variable. Used only when
-#                                     "Model" requires two predictors. This is typically the
-#                                     variable used for scaling (e.g., wood density, LMA).
-#                                     When required, it must match a column name in 
+#                                     "Model" requires two predictors. This is typically
+#                                     the variable used for scaling (e.g., wood density,
+#                                     LMA). When required, it must match a column name in
 #                                     "DataTRY"
 #                         - yName  -- Name of the response variable. It must match a column
 #                                     name in "DataTRY".
 # + CategAllom         -- tibble with information on categorical traits
-#                         - TraitID    -- TRY trait ID associated with the categorical trait.
-#                                         In addition, two special values are possible:
+#                         - TraitID    -- TRY trait ID associated with the categorical
+#                                         trait.  Two additional special values are 
+#                                         possible too:
 #                                         ~ NA_integer_  -- special flag for all data
 #                                         ~ 0            -- special ID for clusters.
 #                         - Name       -- Names of the categories, consistent with the 
-#                                         possible values in each categorical trait. For the
-#                                         special case of "all data", use "ALL".
+#                                         possible values in each categorical trait. For
+#                                         the special case of "all data", use "ALL".
 #                         - TraitClass -- Name of the column associated with the trait. It
 #                                         must match a column in DataTRY. For the special
 #                                         case of all data, use "All".
@@ -56,12 +57,12 @@
 # + UseFixedModel      -- If TRUE, we decide which model to use based on the global data.
 #                         Otherwise, each Cluster/PFT will be fitted independently.
 # + InfoCrit           -- Which information criterion approach to use? Options are 
-#                         AIC (Akaike Information Criterion) and BIC (Bayesian Information
-#                         Criterion). In both cases, we used the modified values to account
-#                         for sample size.
+#                         AIC (Akaike Information Criterion), BIC (Bayesian Information
+#                         Criterion), aRMSE (adjusted root mean square error) and wRMSE
+#                         (weighted adjusted root mean square error).
 # + InfoExtraOffset    -- Extra offset for selecting models with more parameters. We only
-#                         take a model with more parameters if there is strong evidence that
-#                         it actually improves the model.
+#                         take a model with more parameters if there is strong evidence
+#                         that it actually improves the model.
 # + CntAllomMin        -- Minimum number of points for fitting allometric models.
 # + CntAllomMax        -- Maximum number of points to consider for fitting. This is used to
 #                         limit the model fitting to a more manageable number of 
@@ -73,10 +74,16 @@
 #                         seeking a better maximum using the previous optimised set of 
 #                         parameters. This sometimes helps improving the model, but it
 #                         typically stabilises after a handful of iterations.
-# + AllomMaxItOptim    -- Maximum number of iterations before giving up optimising the model.
-#                         This is actually what controls the search for the optimal point,
-#                         and should be relatively high as sometimes the initial guess is 
-#                         too far from the actual optimal.
+# + AllomMaxItOptim    -- Maximum number of iterations before giving up optimising the
+#                         model. This is actually what controls the search for the optimal
+#                         point, and should be relatively high as sometimes the initial
+#                         guess is too far from the actual optimal.
+# + AllomMaxItRelax    -- Maximum number of iterations to progressively relax tolerance between
+#                         the ideal (strictest) and the "best" (most relaxed) tolerances.
+# + AllomMinFactor     -- When fitting homoscedastic models with nls, this corresponds to the
+#                         minimum factor for step size during the iterative search for solution.
+#                         This value is typically defined as 1/2^x, where x is the number of 
+#                         steps.
 # + AllomTolGain       -- Relative tolerance for successive calls of the main optimiser.
 #                         Values of the order of 1e-5 are typically sufficient.
 # + AllomTolOptim      -- Relative tolerance for model fitting. This controls the error 
@@ -92,10 +99,13 @@
 #                         or bootstraping.
 # + AllomMaxItMin      -- Minimum number of steps per call of the optimiser. This can be
 #                         used to go a bit quicker through the multi-model comparison.
-# + AllomCntPred       -- Number of points spanning the range of predictor for fitted curve.
-# + AllomQuantPred     -- Span predictor evenly across quantiles (TRUE) or linearly (FALSE)
-# + AllomCntBoot       -- Number of times for bootstrapping for generating confidence bands.
-# + CntBootFail        -- For each bootstrap iteration, maximum number of attempts before 
+# + AllomCntPred       -- Number of points spanning the range of predictor for fitted
+#                         curve.
+# + AllomQuantPred     -- Span predictor evenly across quantiles (TRUE) or linearly 
+#                         (FALSE).
+# + AllomCntBoot       -- Number of times for bootstrapping for generating confidence
+#                         bands.
+# + CntBootFail        -- For each bootstrap iteration, maximum number of attempts before
 #                         giving up.
 # + UseSizeBins        -- Use binning across size classes to have a more balanced 
 #                         distribution across the predictor range? Note that in this case
@@ -115,13 +125,15 @@ Allom_Fit <<- function( DataTRY
                       , ModelTRY
                       , CategAllom
                       , UseFixedModel      = TRUE
-                      , InfoCrit           = c("AIC","BIC","mR2Adj")
+                      , InfoCrit           = c("AIC","BIC","aRMSE","wRMSE")
                       , InfoExtraOffset    = 10.
                       , CntAllomMin        = 30L
                       , CntAllomMax        = 10000L
                       , AllomConfInt       = 0.95
                       , AllomMaxItGain     = 5L
                       , AllomMaxItOptim    = 5000L
+                      , AllomMaxItRelax    = 10L
+                      , AllomMinFactor     = 2.^-16
                       , AllomTolGain       = 1.e-6
                       , AllomTolOptim      = 1.e-8
                       , AllomTolBestMult   = 10.
@@ -131,6 +143,7 @@ Allom_Fit <<- function( DataTRY
                       , AllomCntPred       = 101L
                       , AllomQuantPred     = TRUE
                       , AllomCntBoot       = 1000L
+                      , AlphaSWTest        = 0.05
                       , UseSizeBins        = FALSE
                       , xSample            = ModelTRY$xName[1L]
                       , xLogSmp            = FALSE
@@ -143,13 +156,13 @@ Allom_Fit <<- function( DataTRY
    #---~---
    #   Define information criterion to be used.
    #---~---
-   InfoCrit        = match.arg(InfoCrit)
-   if (InfoCrit %in% "mR2Adj"){
+   InfoCrit = match.arg(InfoCrit)
+   if (InfoCrit %in% c("aRMSE","wRMSE")){
       XICFmt          = "%.3f"
       InfoExtraOffset = 0.
    }else{
       XICFmt          = "%.2f"
-   }#end if (InfoCrit %in% "mR2Adj")
+   }#end if (InfoCrit %in%  c("aRMSE","wRMSE"))
    #---~---
 
 
@@ -158,9 +171,10 @@ Allom_Fit <<- function( DataTRY
    #---~---
    XIC = function(object,InfoCrit){
       ans = switch( InfoCrit
-                  , AIC    = object$AIC
-                  , BIC    = object$BIC
-                  , mR2Adj = - object$wgt.r.squared
+                  , AIC   = AIC   (object)
+                  , BIC   = BIC   (object)
+                  , aRMSE = object$goodness$adj.rmse
+                  , wRMSE = object$goodness$wgt.adj.rmse
                   )#end switch
       return(ans)
    }#end function
@@ -260,10 +274,15 @@ Allom_Fit <<- function( DataTRY
                      , SE_s1        = rep( x = NA_real_     , times = CntCategAllom )
                      , LogLik       = rep( x = NA_real_     , times = CntCategAllom )
                      , Bias         = rep( x = NA_real_     , times = CntCategAllom )
+                     , SigRes       = rep( x = NA_real_     , times = CntCategAllom )
                      , MAE          = rep( x = NA_real_     , times = CntCategAllom )
-                     , RMSE         = rep( x = NA_real_     , times = CntCategAllom )
+                     , aRMSE        = rep( x = NA_real_     , times = CntCategAllom )
+                     , R2Adjust     = rep( x = NA_real_     , times = CntCategAllom )
+                     , wBias        = rep( x = NA_real_     , times = CntCategAllom )
+                     , wSigRes      = rep( x = NA_real_     , times = CntCategAllom )
+                     , wMAE         = rep( x = NA_real_     , times = CntCategAllom )
+                     , wRMSE        = rep( x = NA_real_     , times = CntCategAllom )
                      , wR2Adjust    = rep( x = NA_real_     , times = CntCategAllom )
-                     , oR2Adjust    = rep( x = NA_real_     , times = CntCategAllom )
                      , AIC          = rep( x = NA_real_     , times = CntCategAllom )
                      , BIC          = rep( x = NA_real_     , times = CntCategAllom )
                      )#end tibble
@@ -304,13 +323,18 @@ Allom_Fit <<- function( DataTRY
                     , s0          = rep( x = NA_real_             , times = CntBootCateg  )
                     , s1          = rep( x = NA_real_             , times = CntBootCateg  )
                     , Bias        = rep( x = NA_real_             , times = CntBootCateg  )
+                    , SigRes      = rep( x = NA_real_             , times = CntBootCateg  )
                     , MAE         = rep( x = NA_real_             , times = CntBootCateg  )
-                    , RMSE        = rep( x = NA_real_             , times = CntBootCateg  )
+                    , aRMSE       = rep( x = NA_real_             , times = CntBootCateg  )
+                    , R2Adjust    = rep( x = NA_real_             , times = CntBootCateg  )
+                    , wBias       = rep( x = NA_real_             , times = CntBootCateg  )
+                    , wMAE        = rep( x = NA_real_             , times = CntBootCateg  )
+                    , wRMSE       = rep( x = NA_real_             , times = CntBootCateg  )
                     , wR2Adjust   = rep( x = NA_real_             , times = CntBootCateg  )
-                    , oR2Adjust   = rep( x = NA_real_             , times = CntBootCateg  )
                     , xBias       = rep( x = NA_real_             , times = CntBootCateg  )
                     , xSigRes     = rep( x = NA_real_             , times = CntBootCateg  )
                     , xMAE        = rep( x = NA_real_             , times = CntBootCateg  )
+                    , xRMSE       = rep( x = NA_real_             , times = CntBootCateg  )
                     )#end tibble
    #---~---
    #   PredBoot is the tibble with the model predictions along the span of the predictors
@@ -356,6 +380,7 @@ Allom_Fit <<- function( DataTRY
                             , MinSmpPerBin = MinSmpPerBin
                             , MaxCntBins   = MaxCntBins
                             )#end Allom_SetTrain
+   CntTrain = nrow(TrainTRY)
    #---~---
 
 
@@ -366,8 +391,10 @@ Allom_Fit <<- function( DataTRY
    gBest       = NA_integer_
    gCntParam   = +Inf
    gXIC        = +Inf
+   gScedastic  = NA_character_
    gDesc       = "None. All models failed."
    gExpect     = NULL
+   gLnExpect   = NULL
    gFit        = NULL
    gSigma      = NULL
    gStartLSQ   = NA_character_
@@ -400,6 +427,7 @@ Allom_Fit <<- function( DataTRY
       mPredictor  = mSettings$Predictor
       mCntParam   = mSettings$CntParam
       mExpect     = mSettings$Expect
+      mLnExpect   = mSettings$LnExpect
       mSigma      = mSettings$Sigma
       mStartLSQ   = mSettings$StartLSQ
       mStartSigma = mSettings$StartSigma
@@ -409,19 +437,17 @@ Allom_Fit <<- function( DataTRY
 
 
       #---~---
-      #   Fit homoscedastic model
+      #   Fit homoscedastic model using NLS
       #---~---
       mFitHomo   = 
-         try( expr = optim.lsq.htscd( lsq.formula = mExpect
-                                    , sig.formula = NULL
-                                    , data        = TrainTRY
-                                    , lsq.first   = mStartLSQ
-                                    , tol.gain    = AllomTolGainBest
-                                    , tol.optim   = AllomTolOptimBest
-                                    , maxit       = AllomMaxItGainBest
-                                    , maxit.optim = AllomMaxItOptimBest
-                                    , verbose     = FALSE
-                                    )#end optim.lsq.htscd
+         try( expr = nls( formula = mExpect
+                        , data    = TrainTRY
+                        , start   = mStartLSQ
+                        , control = list( maxiter   = AllomMaxItOptimBest
+                                        , tol       = AllomTolOptimBest
+                                        , minFactor = AllomMinFactor
+                                        )#end list
+                        )#end nls
             , silent = TRUE
             )#end try
       #---~---
@@ -443,6 +469,20 @@ Allom_Fit <<- function( DataTRY
          #---~---
       }else{
          #---~---
+         #   Append goodness-of-fit to the data set.
+         #---~---
+         mFitted   = fitted(mFitHomo)
+         mObserv   = TrainTRY[[yName]]
+         mGoodness = test.goodness( x.mod        = mFitted
+                                  , x.obs        = mObserv
+                                  , n.parameters = mCntParam
+                                  , out.dfr      = TRUE
+                                  )#end test.goodness
+         mFitHomo  = modifyList(x=mFitHomo,val=list(goodness=mGoodness))
+         #---~---
+
+
+         #---~---
          #   Use the fitted homoscedastic model parameters as first guess for 
          # the heteroscedastic model.
          #---~---
@@ -458,6 +498,7 @@ Allom_Fit <<- function( DataTRY
       #---~---
 
 
+
       #---~---
       #   Select model if this is the best model so far.
       #---~---
@@ -466,15 +507,154 @@ Allom_Fit <<- function( DataTRY
          gBest       = m
          gCntParam   = mCntParam
          gXIC        = mXICHomo
+         gScedastic  = "Homoscedastic"
          gDesc       = paste0(mModel,". (Homoscedastic)")
          gExpect     = mExpect
+         gLnExpect   = mLnExpect
          gSigma      = NULL
          gFit        = mFitHomo
-         gSigma      = NULL
          gStartLSQ   = mStartLSQ
          gStartSigma = mStartSigma
-      }#end if (mXICHomo < zXIC)
+      }#end if ( ( mXICHomo + mXICOff )< gXIC)
       #---~---
+
+
+
+      #---~---
+      #   Check whether or not to fit a log-linear model.
+      #---~---
+      if (is.na(mLnExpect)){
+         #---~---
+         #   Do not fit log-transformed model.
+         #---~---
+         mXICLogY = + Inf
+         if (Verbose){
+            cat0("   - ",mModel,",  log-transformed "," (X = ",xName,"; W = ",wName,")."
+                               ,"  Do not attempt fitting.")
+         }#end if (Verbose)
+         #---~---
+
+      }else{
+         #---~---
+         #   Fit model.
+         #---~---
+         mFitLogY  = try( expr   = rlm( formula = as.formula(mLnExpect)
+                                      , data    = TrainTRY
+                                      )#end rlm
+                        , silent = TRUE
+                        )#end try
+         #---~---
+
+
+         #---~---
+         #   Retrieve information criterion and update guesses in case fitting was 
+         # successful.
+         #---~---
+         if ("try-error" %in% is(mFitLogY)){
+            #---~---
+            #   Model could not be fitted. Discard model.
+            #---~---
+            mXICLogY = + Inf
+            if (Verbose){
+               cat0("   - ",mModel,",  log-transformed "," (X = ",xName,"; W = ",wName,")."
+                                  ,"  Failed fitting.")
+            }#end if (Verbose)
+            browser()
+            #---~---
+         }else{
+            #---~---
+            #   Find the back-transformation correction factor (smearing estimate factor).
+            #---~---
+            mBackLog       = Allom_BackLog_Scaler( Model    = mFitLogY
+                                                 , Observ   = TrainTRY[[yName]]
+                                                 , CntParam = mCntParam
+                                                 )#end Allom_BackLog_Scaler
+            mMuSmearing    = mBackLog$MuSmearing
+            mSigmaSmearing = mBackLog$SigmaSmearing
+            #---~---
+
+
+            #---~---
+            #   Append goodness-of-fit to the data set.
+            #---~---
+            mFitted   = mMuSmearing    * exp(fitted(mFitLogY))
+            mSigmaFit = mSigmaSmearing * mFitted
+            mGoodness = test.goodness( x.mod        = mFitted
+                                     , x.obs        = mObserv
+                                     , x.sigma      = mSigmaFit
+                                     , n.parameters = mCntParam
+                                     , out.dfr      = TRUE
+                                     )#end test.goodness
+            mFitLogY  = modifyList(x=mFitLogY,val=list(goodness=mGoodness))
+            #---~---
+
+
+            #---~---
+            #   Find information criterion.
+            #---~---
+            mXICLogY  = XIC(mFitLogY,InfoCrit)
+            #---~---
+
+
+            #---~---
+            #   Find coefficients.
+            #---~---
+            mStartLSQ        = as.list(coef(mFitLogY))
+            mLabelLSQ        = names(mStartLSQ)
+            mLabelLSQ        = gsub(pattern="log\\("   ,replacement=""  ,x=mLabelLSQ)
+            mLabelLSQ        = gsub(pattern="\\("      ,replacement=""  ,x=mLabelLSQ)
+            mLabelLSQ        = gsub(pattern="\\)"      ,replacement=""  ,x=mLabelLSQ)
+            mLabelLSQ        = gsub(pattern="Intercept",replacement="a0",x=mLabelLSQ)
+            mLabelLSQ        = gsub(pattern=xName      ,replacement="a1",x=mLabelLSQ)
+            if (! is.na(wName)){
+               mLabelLSQ     = gsub(pattern=wName      ,replacement="a2",x=mLabelLSQ)
+            }#end if (! is.na(wName))
+            names(mStartLSQ) = mLabelLSQ
+            #---~---
+
+
+            #---~---
+            #   Apply smearing estimate factor (correction factor).
+            #---~---
+            mStartLSQ$a0 = mMuSmearing * exp(mStartLSQ$a0)
+            #---~---
+
+
+            #---~---
+            #   Report 
+            #---~---
+            if (Verbose){
+               cat0("   - ",mModel,",  log-homoscedastic "," (X = ",xName
+                                                          ,"; W = ",wName,")."
+                                  ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICLogY),".")
+            }#end if (Verbose)
+            #---~---
+         }#end if ("try-error" %in% is(mFitLogY))
+         #---~---
+      }#end if (is.na(mLnExpect)){
+      #---~---
+
+
+
+      #---~---
+      #   Test whether the model improved results.
+      #---~---
+      mXICOff = InfoExtraOffset * as.numeric( mCntParam > gCntParam )
+      if ( ( mXICLogY + mXICOff ) < gXIC ){
+         gBest       = m
+         gCntParam   = mCntParam
+         gXIC        = mXICLogY
+         gScedastic  = "Log-Homoscedastic"
+         gDesc       = paste0(mModel,". (Log-Homoscedastic)")
+         gExpect     = mExpect
+         gLnExpect   = mLnExpect
+         gSigma      = NULL
+         gFit        = mFitLogY
+         gStartLSQ   = mStartLSQ
+         gStartSigma = mStartSigma
+      }#end if ( ( mXICLogY + mXICOff ) < gXIC)
+      #---~---
+
 
 
       #---~---
@@ -533,14 +713,16 @@ Allom_Fit <<- function( DataTRY
          gBest       = m
          gCntParam   = mCntParam
          gXIC        = mXICHete
+         gScedastic  = "Heteroscedastic"
          gDesc       = paste0(mModel,". (Heteroscedastic)")
          gHete       = TRUE
          gExpect     = mExpect
+         gLnExpect   = mLnExpect
          gSigma      = mSigma
          gFit        = mFitHete
          gStartLSQ   = mStartLSQ
          gStartSigma = mStartSigma
-      }#end if (mXICHete < zXIC)
+      }#end if ( ( mXICHete + mXICOff ) < gXIC )
       #---~---
    }#end for (m in LoopGlobal)
    #---~---
@@ -601,6 +783,7 @@ Allom_Fit <<- function( DataTRY
                                , MinSmpPerBin = MinSmpPerBin
                                , MaxCntBins   = MaxCntBins
                                )#end Allom_SetTrain
+      CntTrain = nrow(TrainTRY)
       #---~---
 
 
@@ -615,8 +798,10 @@ Allom_Fit <<- function( DataTRY
          zBest       = gBest
          zCntParam   = gCntParam
          zXIC        = gXIC
+         zScedastic  = gScedastic
          zDesc       = gDesc
          zExpect     = gExpect
+         zLnExpect   = gLnExpect
          zFit        = gFit
          zSigma      = gSigma
          zStartLSQ   = gStartLSQ
@@ -626,8 +811,10 @@ Allom_Fit <<- function( DataTRY
          zBest       = NA_integer_
          zCntParam   = +Inf
          zXIC        = +Inf
+         zScedastic  = NA_character_
          zDesc       = "None. All models failed."
          zExpect     = NULL
+         zLnExpect   = NULL
          zFit        = NULL
          zSigma      = NULL
          zStartLSQ   = NA_character_
@@ -637,8 +824,10 @@ Allom_Fit <<- function( DataTRY
          zBest       = NA_integer_
          zCntParam   = +Inf
          zXIC        = +Inf
+         zScedastic  = NA_character_
          zDesc       = "None. All models failed."
          zExpect     = NULL
+         zLnExpect   = NULL
          zFit        = NULL
          zSigma      = NULL
          zStartLSQ   = NA_character_
@@ -696,6 +885,7 @@ Allom_Fit <<- function( DataTRY
          mPredictor  = mSettings$Predictor
          mCntParam   = mSettings$CntParam
          mExpect     = mSettings$Expect
+         mLnExpect   = mSettings$LnExpect
          mSigma      = mSettings$Sigma
          mStartLSQ   = mSettings$StartLSQ
          mStartSigma = mSettings$StartSigma
@@ -707,16 +897,14 @@ Allom_Fit <<- function( DataTRY
          #   Fit homoscedastic model
          #---~---
          mFitHomo   = 
-            try( expr = optim.lsq.htscd( lsq.formula = mExpect
-                                       , sig.formula = NULL
-                                       , data        = TrainTRY
-                                       , lsq.first   = mStartLSQ
-                                       , tol.gain    = AllomTolGainBest
-                                       , tol.optim   = AllomTolOptimBest
-                                       , maxit       = AllomMaxItGainBest
-                                       , maxit.optim = AllomMaxItOptimBest
-                                       , verbose     = FALSE
-                                       )#end optim.lsq.htscd
+            try( expr = nls( formula = mExpect
+                           , data    = TrainTRY
+                           , start   = mStartLSQ
+                           , control = list( maxiter   = AllomMaxItOptimBest
+                                           , tol       = AllomTolOptimBest
+                                           , minFactor = AllomMinFactor
+                                           )#end list
+                           )#end nls
                , silent = TRUE
                )#end try
          if ("try-error" %in% is(mFitHomo)){
@@ -730,6 +918,20 @@ Allom_Fit <<- function( DataTRY
             }#end if (Verbose)
             #---~---
          }else{
+            #---~---
+            #   Append goodness-of-fit to the data set.
+            #---~---
+            mFitted   = fitted(mFitHomo)
+            mObserv   = TrainTRY[[yName]]
+            mGoodness = test.goodness( x.mod        = mFitted
+                                     , x.obs        = mObserv
+                                     , n.parameters = mCntParam
+                                     , out.dfr      = TRUE
+                                     )#end test.goodness
+            mFitHomo  = modifyList(x=mFitHomo,val=list(goodness=mGoodness))
+            #---~---
+
+
             #---~---
             #   Use the fitted homoscedastic model parameters as first guess for 
             # the heteroscedastic model.
@@ -754,14 +956,161 @@ Allom_Fit <<- function( DataTRY
             zBest       = m
             zCntParam   = mCntParam
             zXIC        = mXICHomo
+            zScedastic  = "Homoscedastic"
             zDesc       = paste0(mModel,". (Homoscedastic)")
             zExpect     = mExpect
+            zLnExpect   = mLnExpect
             zFit        = mFitHomo
             zSigma      = NULL
             zStartLSQ   = mStartLSQ
             zStartSigma = mStartSigma
-         }#end if (mXICHomo < zXIC)
+         }#end if ( ( mXICHomo + mXICOff ) < zXIC )
          #---~---
+
+
+
+         #---~---
+         #   Check whether or not to fit a log-linear model.
+         #---~---
+         if (is.na(mLnExpect)){
+            #---~---
+            #   Do not fit log-transformed model.
+            #---~---
+            mXICLogY = + Inf
+            if (Verbose){
+               cat0("   - ",mModel,",  log-transformed "," (X = ",xName,"; W = ",wName,")."
+                                  ,"  Do not attempt fitting.")
+            }#end if (Verbose)
+            #---~---
+
+         }else{
+            #---~---
+            #   Fit model.
+            #---~---
+            mFitLogY  = try( expr   = rlm( formula = as.formula(mLnExpect)
+                                         , data    = TrainTRY
+                                         )#end rlm
+                           , silent = TRUE
+                           )#end try
+            #---~---
+
+
+            #---~---
+            #   Retrieve information criterion and update guesses in case fitting was 
+            # successful.
+            #---~---
+            if ("try-error" %in% is(mFitLogY)){
+               #---~---
+               #   Model could not be fitted. Discard model.
+               #---~---
+               mXICLogY = + Inf
+               if (Verbose){
+                  cat0("   - ",mModel,",  log-transformed "," (X = ",xName
+                                                           ,"; W = ",wName,")."
+                                     ,"  Failed fitting.")
+               }#end if (Verbose)
+               browser()
+               #---~---
+            }else{
+               #---~---
+               #   Find the back-transformation correction factor (smearing estimate factor).
+               #---~---
+               mBackLog       = Allom_BackLog_Scaler( Model    = mFitLogY
+                                                    , Observ   = TrainTRY[[yName]]
+                                                    , CntParam = mCntParam
+                                                    )#end Allom_BackLog_Scaler
+               mMuSmearing    = mBackLog$MuSmearing
+               mSigmaSmearing = mBackLog$SigmaSmearing
+               #---~---
+
+
+               #---~---
+               #   Append goodness-of-fit to the data set.
+               #---~---
+               mObserv   = TrainTRY[[yName]]
+               mFitted   = mMuSmearing    * exp(fitted(mFitLogY))
+               mSigmaFit = mSigmaSmearing * mFitted
+               mGoodness = test.goodness( x.mod        = mFitted
+                                        , x.obs        = mObserv
+                                        , x.sigma      = mSigmaFit
+                                        , n.parameters = mCntParam
+                                        , out.dfr      = TRUE
+                                        )#end test.goodness
+               mFitLogY  = modifyList(x=mFitLogY,val=list(goodness=mGoodness))
+               #---~---
+
+
+               #---~---
+               #   Find information criterion.
+               #---~---
+               mXICLogY   = XIC(mFitLogY,InfoCrit)
+               #---~---
+
+
+               #---~---
+               #   Find coefficients.
+               #---~---
+               mStartLSQ        = as.list(coef(mFitLogY))
+               mLabelLSQ        = names(mStartLSQ)
+               mLabelLSQ        = gsub(pattern="log\\("   ,replacement=""  ,x=mLabelLSQ)
+               mLabelLSQ        = gsub(pattern="\\("      ,replacement=""  ,x=mLabelLSQ)
+               mLabelLSQ        = gsub(pattern="\\)"      ,replacement=""  ,x=mLabelLSQ)
+               mLabelLSQ        = gsub(pattern="Intercept",replacement="a0",x=mLabelLSQ)
+               mLabelLSQ        = gsub(pattern=xName      ,replacement="a1",x=mLabelLSQ)
+               if (! is.na(wName)){
+                  mLabelLSQ     = gsub(pattern=wName      ,replacement="a2",x=mLabelLSQ)
+               }#end if (! is.na(wName))
+               names(mStartLSQ) = mLabelLSQ
+               #---~---
+
+
+               #---~---
+               #   Apply smearing estimate factor (correction factor).
+               #---~---
+               mStartLSQ$a0 = mMuSmearing * exp(mStartLSQ$a0)
+               #---~---
+
+
+               #---~---
+               #   Report values.
+               #---~---
+               if (Verbose){
+                  cat0("   - ",mModel,",  log-homoscedastic "," (X = ",xName
+                                                             ,"; W = ",wName,")."
+                                     ,"  ",InfoCrit," = ",sprintf(XICFmt,mXICLogY),".")
+               }#end if (Verbose)
+               #---~---
+            }#end if ("try-error" %in% is(mFitLogY))
+            #---~---
+         }#end if (is.na(mLnExpect)){
+         #---~---
+
+
+
+         #---~---
+         #   Test whether the model improved results.
+         #---~---
+         mXICOff = InfoExtraOffset * as.numeric( mCntParam > gCntParam )
+         if ( ( mXICLogY + mXICOff ) < zXIC ){
+            zBest       = m
+            zCntParam   = mCntParam
+            zXIC        = mXICLogY
+            zScedastic  = "Log-Homoscedastic"
+            zDesc       = paste0(mModel,". (Log-Homoscedastic)")
+            zExpect     = mExpect
+            zLnExpect   = mLnExpect
+            zSigma      = NULL
+            zFit        = mFitLogY
+            zStartLSQ   = mStartLSQ
+            zStartSigma = mStartSigma
+         }#end if ( ( mXICLogY + mXICOff ) < zXIC)
+         #---~---
+
+
+
+
+
+
 
 
          #---~---
@@ -821,9 +1170,11 @@ Allom_Fit <<- function( DataTRY
             zBest       = m
             zCntParam   = mCntParam
             zXIC        = mXICHete
+            zScedastic  = "Heteroscedastic"
             zDesc       = paste0(mModel,". (Heteroscedastic)")
             zHete       = TRUE
             zExpect     = mExpect
+            zLnExpect   = mLnExpect
             zFit        = mFitHete
             zSigma      = mSigma
             zStartLSQ   = mStartLSQ
@@ -870,7 +1221,7 @@ Allom_Fit <<- function( DataTRY
       zPredictor  = zSettings$Predictor
       zCntParam   = zSettings$CntParam
       zStartLSQ   = zSettings$StartLSQ
-      zStartSigma = if(is.null(zSigma)){NULL}else{zSettings$StartSigma}
+      zStartSigma = zSettings$StartSigma
       #---~---
 
 
@@ -878,40 +1229,475 @@ Allom_Fit <<- function( DataTRY
       #---~---
       #   Fit the model with stricter tolerance and also generate bootstrapped estimates.
       #---~---
-      if (is.null(zSigma)){
-         zFit = try( expr   = optim.lsq.htscd( lsq.formula = zExpect
-                                             , sig.formula = NULL
-                                             , data        = TrainTRY
-                                             , lsq.first   = zStartLSQ
-                                             , err.method  = "bootstrap"
-                                             , tol.gain    = AllomTolGain
-                                             , tol.optim   = AllomTolOptim
-                                             , maxit       = AllomMaxItGain
-                                             , maxit.optim = AllomMaxItOptim
-                                             , n.boot      = AllomCntBoot
-                                             , verbose     = TRUE
-                                             )#end optim.lsq.htscd
-                   , silent = TRUE
-                   )#end try
+      if ( zScedastic %in% "Homoscedastic" ){
+         #---~---
+         #   Fit best homoscedastic model We iterate with increasingly more relaxed tolerances
+         # because sometimes the strictest tolerances let NLS fail.
+         #---~---
+         AllomTolOptimList = exp( seq( from       = log(AllomTolOptim)
+                                     , to         = log(AllomTolOptimBest)
+                                     , length.out = AllomMaxItRelax
+                                     )#end seq
+                                )#end exp
+         r                 = 0
+         iterate           = TRUE
+         while ( iterate && (r < AllomMaxItRelax) ){
+            #---~---
+            #   Keep iterating until convergence.
+            #---~---
+            r                = r + 1L
+            AllomTolOptimNow = AllomTolOptimList[r]
+            #---~---
+
+
+            #---~---
+            zFit  = 
+               try( expr = nls( formula = zExpect
+                              , data    = TrainTRY
+                              , start   = zStartLSQ
+                              , control = list( maxiter   = AllomMaxItOptim
+                                              , tol       = AllomTolOptimNow
+                                              , minFactor = AllomMinFactor
+                                              )#end list
+                              )#end nls
+                  , silent = TRUE
+                  )#end try
+            if ("try-error" %in% is(zFit)){
+               if (Verbose) cat0(" Iteration ",r,". Best homoscedastic model failed fitting...")
+               #---~---
+               #   Interrupt fitting if the model is still failing after all the iterations.
+               #---~---
+               if (r == AllomMaxItRelax){
+                  cat0(" Homoscedastic model failed fitting after "
+                      ,AllomMaxItRelax," iterations." )
+                  browser()
+               }#end if (r == AllomMaxItRelax)
+               #---~---
+            }else{
+               #---~---
+               #   Fitted model converged, if sought, report values.
+               #---~---
+               iterate  = FALSE
+               zShow    = paste(names(zStartLSQ),sprintf("%.3f",coef(zFit)),sep=" = ")
+               zShow    = paste(zShow,collapse=";   ")
+               if (Verbose){
+                  cat0("     ~ Iteration ",r,"; Optimised values:   ",zShow,";   N = ",CntTrain)
+               }#end if (Verbose){
+               #---~---
+            }#end if ("try-error" %in% is(zFit))
+         }#end while ( iterate && (r < AllomMaxItRelax) )
+         #---~---
+
+
+
+
+
+         #---~---
+         #   Retrieve useful information.
+         #---~---
+         zFit  = modifyList(x=zFit,val=list(sigma=sigma(zFit)))
+         #---~---
+
+
+         #---~---
+         #   Copy coefficients.
+         #---~---
+         zParam = coef(zFit)
+         if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
+         if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
+         if (! "s0" %in% names(zParam)) zParam["s0"] = zFit$sigma
+         if (! "s1" %in% names(zParam)) zParam["s1"] = 0.
+         zParam = zParam[c("a0","a1","a2","s0","s1")]
+         zFit   = modifyList(x=zFit,val=list(coeff.best=zParam))
+         #---~---
+
+
+         #---~---
+         #   Prepare bootstrap objects.
+         #---~---
+         CoeffBoot     = matrix( nrow     = AllomCntBoot
+                               , ncol     = 5L
+                               , dimnames = list(NULL,c("a0","a1","a2","s0","s1"))
+                               )#end matrix
+         BootSupport   = rep(NA_real_,times=AllomCntBoot)
+         BootGoodness  = replicate(n=AllomCntBoot,list())
+         CrossGoodness = replicate(n=AllomCntBoot,list())
+         #---~---
+
+
+         #---~---
+         #   Bootstrapping loop.
+         #---~---
+         b = 0L
+         while (b < AllomCntBoot){
+            #---~---
+            #   Bootstrap sample.
+            #---~---
+            useIdx   = sample.int(n=CntTrain,size=CntTrain,replace=TRUE)
+            skipIdx  = which(! (sequence(CntTrain) %in% useIdx))
+            BootTRY  = TrainTRY[useIdx ,,drop=FALSE]
+            CrossTRY = TrainTRY[skipIdx,,drop=FALSE]
+            #---~---
+
+
+
+            #---~---
+            #   Fit bootstrapped model.
+            #---~---
+            bFit  = 
+               try( expr = nls( formula = zExpect
+                              , data    = BootTRY
+                              , start   = zStartLSQ
+                              , control = list( maxiter   = AllomMaxItOptimBest
+                                              , tol       = AllomTolOptimBest
+                                              , minFactor = AllomMinFactor
+                                              )#end list
+                              )#end nls
+                  , silent = TRUE
+                  )#end try
+            if ("try-error" %in% is(bFit)){
+               if (Verbose) cat0(" Bootstrap iteration failed fitting...")
+            }else{
+               #---~---
+               #   Accept iteration.
+               #---~---
+               b      = b + 1L
+               bShow  = paste(names(zStartLSQ),sprintf("%.3f",coef(bFit)),sep=" = ")
+               bShow  = paste(bShow,collapse=";   ")
+               if (Verbose) cat0("     ~ Bootstrap ",b,";   Values:   ",bShow,".")
+               #---~---
+
+
+               #---~---
+               #   Retrieve useful information.
+               #---~---
+               bFit  = modifyList(x=bFit,val=list(sigma=sigma(bFit)))
+               #---~---
+
+
+               #---~---
+               #   Copy coefficients.
+               #---~---
+               bParam = coef(bFit)
+               if (! "a1" %in% names(bParam)) bParam["a1"] = NA_real_
+               if (! "a2" %in% names(bParam)) bParam["a2"] = NA_real_
+               if (! "s0" %in% names(bParam)) bParam["s0"] = bFit$sigma
+               if (! "s1" %in% names(bParam)) bParam["s1"] = 0.
+               bParam = bParam[c("a0","a1","a2","s0","s1")]
+               #---~---
+
+
+               #---~---
+               #   Retried fitted and predicted values.
+               #---~---
+               bObserv   = BootTRY [[yName]]
+               xObserv   = CrossTRY[[yName]]
+               bFitted   = predict(object=bFit,newdata=BootTRY )
+               xFitted   = predict(object=bFit,newdata=CrossTRY)
+               bGoodness = test.goodness( x.mod        = bFitted
+                                        , x.obs        = bObserv
+                                        , n.parameters = zCntParam
+                                        , out.dfr      = "vector"
+                                        )#end test.goodness
+               xGoodness = test.goodness( x.mod        = xFitted
+                                        , x.obs        = xObserv
+                                        , n.parameters = zCntParam
+                                        , out.dfr      = "vector"
+                                        )#end test.goodness
+               #---~---
+
+
+
+               #---~---
+               #   Update the bootstrap table.
+               #---~---
+               CoeffBoot     [b,] = bParam
+               BootSupport  [[b]] = logLik(bFit)
+               BootGoodness [[b]] = bGoodness
+               CrossGoodness[[b]] = xGoodness
+               #---~---
+            }#end if ("try-error" %in% is(bFit))
+            #---~---
+         }#end for (b in sequence(AllomCntBoot))
+         #---~---
+
+
+         #---~---
+         #   Convert goodness of fit into data frames
+         #---~---
+         BootGoodness  = as.data.frame(do.call(what="rbind",args=BootGoodness ))
+         CrossGoodness = as.data.frame(do.call(what="rbind",args=CrossGoodness))
+         BootTrain     = list( goodness  = BootGoodness )
+         #---~---
+
+
+         #---~---
+         #   Append bootstrap coefficients to the fitted object
+         #---~---
+         zFit = modifyList( x   = zFit
+                          , val = list( coeff.boot   = CoeffBoot
+                                      , support.boot = BootSupport
+                                      , boot.train   = BootTrain
+                                      , cross.val    = CrossGoodness
+                                      )#end list
+                          )#end modifyList
+         #---~---
+
+      }else if (zScedastic %in% "Log-Homoscedastic"){
+         #---~---
+         #   Fit best homoscedastic model.
+         #---~---
+         zFit  = 
+            try( expr = rlm( formula = as.formula(zLnExpect)
+                           , data    = TrainTRY
+                           )#end rlm
+               , silent = TRUE
+               )#end try
+         if ("try-error" %in% is(zFit)){
+            cat0(" Best log-homoscedastic model failed fitting...")
+            browser()
+         }else{
+            #---~---
+            #   Retrieve useful information.
+            #---~---
+            zFit   = modifyList(x=zFit,val=list(sigma=sigma(zFit)))
+            #---~---
+
+
+            #---~---
+            #   Find the back-transformation correction factor (smearing estimate factor).
+            #---~---
+            zBackLog       = Allom_BackLog_Scaler( Model    = zFit
+                                                 , Observ   = TrainTRY[[yName]]
+                                                 , CntParam = zCntParam
+                                                 )#end Allom_BackLog_Scaler
+            zMuSmearing    = zBackLog$MuSmearing
+            zSigmaSmearing = zBackLog$SigmaSmearing
+            #---~---
+
+
+
+            #---~---
+            #   Find coefficients.
+            #---~---
+            zParam        = coef(zFit)
+            zLabel        = names(zParam)
+            zLabel        = gsub(pattern="log\\("   ,replacement=""  ,x=zLabel)
+            zLabel        = gsub(pattern="\\("      ,replacement=""  ,x=zLabel)
+            zLabel        = gsub(pattern="\\)"      ,replacement=""  ,x=zLabel)
+            zLabel        = gsub(pattern="Intercept",replacement="a0",x=zLabel)
+            zLabel        = gsub(pattern=xName      ,replacement="a1",x=zLabel)
+            if (! is.na(wName)){
+               zLabel     = gsub(pattern=wName      ,replacement="a2",x=zLabel)
+            }#end if (! is.na(wName))
+            names(zParam) = zLabel
+            #---~---
+
+
+            #---~---
+            #   Apply the smearing correction factor to expected value and for sigma, and
+            # append coefficients if needed.
+            #---~---
+            zParam["a0"] = zMuSmearing * exp(zParam["a0"])
+            if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
+            if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
+            zParam["s0"] = zSigmaSmearing
+            zParam["s1"] = 1.
+            #---~---
+
+            #---~---
+            #   Report value.
+            #---~---
+            zShow    = paste(names(zParam),sprintf("%.3f",zParam),sep=" = ")
+            zShow    = paste(zShow,collapse=";   ")
+            if (Verbose) cat0("     ~ Optimised values:   ",zShow,";   N = ",CntTrain)
+            zFit   = modifyList(x=zFit,val=list(coeff.best=zParam))
+            #---~---
+         }#end if ("try-error" %in% is(zFit))
+         #---~---
+
+
+         #---~---
+         #   Prepare bootstrap objects.
+         #---~---
+         CoeffBoot     = matrix( nrow     = AllomCntBoot
+                               , ncol     = 5L
+                               , dimnames = list(NULL,c("a0","a1","a2","s0","s1"))
+                               )#end matrix
+         BootSupport   = rep(NA_real_,times=AllomCntBoot)
+         BootGoodness  = replicate(n=AllomCntBoot,list())
+         CrossGoodness = replicate(n=AllomCntBoot,list())
+         #---~---
+
+
+         #---~---
+         #   Bootstrapping loop.
+         #---~---
+         b = 0L
+         while (b < AllomCntBoot){
+            #---~---
+            #   Bootstrap sample.
+            #---~---
+            useIdx   = sample.int(n=CntTrain,size=CntTrain,replace=TRUE)
+            skipIdx  = which(! (sequence(CntTrain) %in% useIdx))
+            BootTRY  = TrainTRY[useIdx ,,drop=FALSE]
+            CrossTRY = TrainTRY[skipIdx,,drop=FALSE]
+            #---~---
+
+
+
+            #---~---
+            #   Fit bootstrapped model.
+            #---~---
+            bFit  = 
+               try( expr = rlm( formula = as.formula(zLnExpect)
+                              , data    = BootTRY
+                              )#end rlm
+                  , silent = TRUE
+                  )#end try
+            if ("try-error" %in% is(bFit)){
+               if (Verbose) cat0(" Bootstrap iteration failed fitting...")
+            }else{
+               #---~---
+               #   Accept iteration.
+               #---~---
+               b      = b + 1L
+               #---~---
+
+
+               #---~---
+               #   Find the back-transformation correction factor (smearing estimate factor).
+               #---~---
+               bBackLog       = Allom_BackLog_Scaler( Model    = bFit
+                                                    , Observ   = BootTRY[[yName]]
+                                                    , CntParam = zCntParam
+                                                    )#end Allom_BackLog_Scaler
+               bMuSmearing    = bBackLog$MuSmearing
+               bSigmaSmearing = bBackLog$SigmaSmearing
+               #---~---
+
+
+
+               #---~---
+               #   Find coefficients.
+               #---~---
+               bParam        = coef(bFit)
+               bLabel        = names(bParam)
+               bLabel        = gsub(pattern="log\\("   ,replacement=""  ,x=bLabel)
+               bLabel        = gsub(pattern="\\("      ,replacement=""  ,x=bLabel)
+               bLabel        = gsub(pattern="\\)"      ,replacement=""  ,x=bLabel)
+               bLabel        = gsub(pattern="Intercept",replacement="a0",x=bLabel)
+               bLabel        = gsub(pattern=xName      ,replacement="a1",x=bLabel)
+               if (! is.na(wName)){
+                  bLabel     = gsub(pattern=wName      ,replacement="a2",x=bLabel)
+               }#end if (! is.na(wName))
+               names(bParam) = bLabel
+               #---~---
+
+
+               #---~---
+               #   Apply smearing estimate correction factors to expected value and for sigma, 
+               # and append coefficients if needed.
+               #---~---
+               bParam["a0"] = exp(bParam["a0"]) * bMuSmearing
+               if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
+               if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
+               bParam["s0"] = bSigmaSmearing
+               bParam["s1"] = 1.
+               bParam       = bParam[c("a0","a1","a2","s0","s1")]
+               #---~---
+
+
+               #---~---
+               #   Report iteration on screen if desired
+               #---~---
+               bShow  = paste(names(bParam),sprintf("%.3f",coef(bFit)),sep=" = ")
+               bShow  = paste(bShow,collapse=";   ")
+               if (Verbose) cat0("     ~ Bootstrap ",b,";   Values:   ",bShow,".")
+               #---~---
+
+
+               #---~---
+               #   Retried fitted and predicted values.
+               #---~---
+               bObserv   = BootTRY [[yName]]
+               xObserv   = CrossTRY[[yName]]
+               bFitted   = bMuSmearing * exp(predict(object=bFit,newdata=BootTRY ))
+               xFitted   = bMuSmearing * exp(predict(object=bFit,newdata=CrossTRY))
+               bSigmaFit = bSigmaSmearing * bFitted
+               xSigmaFit = bSigmaSmearing * xFitted
+               bGoodness = test.goodness( x.mod        = bFitted
+                                        , x.obs        = bObserv
+                                        , x.sigma      = bSigmaFit
+                                        , n.parameters = zCntParam
+                                        , out.dfr      = "vector"
+                                        )#end test.goodness
+               xGoodness = test.goodness( x.mod        = xFitted
+                                        , x.obs        = xObserv
+                                        , x.sigma      = xSigmaFit
+                                        , n.parameters = zCntParam
+                                        , out.dfr      = "vector"
+                                        )#end test.goodness
+               #---~---
+
+
+
+               #---~---
+               #   Update the bootstrap table.
+               #---~---
+               CoeffBoot     [b,] = bParam
+               BootSupport  [[b]] = logLik(bFit)
+               BootGoodness [[b]] = bGoodness
+               CrossGoodness[[b]] = xGoodness
+               #---~---
+            }#end if ("try-error" %in% is(bFit))
+            #---~---
+         }#end for (b in sequence(AllomCntBoot))
+         #---~---
+
+
+         #---~---
+         #   Convert goodness of fit into data frames
+         #---~---
+         BootGoodness  = as.data.frame(do.call(what="rbind",args=BootGoodness ))
+         CrossGoodness = as.data.frame(do.call(what="rbind",args=CrossGoodness))
+         BootTrain     = list( goodness  = BootGoodness )
+         #---~---
+
+
+         #---~---
+         #   Append bootstrap coefficients to the fitted object
+         #---~---
+         zFit = modifyList( x   = zFit
+                          , val = list( coeff.boot   = CoeffBoot
+                                      , support.boot = BootSupport
+                                      , boot.train   = BootTrain
+                                      , cross.val    = CrossGoodness
+                                      )#end list
+                          )#end modifyList
+         #---~---
       }else{
          #---~---
          #   Fit the homoscedastic model first to bring coefficients closer to the answer, 
          # then fit the heteroscedastic model.
          #---~---
-         zFitHomo = try( expr   = optim.lsq.htscd( lsq.formula = zExpect
-                                                 , sig.formula = NULL
-                                                 , data        = TrainTRY
-                                                 , lsq.first   = zStartLSQ
-                                                 , tol.gain    = AllomTolGainBest
-                                                 , tol.optim   = AllomTolOptimBest
-                                                 , maxit       = AllomMaxItGainBest
-                                                 , maxit.optim = AllomMaxItOptimBest
-                                                 , verbose     = FALSE
-                                                 )#end optim.lsq.htscd
+         zFitHomo = try( expr   = nls( formula = zExpect
+                                     , data    = TrainTRY
+                                     , start   = zStartLSQ
+                                     , control = list( maxiter   = AllomMaxItOptimBest
+                                                     , tol       = AllomTolOptimBest
+                                                     , minFactor = AllomMinFactor
+                                                     )#end list
+                                     )#end nls
                        , silent = TRUE
                        )#end try
-         zStartLSQ        = as.list(coef(zFitHomo))
-         names(zStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(zStartLSQ))
+         if ("try-error" %in% is(zFit)){
+            cat0(" Best homoscedastic model failed fitting...")
+            browser()
+         }else{
+            zStartLSQ        = as.list(coef(zFitHomo))
+            names(zStartLSQ) = gsub(pattern="^lsq\\.",replacement="",x=names(zStartLSQ))
+         }#end if ("try-error" %in% is(zFit))
          #---~---
 
 
@@ -934,15 +1720,38 @@ Allom_Fit <<- function( DataTRY
                                              )#end optim.lsq.htscd
                    , silent = TRUE
                    )#end try
+         if ("try-error" %in% is(zFit)){
+            cat0(" Best heteroscedastic model failed fitting...")
+            browser()
+         }#end if ("try-error" %in% is(zFit))
          #---~---
-      }#end if (is.null(zSigma))
+
+
+
+         #---~---
+         #   Set coefficients.
+         #---~---
+         zParam        = coef(zFit)
+         names(zParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(zParam))
+         names(zParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(zParam))
+         names(zParam) = gsub(pattern="sigma0"  ,replacement="s0",x=names(zParam))
+         if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
+         if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
+         if (! "s0" %in% names(zParam)) zParam["s0"] = mean(zFit$sigma)
+         if (! "s1" %in% names(zParam)) zParam["s1"] = 0.
+         zParam        = zParam[c("a0","a1","a2","s0","s1")]
+         zFit          = modifyList(x=zFit,val=list(coeff.best=zParam))
+         #---~---
+      }#end if ( zScedastic %in% "Homoscedastic" )
       #---~---
 
 
+      #---~---
+      #   Report the best model and retrieve its settings
+      #---~---
       if (Verbose) cat0("   - Best model (",zDescClass,", category ",zCateg,"): ",zDesc,".")
       zModel     = ModelTRY$Model [zBest]
       zFormula   = as.character(zExpect)
-      zScedastic = if(is.null(zSigma)){"Homoscedastic"}else{"Heteroscedastic"}
       xName      = ModelTRY$xName [zBest]
       wName      = ModelTRY$wName [zBest]
       yName      = ModelTRY$yName [zBest]
@@ -995,16 +1804,7 @@ Allom_Fit <<- function( DataTRY
       #   Retrieve parameters, add dummy parameters for the ones that were not used.
       #---~---
       if (Verbose) cat0("     ~ Retrieve parameters and save goodness-of-fit metrics.")
-      zParam        = coef(zFit)
-      names(zParam) = gsub(pattern="^lsq\\." ,replacement=""  ,x=names(zParam))
-      names(zParam) = gsub(pattern="^sig\\." ,replacement=""  ,x=names(zParam))
-      names(zParam) = gsub(pattern="sigma0"  ,replacement="s0",x=names(zParam))
-      if (! "a1" %in% names(zParam)) zParam["a1"] = NA_real_
-      if (! "a2" %in% names(zParam)) zParam["a2"] = NA_real_
-      if (! "s0" %in% names(zParam)) zParam["s0"] = mean(zFit$sigma)
-      if (! "s1" %in% names(zParam)) zParam["s1"] = 0.
-      zParam        = zParam[c("a0","a1","a2","s0","s1")]
-      zSigma0       = zFit$sigma0
+      zParam        = zFit$coeff.best
       #---~---
 
 
@@ -1054,19 +1854,23 @@ Allom_Fit <<- function( DataTRY
       SummAllom$s0       [saIdx] = zParam["s0"]
       SummAllom$s1       [saIdx] = zParam["s1"]
       SummAllom$LogLik   [saIdx] = logLik(zFit)
-      SummAllom$Bias     [saIdx] = Allom_Bias (yOrig=yOrig,yPred=yPred)
-      SummAllom$MAE      [saIdx] = Allom_MAE  (yOrig=yOrig,yPred=yPred)
-      SummAllom$RMSE     [saIdx] = Allom_RMSE (yOrig=yOrig,yPred=yPred,nParam=zCntParam)
-      SummAllom$wR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
-                                              , yPred  = yPred
-                                              , ySigma = ySigma
-                                              , Sigma0 = zSigma0
-                                              , nParam = zCntParam
-                                              )#end Allom_R2Adj
-      SummAllom$oR2Adjust[saIdx] = Allom_R2Adj( yOrig  = yOrig
-                                              , yPred  = yPred
-                                              , nParam = zCntParam
-                                              )#end Allom_R2Adj
+      SummAllom$Bias     [saIdx] = Allom_Bias   (yOrig=yOrig,yPred=yPred)
+      SummAllom$SigRes   [saIdx] = Allom_SigRes (yOrig=yOrig,yPred=yPred)
+      SummAllom$MAE      [saIdx] = Allom_MAE    (yOrig=yOrig,yPred=yPred)
+      SummAllom$aRMSE    [saIdx] = Allom_aRMSE  (yOrig=yOrig,yPred=yPred,nParam=zCntParam)
+      SummAllom$R2Adjust [saIdx] = Allom_R2Adj  (yOrig=yOrig,yPred=yPred,nParam=zCntParam)
+      SummAllom$wBias    [saIdx] = Allom_wBias  (yOrig=yOrig,yPred=yPred,ySigma=ySigma)
+      SummAllom$wSigRes  [saIdx] = Allom_wSigRes(yOrig=yOrig,yPred=yPred,ySigma=ySigma)
+      SummAllom$wMAE     [saIdx] = Allom_wMAE   (yOrig=yOrig,yPred=yPred,ySigma=ySigma)
+      SummAllom$wRMSE    [saIdx] = Allom_wRMSE  ( yOrig  = yOrig
+                                                , yPred  = yPred
+                                                , ySigma = ySigma
+                                                , nParam = zCntParam)
+      SummAllom$wR2Adjust[saIdx] = Allom_wR2Adj ( yOrig  = yOrig
+                                                , yPred  = yPred
+                                                , ySigma = ySigma
+                                                , nParam = zCntParam
+                                                )#end Allom_R2Adj
       SummAllom$AIC      [saIdx] = AIC(zFit)
       SummAllom$BIC      [saIdx] = BIC(zFit)
       #---~---
@@ -1149,15 +1953,21 @@ Allom_Fit <<- function( DataTRY
          SummBoot$a2       [bsIdx] = bParam["a2"]
          SummBoot$s0       [bsIdx] = bParam["s0"]
          SummBoot$s1       [bsIdx] = bParam["s1"]
-         SummBoot$LogLik   [bsIdx] = zFit$support.boot                 [b]
-         SummBoot$Bias     [bsIdx] = zFit$boot.train$goodness$bias     [b]
-         SummBoot$MAE      [bsIdx] = zFit$boot.train$goodness$mae      [b]
-         SummBoot$RMSE     [bsIdx] = zFit$boot.train$goodness$rmse     [b]
-         SummBoot$wR2Adjust[bsIdx] = zFit$boot.train$wgt.r.squared     [b]
-         SummBoot$oR2Adjust[bsIdx] = zFit$boot.train$r.squared         [b]
-         SummBoot$xBias    [bsIdx] = zFit$cross.val$bias               [b]
-         SummBoot$xSigRes  [bsIdx] = zFit$cross.val$sigma              [b]
-         SummBoot$xMAE     [bsIdx] = zFit$cross.val$mae                [b]
+         SummBoot$LogLik   [bsIdx] = zFit$support.boot                     [b]
+         SummBoot$Bias     [bsIdx] = zFit$boot.train$goodness$bias         [b]
+         SummBoot$SigRes   [bsIdx] = zFit$boot.train$goodness$sigma        [b]
+         SummBoot$MAE      [bsIdx] = zFit$boot.train$goodness$mae          [b]
+         SummBoot$aRMSE    [bsIdx] = zFit$boot.train$goodness$adj.rmse     [b]
+         SummBoot$R2Adjust [bsIdx] = zFit$boot.train$goodness$r.squared    [b]
+         SummBoot$wBias    [bsIdx] = zFit$boot.train$goodness$wgt.bias     [b]
+         SummBoot$wSigRes  [bsIdx] = zFit$boot.train$goodness$wgt.sigma    [b]
+         SummBoot$wMAE     [bsIdx] = zFit$boot.train$goodness$wgt.mae      [b]
+         SummBoot$wRMSE    [bsIdx] = zFit$boot.train$goodness$wgt.adj.rmse [b]
+         SummBoot$wR2Adjust[bsIdx] = zFit$boot.train$goodness$wgt.r.squared[b]
+         SummBoot$xBias    [bsIdx] = zFit$cross.val$bias                   [b]
+         SummBoot$xSigRes  [bsIdx] = zFit$cross.val$sigma                  [b]
+         SummBoot$xMAE     [bsIdx] = zFit$cross.val$mae                    [b]
+         SummBoot$xRMSE    [bsIdx] = zFit$cross.val$rmse                   [b]
          #---~---
 
 
@@ -1322,51 +2132,19 @@ Allom_Pred <<- function( x
 #---~---
 #     This function computes the adjusted R2 for allometric models. This is intended to be
 # used for full-model assessment only, as it inherently assumes that the model is unbiased.
-# If standard deviation of residuals (Sigma) and reference sigma (Sigma0) are provided, R2
-# is computed using the weighting factors (WN88).
 #
 # Input variables:
 # yOrig  - vector with original values of variable y
 # yPred  - vector with predicted values of variable y
-# ySigma - vector with the predicted values of standard deviation of the residuals.
-# Sigma0 - reference standard deviation of residuals, obtained from the model fitting.
 # nParam - number of model parameters
 #
-#
-# Reference:
-# 
-# Willett, J. B., and J. D. Singer, 1988: Another cautionary note about r2: Its use in 
-#    weighted least-squares regression analysis. Am. Stat., 42 (3), 236-238,
-#    doi:10.1080/00031305.1988.10475573 (WN88).
-#
 #---~---
-Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,Sigma0=NULL,nParam){
+Allom_R2Adj <<- function(yOrig,yPred,nParam){
 
    #---~---
-   #   Assign a default sigma0 if it is missing.
+   #   Keep only the entries in which all yOrig and yPred are valid
    #---~---
-   if (is.null(Sigma0)){
-      yKeep  = is.finite(yOrig) & is.finite(yPred)
-      nKeep  = sum(yKeep)
-      Sigma0 = sqrt( sum( (yOrig[yKeep]-yPred[yKeep])^2,na.rm=TRUE) / (nKeep - nParam) )
-   }#end if (is.null(Sigma0))
-   #---~---
-
-
-
-   #---~---
-   #   Assign a default sigma if it is missing.
-   #---~---
-   if (is.null(ySigma)){
-      ySigma  = Sigma0 + 0 * yOrig
-   }#end if (is.null(ySigma))
-   #---~---
-
-
-   #---~---
-   #   Keep only the entries in which all yOrig, yPred and ySigma are valid
-   #---~---
-   yKeep  = is.finite(yOrig) & is.finite(yPred) & is.finite(ySigma)
+   yKeep  = is.finite(yOrig) & is.finite(yPred)
    nData  = sum(yKeep)
    yOrig  = yOrig[yKeep]
    yPred  = yPred[yKeep]
@@ -1374,37 +2152,27 @@ Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,Sigma0=NULL,nParam){
 
 
    #---~---
-   #   Find the weights and transform the data. Note that we define weights as the 
-   # inverse of WN88's W term.
+   #   Find the average of the reference data.
    #---~---
-   yWeight  = (1./ySigma)^2
-   ysOrig   = sqrt(yWeight) * yOrig
-   ysPred   = sqrt(yWeight) * yPred
-   #---~---
-
-
-   #---~---
-   #   Find the average of the transformed data.
-   #---~---
-   ysMean = mean(ysOrig)
+   yMean = mean(yOrig)
    #---~---
 
 
    #---~---
    #   Find sum of squares and degrees of freedom
    #---~---
-   SSRes = sum((ysOrig-ysPred)^2)
-   SSTot = sum((ysOrig-ysMean)^2)
+   SSRes = sum((yOrig-yPred)^2)
+   SSTot = sum((yOrig-yMean)^2)
    DFRes = nData - nParam
-   DFTot = nData - 1
+   DFTot = nData - 1L
    #---~---
 
 
    #---~---
    #   Find the adjusted R2 and report it.
    #---~---
-   r2adj = 1 - SSRes * DFTot / ( SSTot * DFRes )
-   return(r2adj)
+   R2Adj = 1. - SSRes * DFTot / ( SSTot * DFRes )
+   return(R2Adj)
    #---~---
 }#end Allom_R2Adj
 #---~---
@@ -1412,7 +2180,64 @@ Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,Sigma0=NULL,nParam){
 
 
 #---~---
-#     This function computes the root mean square error of prediction 
+#     This function computes the adjusted weighted R2 for allometric models. This is intended
+# to be used for full-model assessment only, as it inherently assumes that the model is 
+# unbiased.  The weighting factor is the inverse of the predicted standard deviation of the
+# residuals, following WN88.
+#
+# Input variables:
+# yOrig  - vector with original values of variable y
+# yPred  - vector with predicted values of variable y
+# ySigma - vector with the predicted values of standard deviation of the residuals.
+# nParam - number of model parameters
+#
+# Reference:
+# 
+# Willett, J. B., and J. D. Singer, 1988: Another cautionary note about r2: Its use in 
+#    weighted least-squares regression analysis. Am. Stat., 42 (3), 236-238,
+#    doi:10.1080/00031305.1988.10475573 (WN88).
+#---~---
+Allom_wR2Adj <<- function(yOrig,yPred,ySigma,nParam){
+   #---~---
+   #   Keep only the entries in which all yOrig, yPred and ySigma are valid
+   #---~---
+   yKeep  = is.finite(yOrig) & is.finite(yPred) & (ySigma %gt% 0.)
+   nData  = sum(yKeep)
+   yOrig  = yOrig[yKeep] / ySigma[yKeep]
+   yPred  = yPred[yKeep] / ySigma[yKeep]
+   #---~---
+
+
+   #---~---
+   #   Find the average of the reference data.
+   #---~---
+   yMean = mean(yOrig)
+   #---~---
+
+
+   #---~---
+   #   Find sum of squares and degrees of freedom
+   #---~---
+   SSRes = sum((yOrig-yPred)^2)
+   SSTot = sum((yOrig-yMean)^2)
+   DFRes = nData - nParam
+   DFTot = nData - 1L
+   #---~---
+
+
+   #---~---
+   #   Find the adjusted R2 and report it.
+   #---~---
+   R2Adj = 1. - SSRes * DFTot / ( SSTot * DFRes )
+   return(R2Adj)
+   #---~---
+}#end Allom_wR2Adj
+#---~---
+
+
+
+#---~---
+#     This function computes the adjusted root mean square error of prediction
 # for allometric models. This is intended to be used for full-model assessment and not
 # cross-validation, as it accounts for number of degrees of freedom.
 #
@@ -1421,7 +2246,7 @@ Allom_R2Adj <<- function(yOrig,yPred,ySigma=NULL,Sigma0=NULL,nParam){
 # yPred  - vector with predicted values of variable y
 # nParam - number of model parameters
 #---~---
-Allom_RMSE <<- function(yOrig,yPred,nParam){
+Allom_aRMSE <<- function(yOrig,yPred,nParam){
    
    #---~---
    #   Keep only the entries in which both yOrig and yPred are valid
@@ -1442,7 +2267,44 @@ Allom_RMSE <<- function(yOrig,yPred,nParam){
    ans   = sqrt(SSRes/DFRes)
    return(ans)
    #---~---
-}#end Allom_RMSE
+}#end Allom_aRMSE
+#---~---
+
+
+
+#---~---
+#     This function computes the adjusted weighted root mean square error of prediction
+# for allometric models. This is intended to be used for full-model assessment and not
+# cross-validation, as it accounts for number of degrees of freedom.
+#
+# Input variables:
+# yOrig  - vector with original values of variable y
+# yPred  - vector with predicted values of variable y
+# ySigma - vector with predicted standard error of variable y
+# nParam - number of model parameters
+#---~---
+Allom_wRMSE <<- function(yOrig,yPred,ySigma,nParam){
+   
+   #---~---
+   #   Keep only the entries in which both yOrig and yPred are valid
+   #---~---
+   yKeep = is.finite(yOrig) & is.finite(yPred) & ( ySigma %gt% 0. )
+   wOrig = yOrig[yKeep] / ySigma[yKeep]
+   wPred = yPred[yKeep] / ySigma[yKeep]
+   wMean = mean(yOrig)
+   nData = length(wOrig)
+   #---~---
+
+
+   #---~---
+   #   Find sum of squares and degrees of freedom, then compute the RMSE of predictions
+   #---~---
+   SSRes = sum((wOrig-wPred)^2)
+   DFRes = nData - nParam
+   ans   = sqrt(SSRes/DFRes)
+   return(ans)
+   #---~---
+}#end Allom_wRMSE
 #---~---
 
 
@@ -1478,8 +2340,38 @@ Allom_MAE <<- function(yOrig,yPred){
 
 
 #---~---
-#     This function computes the mean bias (negative average of the residuals). This is 
-# intended to be used mostly for cross-validation.
+#     This function computes the weighted mean absolute error. This can be used for both the 
+# full model assessment and cross-validation.
+#
+# Input variables:
+# yOrig  - vector with original values of variable y
+# yPred  - vector with predicted values of variable y
+# ySigma - vector with predicted standard error of variable y
+#---~---
+Allom_wMAE <<- function(yOrig,yPred,ySigma){
+   #---~---
+   #   Keep only the entries in which both yOrig and yPred are valid
+   #---~---
+   yKeep  = is.finite(yOrig) & is.finite(yPred) & ( ySigma %gt% 0. )
+   wOrig  = yOrig[yKeep] / ySigma[yKeep]
+   wPred  = yPred[yKeep] / ySigma[yKeep]
+   wResid = wOrig - wPred
+   #---~---
+
+
+   #---~---
+   #   Find mean bias
+   #---~---
+   ans   = mean(abs(wResid))
+   return(ans)
+   #---~---
+}#end Allom_wMAE
+#---~---
+
+
+
+#---~---
+#     This function computes the mean bias (negative average of the residuals).
 #
 # Input variables:
 # yOrig  - vector with original values of variable y
@@ -1508,9 +2400,39 @@ Allom_Bias <<- function(yOrig,yPred){
 
 
 #---~---
+#     This function computes the weighted mean bias (negative average of the weighted 
+# residuals).
+#
+# Input variables:
+# yOrig  - vector with original values of variable y
+# yPred  - vector with predicted values of variable y
+# ySigma - vector with predicted standard error of variable y
+#---~---
+Allom_wBias <<- function(yOrig,yPred,ySigma){
+   #---~---
+   #   Keep only the entries in which both yOrig and yPred are valid and ySigma is positive
+   #---~---
+   yKeep  = is.finite(yOrig) & is.finite(yPred) & (ySigma %gt% 0.)
+   wOrig  = yOrig[yKeep] / ySigma[yKeep]
+   wPred  = yPred[yKeep] / ySigma[yKeep]
+   wResid = wOrig - wPred
+   #---~---
+
+
+   #---~---
+   #   Find mean bias
+   #---~---
+   ans   = mean(-wResid)
+   return(ans)
+   #---~---
+}#end Allom_wBias
+#---~---
+
+
+
+#---~---
 #     This function computes the standard deviation of residuals. This is not the same as 
-# the RMSE because it does not account for bias and the number of parameters. This is 
-# intended to be used mostly for cross-validation.
+# the RMSE because it does not account for bias and the number of parameters.
 #
 # Input variables:
 # yOrig  - vector with original values of variable y
@@ -1534,6 +2456,37 @@ Allom_SigRes <<- function(yOrig,yPred){
    return(ans)
    #---~---
 }#end Allom_SigRes
+#---~---
+
+
+
+#---~---
+#     This function computes the weighted standard deviation of residuals. This is not the same
+# as the RMSE because it does not account for bias and the number of parameters.
+#
+# Input variables:
+# yOrig  - vector with original values of variable y
+# yPred  - vector with predicted values of variable y
+# ySigma - vector with predicted standard error of variable y
+#---~---
+Allom_wSigRes <<- function(yOrig,yPred,ySigma){
+   #---~---
+   #   Keep only the entries in which both yOrig and yPred are valid and ySigma is positive
+   #---~---
+   yKeep  = is.finite(yOrig) & is.finite(yPred) & (ySigma %gt% 0.)
+   wOrig  = yOrig[yKeep] / ySigma[yKeep]
+   wPred  = yPred[yKeep] / ySigma[yKeep]
+   wResid = wOrig - wPred
+   #---~---
+
+
+   #---~---
+   #   Find standard deviation of the weighted residuals
+   #---~---
+   ans   = sd(wResid)
+   return(ans)
+   #---~---
+}#end Allom_wSigRes
 #---~---
 
 
@@ -1806,7 +2759,7 @@ Allom_PrepOptim <<- function( OrigTRY
            , OneLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
            , TwoLinear    = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
            , TwoMixLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
-           , TwoLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX) / qMidW
+           , TwoLogLinear = ( qUprY - qLwrY ) / ( qUprX - qLwrX)
            , MartinezCano = qUprY
            , Weibull      = qUprY
            )#end First_a0
@@ -1826,7 +2779,7 @@ Allom_PrepOptim <<- function( OrigTRY
            , OneLogLinear = NULL
            , TwoLinear    = NULL
            , TwoMixLinear = NULL
-           , TwoLogLinear = 1.
+           , TwoLogLinear = 0.
            , MartinezCano = qMidX
            , Weibull      = 1.
            )#end First_a2
@@ -1844,11 +2797,27 @@ Allom_PrepOptim <<- function( OrigTRY
 
 
    #---~---
+   #   For some equations, we may want to test log-normal transformations. When a 
+   # log-normal transformation is not sought, set it to NA_character_
+   #---~---
+   LnExpect = 
+     switch( EXPR         = Model
+           , OneLogLinear = paste0("log(",yName,") ~ log(",xName,")"                  )
+           , TwoMixLinear = paste0("log(",yName,")"
+                                  ," ~ log(",xName,") + offset(log(",wName,"))"      )
+           , TwoLogLinear = paste0("log(",yName,") ~ log(",xName,") + log(",wName,")")
+           , NA_character_
+           )#end LnExpect
+   #---~---
+
+
+   #---~---
    #   Build a list with all the information
    #---~---
    Answer = list( Predictor  = Predictor
                 , CntParam   = CntParam
                 , Expect     = Expect
+                , LnExpect   = LnExpect
                 , Sigma      = Sigma
                 , StartLSQ   = StartLSQ
                 , StartSigma = StartSigma
@@ -1863,6 +2832,179 @@ Allom_PrepOptim <<- function( OrigTRY
 }#end function Allom_PrepOptim
 #---~---
 
+
+
+
+#---~---
+#   This function finds the back-transformation correction factor when back-transforming 
+# estimators of log-transformed fitted models. This is needed because the mean of log-residuals
+# is not the same as the log of the mean residuals, so an unbiased log-transformed model can
+# become biased after back-transforming estimates.
+#
+#    We test multiple approaches and select the one that produces the lowest bias after back-
+# transforming the data.
+#
+# 1. Baskerville (1972). This is the most formal approach, which is consistent with the 
+#    assumption that after log-transforming the variables, the errors become normally 
+#    distributed and homoscesdatic. This correction can produce more biases if the assumptions
+#    are not met.
+# 2. Duan (1983). This approach does not assume that errors are normally distributed in the 
+#    log-transformed space.
+# 3. Snowdon (1991). This approach defines the correction term to be the ratio between the 
+#    arithmetic sample mean and the mean of the fitted observations after back-transformation 
+#    without any correction. This yields to an unbiased estimate of fitted data by default.
+# 4. Modified Snowdon (1991). Similar to the original approach, except that we use the slope
+#    of a fitted model between observations and the back-transformed values without any 
+#    correction, assuming zero intercept, following the thread below:
+#    https://tinyurl.com/9xpycvj8
+#
+# References:
+#
+# Baskerville, G. L., 1972: Use of logarithmic regression in the estimation of plant biomass. 
+#    Can. J. Forest Res., 2 (1), 49-53, doi:10.1139/x72-009 (B72).
+# Duan, N., 1983: Smearing estimate: A nonparametric retransformation method. J. Am. Stat. 
+#    Assoc., 78 (383), 605-610, doi:10.1080/01621459.1983.10478017 (D83).
+# Snowdon, P., 1991: A ratio estimator for bias correction in logarithmic regressions. Can. J. 
+#    Forest Res., 21 (5), 720-724, doi:10.1139/x91-101 (S91).
+#---~---
+Allom_BackLog_Scaler <<- function(Model,Observ,CntParam){
+
+   #---~---
+   #   Retrieve the back-transformed fitted values without correction (aka naive 
+   # back-transformation).
+   #---~---
+   Naive = exp(fitted(Model))
+   CntFitted = length(Naive)
+   #---~---
+
+   #---~---
+   #   Retrieve the residuals and sigma of the log-transformed model
+   #---~---
+   LnError = - residuals(Model)
+   LnSigma = sigma(Model)
+   #---~---
+
+   #---~---
+   #   Fit the slope of the curve between naively back-transformed fitted data and observation.
+   #---~---
+   FitSmearing = rlm(Observ ~ Naive)
+   #---~---
+
+
+   #---~---
+   #   Find the scaling factors of all methods.
+   #---~---
+   AllMuSmearings   = 
+      data.frame( Naive        = 1.0
+                , Baskerville = exp(0.5*LnSigma^2)
+                , Duan        = mean(exp(LnError),na.rm=TRUE)
+                , Snowdon     = mean(Observ,na.rm=TRUE) / mean(Naive,na.rm=TRUE)
+                , ModSnowdon  = coef(FitSmearing)[1L]
+                )#end data.frame
+   #---~---
+
+
+
+   #---~---
+   #   Apply corrections.
+   #---~---
+   Baskerville = AllMuSmearings$Baskerville * Naive
+   Duan        = AllMuSmearings$Duan        * Naive
+   Snowdon     = AllMuSmearings$Snowdon     * Naive
+   ModSnowdon  = AllMuSmearings$ModSnowdon  * Naive
+   #---~---
+
+
+
+   #---~---
+   #   Find residuals of each approach.
+   #---~---
+   rNaive       = Observ - Naive
+   rBaskerville = Observ - Baskerville
+   rDuan        = Observ - Duan
+   rSnowdon     = Observ - Snowdon
+   rModSnowdon  = Observ - ModSnowdon
+   #---~---
+
+
+   #---~---
+   #   Find the actual standard deviation of residuals.
+   #---~---
+   AllSigma =
+      data.frame( Naive       = sqrt(sum(rNaive^2      ,na.rm=TRUE) / (CntFitted - CntParam))
+                , Baskerville = sqrt(sum(rBaskerville^2,na.rm=TRUE) / (CntFitted - CntParam))
+                , Duan        = sqrt(sum(rDuan^2       ,na.rm=TRUE) / (CntFitted - CntParam))
+                , Snowdon     = sqrt(sum(rSnowdon^2    ,na.rm=TRUE) / (CntFitted - CntParam))
+                , ModSnowdon  = sqrt(sum(rSnowdon^2    ,na.rm=TRUE) / (CntFitted - CntParam))
+                )#end data.frame
+   #---~---
+
+
+   #---~---
+   #   Find the expected standard deviation of residuals by using the assumption that the 
+   # local standard deviation of residuals scale linearly with the absolute value of the fitted
+   # values, following the expected heteroscedasticity of log-linear transformation.
+   #---~---
+   sNaive       = sqrt(AllSigma$Naive^2       / mean(Naive^2      ,na.rm=TRUE))
+   sBaskerville = sqrt(AllSigma$Baskerville^2 / mean(Baskerville^2,na.rm=TRUE))
+   sDuan        = sqrt(AllSigma$Duan^2        / mean(Duan^2       ,na.rm=TRUE))
+   sSnowdon     = sqrt(AllSigma$Snowdon^2     / mean(Snowdon^2    ,na.rm=TRUE))
+   sModSnowdon  = sqrt(AllSigma$ModSnowdon^2  / mean(ModSnowdon^2 ,na.rm=TRUE))
+   AllSigmaSmearings =
+      data.frame( Naive       = sNaive
+                , Baskerville = sBaskerville
+                , Duan        = sDuan
+                , Snowdon     = sSnowdon
+                , ModSnowdon  = sSnowdon
+                )#end data.frame
+   #---~---
+
+
+   #---~---
+   #   Find the root mean square error of each approach
+   #---~---
+   AllRMSEs =
+      data.frame( Naive       = Allom_aRMSE(yOrig=Observ,yPred=Naive      ,nParam=CntParam)
+                , Baskerville = Allom_aRMSE(yOrig=Observ,yPred=Baskerville,nParam=CntParam)
+                , Duan        = Allom_aRMSE(yOrig=Observ,yPred=Duan       ,nParam=CntParam)
+                , Snowdon     = Allom_aRMSE(yOrig=Observ,yPred=Snowdon    ,nParam=CntParam)
+                , ModSnowdon  = Allom_aRMSE(yOrig=Observ,yPred=ModSnowdon ,nParam=CntParam)
+                )#end data.frame
+   #---~---
+
+
+   #---~---
+   #   Find the smearing factors for the 
+   #---~---
+   #---~---
+
+
+   #---~---
+   #   Select method that has the lowest RMSE:
+   #---~---
+   AllMethods = names(AllRMSEs)
+   Best       = which.min(c(unlist(AllRMSEs)))
+   Method     = AllMethods[[Best]]
+   Answer     = list( Method        = Method
+                    , MuSmearing    = AllMuSmearings   [[Method]]
+                    , SigmaSmearing = AllSigmaSmearings[[Method]]
+                    , RMSE          = AllRMSEs         [[Method]]
+                    , AllResults    = data.frame( Method        = AllMethods
+                                                , MuSmearing    = AllMuSmearings
+                                                , SigmaSmearing = AllSigmaSmearings
+                                                , RMSE          = AllRMSEs
+                                                )#end list
+                    )#end list
+   #---~---
+
+
+   #---~---
+   #   Return Answer
+   #---~---
+   return(Answer)
+   #---~---
+}#end function Allom_BackLog_Scaler
+#---~---
 
 
 

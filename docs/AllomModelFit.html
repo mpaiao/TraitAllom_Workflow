@@ -303,7 +303,7 @@ use it for comparisons.)</li>
 </ul>
 <pre class="r"><code># Set useful paths and file names
 home_path       = path.expand(&quot;~&quot;)
-main_path       = file.path(home_path,&quot;Data&quot;,&quot;TraitAllom_Workflow&quot;)
+main_path       = file.path(home_path,&quot;Data&quot;, &quot;TraitAllom_Workflow&quot;)
 util_path       = file.path(main_path,&quot;RUtils&quot;)
 summ_path       = file.path(main_path,&quot;TaxonSummary&quot;)
 plot_path       = file.path(main_path,&quot;Figures&quot;)
@@ -333,13 +333,16 @@ original data set. Current options are:</p>
 <ul>
 <li><code>"NeoTropical"</code>. South and Central America</li>
 <li><code>"PanTropical"</code>. All continents.</li>
+<li><code>"AfricaTropical"</code>. Africa</li>
+<li><code>"AsiaTropical"</code>. Asia</li>
+<li><code>"WestUS"</code>. Western US</li>
 </ul></li>
 </ul>
 <pre class="r"><code># Life-form/phylogenetic level to use for SMA analyses.
 use_lifeclass  = c(&quot;FlowerTrees&quot;,&quot;Shrubs&quot;,&quot;Grasses&quot;,&quot;FlowerPlants&quot;,&quot;Pinopsida&quot;,&quot;SeedPlants&quot;,&quot;Plantae&quot;)[4L]
 
 # Realm to use for SMA analyses.
-use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;)[1L]
+use_realm  = c(&quot;NeoTropical&quot;,&quot;PanTropical&quot;, &quot;AfricaTropical&quot;, &quot;AsiaTropical&quot;, &quot;WestUS&quot;)[1L]
 
 # Taxonomic level of detail for SMA analyses. This is used to retrieve the correct &quot;Tidy TRY&quot; data set
 # with the cluster assignment. Allometric models are always developed from individual observations.
@@ -389,7 +392,21 @@ next chunk.</li>
 <li><strong>AllomConfInt</strong>. Confidence interval for allometric
 equations.</li>
 <li><strong>AllomFitXIC</strong>. Which information criterion to use
-when comparing models? Options are AIC (default) or BIC.</li>
+when comparing models? Options are <code>"AIC"</code> (default) for
+Akaike Information Criterion, <code>"BIC"</code> for Bayesian
+Information Criterion, <code>"ARMSE"</code> for the adjusted root mean
+square error (accounting for the number of parameters) and
+<code>"mR2Adj"</code> for the negative adjusted coefficient of
+determination (<span class="math inline">\(-R^2_\textrm{adj}\)</span>).
+The information criteria approaches will pick the model with the highest
+likelihood (corrected for additional parameters), whereas the
+<code>"aRMSE"</code> and <code>"wRMSE"</code> will heavily penalise
+biased models. As a consequence, information criteria approaches will be
+more likely to select heteroscedastic or log-normal models, and
+<code>"aRMSE"</code> will likely pick homoscedastic models. Option
+<code>"wRMSE"</code> is intended to account for both, but it is still
+experimental and can get the worst of both worlds instead of the best of
+both worlds.</li>
 <li><strong>AllomMaxItOptim</strong>. Maximum number of iterations
 before giving up optimising the model. This is actually what controls
 the search for the optimal point, and should be relatively high
@@ -422,7 +439,7 @@ CntAllomMax   = Inf       # Maximum number of points for fitting allometric mode
 AllomConfInt  = 0.95      # Confidence interval for allometric model fittings.
 
 # Information criterion for selecting the best model
-AllomFitXIC     = c(&quot;AIC&quot;,&quot;BIC&quot;)[1L]
+AllomFitXIC     = c(&quot;AIC&quot;,&quot;BIC&quot;,&quot;aRMSE&quot;,&quot;wRMSE&quot;)[1L]
 
 # Settings for non-linear heteroscedastic model fitting.
 AllomMaxItOptim  = 10000L   # Max. # of iterations for the gnls optimisation
@@ -464,7 +481,8 @@ rseed_bark_thick  = 42L  # Random seed - bark thickness</code></pre>
 <p>Sampling parameters for the data binning.</p>
 <ul>
 <li><strong>UseSizeBins</strong>. Should the training date be resampled
-by size bins?</li>
+by size bins? Provide one value (<code>TRUE</code>|<code>FALSE</code>)
+for each predicting variable.</li>
 <li><strong>MinSmpPerBin</strong>. Minimum number of observations for
 each bin. Binning will not occur unless there are at least twice as many
 valid points (and possibly even more points in case of very imbalanced
@@ -472,7 +490,7 @@ data sets).</li>
 <li><strong>MaxCntBins</strong>. Maximum number of bins to be
 considered.</li>
 </ul>
-<pre class="r"><code>UseSizeBins  = c(FALSE,TRUE)[2L]
+<pre class="r"><code>UseSizeBins  = c(height=TRUE,agb=FALSE,bleaf=FALSE,leaf_area=FALSE,crown_area=TRUE,crown_depth=TRUE,bark_thick=FALSE)
 MinSmpPerBin = 100L
 MaxCntBins   = 50L</code></pre>
 <p>Set up some flags to either plot (<code>TRUE</code>) or skip
@@ -1048,7 +1066,7 @@ then select the one that has the best predictive power.</p>
                         , AllomCntPred    = AllomCntPred
                         , AllomQuantPred  = AllomQuantPred
                         , AllomCntBoot    = AllomCntBoot
-                        , UseSizeBins     = UseSizeBins
+                        , UseSizeBins     = UseSizeBins[&quot;height&quot;]
                         , xSample         = DBH
                         , xLogSmp         = FALSE
                         , MinSmpPerBin    = MinSmpPerBin
@@ -1137,9 +1155,9 @@ which may be easier for lidar applications.</p>
                      , AllomCntPred    = AllomCntPred
                      , AllomQuantPred  = AllomQuantPred
                      , AllomCntBoot    = AllomCntBoot
-                     , UseSizeBins     = FALSE
-                     , xSample         = WDSize
-                     , xLogSmp         = TRUE
+                     , UseSizeBins     = UseSizeBins[&quot;agb&quot;]
+                     , xSample         = DBH
+                     , xLogSmp         = FALSE
                      , MinSmpPerBin    = MinSmpPerBin
                      , MaxCntBins      = MaxCntBins
                      , Verbose         = TRUE
@@ -1232,9 +1250,9 @@ be easier for lidar applications.</p>
                        , AllomCntPred    = AllomCntPred
                        , AllomQuantPred  = AllomQuantPred
                        , AllomCntBoot    = AllomCntBoot
-                       , UseSizeBins     = FALSE
-                       , xSample         = LMSize
-                       , xLogSmp         = TRUE
+                       , UseSizeBins     = UseSizeBins[&quot;bleaf&quot;]
+                       , xSample         = DBH
+                       , xLogSmp         = FALSE
                        , MinSmpPerBin    = MinSmpPerBin
                        , MaxCntBins      = MaxCntBins
                        , Verbose         = TRUE
@@ -1312,9 +1330,9 @@ for lidar applications.</p>
                           , AllomCntPred    = AllomCntPred
                           , AllomQuantPred  = AllomQuantPred
                           , AllomCntBoot    = AllomCntBoot
-                          , UseSizeBins     = FALSE
-                          , xSample         = Size
-                          , xLogSmp         = TRUE
+                          , UseSizeBins     = UseSizeBins[&quot;leaf_area&quot;]
+                          , xSample         = DBH
+                          , xLogSmp         = FALSE
                           , MinSmpPerBin    = MinSmpPerBin
                           , MaxCntBins      = MaxCntBins
                           , Verbose         = TRUE
@@ -1392,9 +1410,9 @@ easier for lidar applications.</p>
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = UseSizeBins
-                           , xSample         = Size
-                           , xLogSmp         = TRUE
+                           , UseSizeBins     = UseSizeBins[&quot;crown_area&quot;]
+                           , xSample         = DBH
+                           , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin
                            , MaxCntBins      = MaxCntBins
                            , Verbose         = TRUE
@@ -1460,7 +1478,7 @@ purely linear function.</p>
                             , AllomCntPred    = AllomCntPred
                             , AllomQuantPred  = AllomQuantPred
                             , AllomCntBoot    = AllomCntBoot
-                            , UseSizeBins     = UseSizeBins
+                            , UseSizeBins     = UseSizeBins[&quot;crown_depth&quot;]
                             , xSample         = Height
                             , xLogSmp         = FALSE
                             , MinSmpPerBin    = MinSmpPerBin
@@ -1531,7 +1549,7 @@ DBH or height, potentially scaled by wood density.</p>
                            , AllomCntPred    = AllomCntPred
                            , AllomQuantPred  = AllomQuantPred
                            , AllomCntBoot    = AllomCntBoot
-                           , UseSizeBins     = FALSE
+                           , UseSizeBins     = UseSizeBins[&quot;bark_thick&quot;]
                            , xSample         = DBH
                            , xLogSmp         = FALSE
                            , MinSmpPerBin    = MinSmpPerBin

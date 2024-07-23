@@ -1348,10 +1348,9 @@ optim.lsq.htscd <<- function( lsq.formula
    ans$fitted.values = ypred$yhat
    ans$residuals     = ypred$yres
    ans$sigma         = ypred$sigma
-
-
    ans$goodness      = test.goodness( x.mod        = ans$fitted.values
                                     , x.obs        = ans$actual.values
+                                    , x.sigma      = ans$sigma
                                     , n.parameters = n.par
                                     , out.dfr      = TRUE
                                     )#end test.goodness
@@ -1360,13 +1359,7 @@ optim.lsq.htscd <<- function( lsq.formula
       ans$wgt.r.squared = ans$goodness$r.squared
    }else{
       ans$r.squared     = ans$goodness$r.squared
-      wgt.goodness      = test.goodness( x.mod        = ans$fitted.values
-                                       , x.obs        = ans$actual.values
-                                       , x.sigma      = ans$sigma
-                                       , n.parameters = n.par
-                                       , out.dfr      = TRUE
-                                       )#end test.goodness
-      ans$wgt.r.squared = wgt.goodness$r.squared
+      ans$wgt.r.squared = ans$goodness$wgt.r.squared
    }#end if (is.null(sig.formula))
    ans$AIC           = 2*n.par - 2*ans$support + 2*n.par*(n.par+1)/(n.use-n.par-1)
    ans$BIC           = n.par*(log(n.use)-log(2*pi)) - 2*ans$support
@@ -1397,23 +1390,15 @@ optim.lsq.htscd <<- function( lsq.formula
       tgood.boot     = mapply( FUN      = test.goodness
                              , x.mod    = as.data.frame(tpred.boot )
                              , x.obs    = as.data.frame(tobser.boot)
-                             , MoreArgs = list(n.parameters=n.par,out.dfr="vector")
-                             , SIMPLIFY = TRUE
-                             )#end mapply
-      twgt.good.boot = mapply( FUN      = test.goodness
-                             , x.mod    = as.data.frame(tpred.boot )
-                             , x.obs    = as.data.frame(tobser.boot)
                              , x.sigma  = as.data.frame(tsigma.boot)
                              , MoreArgs = list(n.parameters=n.par,out.dfr="vector")
                              , SIMPLIFY = TRUE
                              )#end mapply
-
       tgood.boot     = as.data.frame(t(tgood.boot    ))
-      twgt.good.boot = as.data.frame(t(twgt.good.boot))
       ans$boot.train = list( index         = tindex.boot
                            , goodness      = tgood.boot
-                           , wgt.r.squared = twgt.good.boot$r.squared
                            , r.squared     = tgood.boot$r.squared
+                           , wgt.r.squared = tgood.boot$wgt.r.squared
                            )#end list
       #------------------------------------------------------------------------------------#
 
