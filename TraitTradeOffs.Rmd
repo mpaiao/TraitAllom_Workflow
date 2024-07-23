@@ -1,6 +1,6 @@
 ---
 title: "TRY traits trade-offs"
-author: "Marcos Longo"
+authors: "Marcos Longo, Mara St. Amant"
 date: "2022-04-25"
 output: html_document
 ---
@@ -62,7 +62,9 @@ Set paths and file names for input and output.
 ```{r, label='path-settings',message=FALSE,results='hide',warning=FALSE}
 # Set useful paths and file names
 home_path       = path.expand("~")
-main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
+
+main_path       = file.path(home_path,"Downloads", "Data", "TraitAllom_Workflow")
+
 util_path       = file.path(main_path,"RUtils")
 list_path       = file.path(main_path,"InputLists")
 summ_path       = file.path(main_path,"TaxonSummary")
@@ -112,7 +114,7 @@ This flag defines whether to keep only woody plants, and how strict we should be
 
 - **tree_only**. Only trees (sensu stricto) are included. This will exclude shrubs, lianas, hemiepiphytes and tree-like forms (e.g., palms, yucca "trees").
 - **woody_ss_free**. All free-standing woody plants (sensu stricto) are included. This will include trees and shrubs, but exclude lianas, hemiepiphytes, and tree-like forms.
-- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.Summ
+- **woody_ss_all**. All woody plants (sensu stricto) are included. This will include trees, lianas, shrubs and hemiepiphytes, but exclude tree-like forms.
 - **woody_sl_free**. All free-standing woody plants (sensu lato) are included. This will include trees, shrubs and tree-like forms, but exclude lianas and hemiepiphytes.
 - **woody_sl_all**. All woody plants (sensu lato) are included. This will include trees, lianas, shrubs, palms and hemiepiphytes.
 - **all_plants**. All plants will be retained.
@@ -172,7 +174,7 @@ The following block defines some settings for the standardised major axis for mo
 xsma_TraitID    = c(SLA=3117L,wood_dens=4L,leaf_c2n=146L,leaf_n_area=50L)[1L]
 
 # Variable to use as X axis for trait SMA analyses of photosynthesis traits?
-xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[2L]  
+xphoto_TraitID  = c(a_amax=53L,a_vcmax=186L,a_jmax=269L,m_amax=40L,m_vcmax=185L,m_jmax=270L)[1L]
 
 # Minimum number for plotting violins
 n_violin_min    = 10L
@@ -199,10 +201,10 @@ SMA_Robust      = FALSE
 SMA_MaxIter     = 10L
 
 # Life-form/phylogenetic level to use for SMA analyses.
-use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
+use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
-use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
+use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[5L]
 
 # Taxonomic level of detail for SMA analyses.
 fit_taxon = c("Individual","Species","Genus")[2L]
@@ -240,7 +242,9 @@ Settings for the Imputation, Cluster Analysis and Principal Component Analysis:
 impute_cluster_test = c(FALSE,TRUE)[1L]
 
 # Minimum number of numeric traits for keeping the entry for imputation. This avoids keeping plants for which we only have a few traits
-n_row_numtrait_impute = 3L
+
+n_row_numtrait_impute = 4L
+
 
 # Minimum fraction of complete observations (relative to the most abundant numeric trait) for being considered in the imputation
 f_col_trait_impute = 1./6.
@@ -273,7 +277,7 @@ method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "glo
 cluster_method = c("sil","gap","fix")[3L]
 
 # Minimum number of valid points for running a PCA.
-n_pca_min = 500L
+n_pca_min = 30L
 ```
 
 
@@ -698,44 +702,52 @@ Here we decide whether or not to eliminate traits that are known to be highly ph
 ```{r,label='remove-shaded',message=FALSE,results='hide',warning=FALSE}
 # Remove trait values from shaded individuals in case this is a sun trait.
 if (plastic_sun_only){
-   cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
-   PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
-   SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
-   Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
-   GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
-   Raunkiaer     = try_trait$Name[try_trait$TraitID %in% c( 343L)                  ]
-
-   EmptyChar     = rep(NA_character_,nrow(TidyTRY))
-   if(length(SunShade  ) == 0L){SunShade   = EmptyChar}else{SunShade   = TidyTRY[[SunShade  ]]}
-   if(length(Biome     ) == 0L){Biome      = EmptyChar}else{Biome      = TidyTRY[[Biome     ]]}
-   if(length(GrowthForm) == 0L){GrowthForm = EmptyChar}else{GrowthForm = TidyTRY[[GrowthForm]]}
-   if(length(Raunkiaer ) == 0L){Raunkiaer  = EmptyChar}else{Raunkiaer  = TidyTRY[[Raunkiaer ]]}
-
-   # Save logical variables that will help setting conditions for keeping/discarding data.
-   IsSun    = SunShade %in% "03 - Mostly Sun-Exposed"
-   IsShade  = SunShade %in% c("01 - Mostly Shaded","02 - Partially Shaded")
-   IsOpen   = ( grepl(pattern="Desert"   ,x=Biome)
-              | grepl(pattern="Grassland",x=Biome)
-              | grepl(pattern="Scrubland",x=Biome)
-              | grepl(pattern="Savannah" ,x=Biome)
-              | grepl(pattern="Tundra"   ,x=Biome)
-              | grepl(pattern="Pastures" ,x=Biome)
-              )#end IsOpen
-   IsClosed = grepl(pattern="Moist Forest",x=Biome)
-   IsShrub  = ( ( GrowthForm %in% c("SHB","Shrub") )
-              | ( Raunkiaer  %in% c("Microphanerophyte","Nanophanerophyte") )
-              )#end IsShrub
-
-   # Filter photo-plastic traits
-   for (w in seq_along(PlasticTraits)){
-      # Select trait
-      PlasticNow            = PlasticTraits[w]
-      
-      # Remove observations that are not (presumably) from sun leaves.
-      Keep                  = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
-      TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA)
-   }#end for (w in PlasticTraits)
-}#end if (plastic_sun_only)
+    cat0("   - Remove trait information for shaded leaves (when trait has light plasticity).")
+  PlasticTraits = names(TidyTRY)[names(TidyTRY) %in% try_trait$Name[try_trait$LightPlastic]]
+    
+    SunShade      = try_ancil$Name[try_ancil$DataID  %in% c( 210L, 443L, 766L,2111L)]
+    Biome         = try_ancil$Name[try_ancil$DataID  %in% c( 193L, 202L)            ]
+    GrowthForm    = try_trait$Name[try_trait$TraitID %in% c(  42L)                  ]
+    Raunkiaer     = try_trait$Name[try_trait$TraitID %in% c( 343L)                  ]
+ 
+    EmptyChar     = rep(NA_character_,nrow(TidyTRY))
+    if(length(SunShade  ) == 0L){SunShade   = EmptyChar}else{SunShade   = TidyTRY[[SunShade  ]]}
+    if(length(Biome     ) == 0L){Biome      = EmptyChar}else{Biome      = TidyTRY[[Biome     ]]}
+    if(length(GrowthForm) == 0L){GrowthForm = EmptyChar}else{GrowthForm = TidyTRY[[GrowthForm]]}
+    if(length(Raunkiaer ) == 0L){Raunkiaer  = EmptyChar}else{Raunkiaer  = TidyTRY[[Raunkiaer ]]}
+ 
+    # Save logical variables that will help setting conditions for keeping/discarding data.
+    IsSun    = SunShade %in% "03 - Mostly Sun-Exposed"
+    IsShade  = SunShade %in% c("01 - Mostly Shaded","02 - Partially Shaded")
+    IsOpen   = ( grepl(pattern="Desert"   ,x=Biome)
+               | grepl(pattern="Grassland",x=Biome)
+               | grepl(pattern="Scrubland",x=Biome)
+               | grepl(pattern="Savannah" ,x=Biome)
+               | grepl(pattern="Tundra"   ,x=Biome)
+               | grepl(pattern="Pastures" ,x=Biome)
+               )#end IsOpen
+    IsClosed = grepl(pattern="Moist Forest",x=Biome)
+    IsShrub  = ( ( GrowthForm %in% c("SHB","Shrub") )
+               | ( Raunkiaer  %in% c("Microphanerophyte","Nanophanerophyte") )
+               )#end IsShrub
+ 
+    # Filter photo-plastic traits
+    for (w in seq_along(PlasticTraits)){
+       # Select trait
+       PlasticNow            = PlasticTraits[w]
+       
+       # Remove observations that are not (presumably) from sun leaves.
+       if (use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical")) {
+        Keep = IsSun | ( IsOpen & (! IsShade) ) | ( IsClosed & IsShrub )
+       } else if (use_realm == "WestUS") {
+        Keep = !IsShade             
+       } else {
+        stop(paste("Add method for removing observations from shade for use_realm = ", use_realm))
+       }#end if(use_realm %in% c("NeoTropical", "PanTropical", "AsiaTropical", "AfricaTropical"))
+         
+         TidyTRY[[PlasticNow]] = ifelse(test=Keep,yes=TidyTRY[[PlasticNow]],no=NA) 
+    }#end for (w in PlasticTraits)
+ }#end if (plastic_sun_only)
 ```
 
 
@@ -818,7 +830,7 @@ if (! use_woody_level %in% "all_plants"){
    
    KeepWoody     = IsWoodiness & ( IsGrowth | AssumeWoody ) 
    TidyTRY       = TidyTRY[KeepClass & KeepWoody,,drop=FALSE]
-}#end if (plastic_sun_only)
+}#end if (! use_woody_level %in% "all_plants")
 ```
 
 
@@ -1182,6 +1194,23 @@ if (update_impute){
          arrange(Frac,Variability) %>%
          mutate(Frac=-Frac,Variability=-Variability)
 
+      
+      # Make sure variable chosen for the x axis for trait SMA analyses (xsma_TraitID) has enough data
+      xsma_TraitID_count <- TallyTRY[TallyTRY$Name == xsma_name, "Cnt"]
+      if (xsma_TraitID_count %le% n_fit_min) {
+        cat0(" + The count of observations for trait ", xsma_name, " is 0.") 
+        stop(paste("Reset xsma_TraitID to trait with > ", n_fit_min, " observations in TallyTRY"))
+      }#end if (TallyTRY[TallyTRY$Name == xsma_TraitID, "Cnt"] == 0)
+      
+      
+      # Make sure variable chosen for the x axis for trait SMA analyses of photosynthesis traits (xphoto_TraitID) has data
+      xphoto_TraitID_count <- TallyTRY[TallyTRY$Name == xphoto_name, "Cnt"]
+      if (xphoto_TraitID_count == 0) {
+        cat0(" + The count of observations for trait ", xphoto_name, " is 0.") 
+        stop(paste("Reset xphoto_TraitID to trait with >0 observations in TallyTRY"))
+      }#end if (TallyTRY[TallyTRY$Name == xphoto_TraitID, "Cnt"] == 0)
+        
+      
       # Alias for traits that will go through imputation.
       EveryImpute = TallyTRY$Name[TallyTRY$Impute]
 
@@ -1366,7 +1395,7 @@ if (update_cluster){
    ExcludeAncilID = try_ancil$DataID [! try_ancil$Cluster]
    ExcludeName    = c( try_trait$Name[try_trait$TraitID %in% ExcludeTraitID]
                      , try_ancil$Name[try_ancil$DataID  %in% ExcludeAncilID]
-                     , TaxonAll
+#                   , TaxonAll
                      )#end c
    ExcludeName    = names(ImputedTRY)[names(ImputedTRY) %in% ExcludeName]
       
@@ -3480,7 +3509,7 @@ if (plot_radar_cluster){
       # Decide whether the distribution needs two or three parameters
       if (vDistr %in% "skew-normal"){
          RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond,vThird)
-      }else if (! is.na(zDistr)){
+      }else if (! is.na(vDistr)){
          RadarTRY[[vName]] = vFun(RadarTRY[[vName]],vFirst,vSecond)
       }#end if (zDistr %in% "skew-normal")
 

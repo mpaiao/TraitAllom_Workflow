@@ -66,7 +66,7 @@ The following block defines some settings that were used for defining clusters a
 ```{r, label='set-sma-options',message=FALSE,results='hide',warning=FALSE}
 
 # Life-form/phylogenetic level to use for SMA analyses.
-use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[4L]
+use_lifeclass  = c("FlowerTrees","Shrubs","Grasses","FlowerPlants","Pinopsida","SeedPlants","Plantae")[6L]
 
 # Realm to use for SMA analyses.
 use_realm  = c("NeoTropical","PanTropical", "AfricaTropical", "AsiaTropical", "WestUS")[1L]
@@ -363,6 +363,9 @@ LabelLife = switch( use_lifeclass
 LabelRealm = switch( use_realm
                    , NeoTropical = "Neotropical"
                    , PanTropical = "Pantropical"
+                   , AfricaTropical = "AfricaTropical"
+                   , AsiaTropical = "AsiaTropical"
+                   , WestUS = "WestUS"
                    , stop("Unrecognised realm.")
                    )#end switch
 
@@ -1471,11 +1474,11 @@ for (p in GoodLoop){
                                                   )#end scale_fill_gradientn
          }else{
             gg_now = gg_now + geom_point( data    = PredPlot
-                                        , mapping = aes(x=yMod,y=yObs)
-                                        , colour  = PointColour
+                                        , mapping = aes(x=yMod,y=yObs, color = Class)
                                         , shape   = PointShape
                                         , size    = PointSize
                                         )#end geom_point
+            gg_now = gg_now + scale_colour_manual(values = colClasses)
          }#end if (DensObserv)
 
          if (PlotFit){
@@ -1488,7 +1491,6 @@ for (p in GoodLoop){
                                          , inherit.aes = FALSE
                                          , show.legend = FALSE
                                          )#end geom_line
-            gg_now = gg_now + scale_colour_manual(values=colClasses)
             gg_now = gg_now + labs( x        = desc.unit(desc=yDescMod,unit=untab[[yUnit]])
                                   , y        = desc.unit(desc=yDescObs,unit=untab[[yUnit]])
                                   , colour   = element_blank()
@@ -1589,48 +1591,65 @@ for (p in FunLoop){
    PredTRY = yFit$PredAllom
 
    # Find the number of traits for plotting the model
-   CategSel    = is.finite(CategAllom$TraitID)
-   CategTrait  = sort(unique(CategAllom$TraitID[CategSel]))
-   for (ct in seq_along(CategTrait)){
-      # Load settings for the classes.
-      zTrait = CategTrait[ct]
-      if (zTrait %in% 0L){
-         zName  = "Cluster"
-         zDesc  = "Data-based cluster class"
-      }else{
-         z      = match(zTrait,try_trait$TraitID)
-         zName  = try_trait$Name   [z]
-         zDesc  = try_trait$Desc   [z]
-      }#end if (zTrait %in% 0L)
-      zTitle = paste0("Allometric model for ",yDesc," by ",tolower(zDesc))
+    CategSel    = is.finite(CategAllom$TraitID)
+    CategTrait  = sort(unique(CategAllom$TraitID[CategSel]))
+  
+    for (ct in seq_along(CategTrait)){
+       # Load settings for the classes.
+       zTrait = CategTrait[ct]
+       
+       if (zTrait %in% 0L){
+          zName  = "Cluster"
+          zDesc  = "Data-based cluster class"
+       }else{
+          z      = match(zTrait,try_trait$TraitID)
+          if (is.na(z)) {
+             warning(paste("TraitID", zTrait, "not found in try_trait. Skipping."))
+             next
+          }#end if (is.na(z))
+          
+          zName  = try_trait$Name   [z]
+          zDesc  = try_trait$Desc   [z]
+       }#end if (zTrait %in% 0L)
+       zTitle = paste0("Allometric model for ",yDesc," by ",tolower(zDesc))
+    
+       # Select model and parameters
+       zIdx   = which( ( ySumm$TraitClass %in% zName ) & (! is.na(ySumm$Function) ) )[1L]
+       if (is.na(zIdx)){
+          warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
+          next
+       }#end if (is.na(zIdx))
+       zModel = ySumm$Function[zIdx]
+       xName  = ySumm$xName   [zIdx]
+       wName  = ySumm$wName   [zIdx]
+    
+       # Load information for X axis.
+       x        = match(xName,try_trait$Name)
+       if (is.na(x)){
+          warning(paste("X axis trait", xName, "not found in try_trait. Skipping."))
+           next
+       }#end if (is.na(x))
+       xTraitID = try_trait$TraitID[x]
+       xLabel   = sprintf("ID_%+4.4i",xTraitID)
+       xLabel   = gsub(pattern="\\+",replacement="p",x=xLabel)
+       xLabel   = gsub(pattern="\\-",replacement="m",x=xLabel)
+       xDefName = switch( EXPR     = xLabel
+                        , ID_m0004 = "LMSize"
+                        , ID_m0003 = "WDSize"
+                        , ID_m0002 = "Size"
+                        , ID_p0018 = "Height"
+                        , ID_p0021 = "DBH"
+                        , ID_p3106 = "Height"
+                        , xLabel   # Default to xLabel if no match
+                        )#end switch
+       xName    = try_trait$Name   [x]
+       xDesc    = try_trait$Desc   [x]
+       xUnit    = try_trait$Unit   [x]
+       xTrans   = if(xDefName %in% names(xTransAllom)){xTransAllom[xDefName]}else{"identity"}
+       xTPlot   = switch( EXPR = xTrans, log = "log10", neglog="neglog10",xTrans)
 
-      # Select model and parameters
-      zIdx   = which( ( ySumm$TraitClass %in% zName ) & (! is.na(ySumm$Function) ) )[1L]
-      zModel = ySumm$Function[zIdx]
-      xName  = ySumm$xName   [zIdx]
-      wName  = ySumm$wName   [zIdx]
-
-      # Load information for X axis.
-      x        = match(xName,try_trait$Name)
-      xTraitID = try_trait$TraitID[x]
-      xLabel   = sprintf("ID_%+4.4i",xTraitID)
-      xLabel   = gsub(pattern="\\+",replacement="p",x=xLabel)
-      xLabel   = gsub(pattern="\\-",replacement="m",x=xLabel)
-      xDefName = switch( EXPR     = xLabel
-                       , ID_m0004 = "LMSize"
-                       , ID_m0003 = "WDSize"
-                       , ID_m0002 = "Size"
-                       , ID_p0018 = "Height"
-                       , ID_p0021 = "DBH"
-                       , ID_p3106 = "Height"
-                       )#end switch
-      xName    = try_trait$Name   [x]
-      xDesc    = try_trait$Desc   [x]
-      xUnit    = try_trait$Unit   [x]
-      xTrans   = if(xDefName %in% names(xTransAllom)){xTransAllom[xDefName]}else{"identity"}
-      xTPlot   = switch( EXPR = xTrans, log = "log10", neglog="neglog10",xTrans)
-      
-            
+         
+   
       # Set path for this group of plots.
       categ_allom_path = file.path(allom_path,zName)
       
@@ -1796,7 +1815,7 @@ for (p in FunLoop){
          cat0(" + Skip plot for ",yDesc," by ",zDesc,": too few valid points.")
       }#end if (PlotAllom)
    }#end for (ct in seq_along(CategTrait))
-}#end for (p in GoodLoop){
+}#end for (p in GoodLoop)
 
 # If sought, plot images on screen
 cnt_gg_funct = length(gg_funct)
@@ -1856,6 +1875,10 @@ for (p in FunLoop){
          zDesc  = "Data-based cluster class"
       }else{
          z      = match(zTrait,try_trait$TraitID)
+         if (is.na(z)) {
+            warning(paste("TraitID", zTrait, "not found in try_trait. Skipping."))
+            next
+         }#end if (is.na(z))         
          zName  = try_trait$Name   [z]
          zDesc  = try_trait$Desc   [z]
       }#end if (zTrait %in% 0L)
@@ -1863,12 +1886,22 @@ for (p in FunLoop){
 
       # Select model and parameters
       zIdx   = which( ( ySumm$TraitClass %in% zName ) & (! is.na(ySumm$Function) ) )[1L]
+      if (is.na(zIdx)) {
+         warning(paste("No valid model found for TraitClass", zName, ". Skipping."))
+         next
+      }#end if (is.na(zIdx))
+      
       zModel = ySumm$Function[zIdx]
       xName  = ySumm$xName   [zIdx]
       wName  = ySumm$wName   [zIdx]
 
       # Load information for X axis.
-      x        = match(xName,try_trait$Name)
+      x      = match(xName,try_trait$Name)
+      if (is.na(x)){
+         warning(paste("X axis trait", xName, "not found in try_trait. Skipping."))
+         next
+      }#end if (is.na(x))
+      
       xTraitID = try_trait$TraitID[x]
       xLabel   = sprintf("ID_%+4.4i",xTraitID)
       xLabel   = gsub(pattern="\\+",replacement="p",x=xLabel)
@@ -1880,6 +1913,7 @@ for (p in FunLoop){
                        , ID_p0018 = "Height"
                        , ID_p0021 = "DBH"
                        , ID_p3106 = "Height"
+                       , xLabel   # Default to xLabel if no match
                        )#end switch
       xName    = try_trait$Name   [x]
       xDesc    = try_trait$Desc   [x]
@@ -2084,7 +2118,7 @@ for (p in FunLoop){
          cat0(" + Skip plot for ",yDesc," by ",zDesc,": too few valid points.")
       }#end if (PlotAllom)
    }#end for (ct in seq_along(CategTrait))
-}#end for (p in GoodLoop){
+}#end for (p in GoodLoop)
 
 # If sought, plot images on screen
 cnt_gg_funct = length(gg_funct)
@@ -2135,9 +2169,12 @@ for (p in sequence(CntPlotTRY)){
    yBoot    = yFit$SummBoot
    
    cat0("   - Models for ",yDesc,".")
+   
+   yBoot$LogLik <- NA
+   
    AllomSumm = if (is.null(AllomSumm)){ySumm}else{rbind(AllomSumm,ySumm)}
    ABootSumm = if (is.null(ABootSumm)){yBoot}else{rbind(ABootSumm,yBoot)}
-}#end for (p in  sequence(CntPlotTRY)){
+}#end for (p in  sequence(CntPlotTRY))
 
 
 # Build file name for allometry summary.

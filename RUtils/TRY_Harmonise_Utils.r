@@ -1,7 +1,7 @@
 #==========================================================================================
 #   Additional TRY utilities for harmonising data
 #
-#   Author: Marcos Longo 
+#   Authors: Marcos Longo, Mara St. Amant, Trisha Venkatesh 
 #   Email:  m l o n g o a@t l b l d.o.t g o v
 #
 #   Date: 09-Apr-2022

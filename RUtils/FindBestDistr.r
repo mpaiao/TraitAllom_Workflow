@@ -6,15 +6,17 @@
 #
 # Input:
 #
-# x      -- A numeric vector containing at least 'xmin' finite values.
-# nx_min -- Minimum number of valid points to consider fitting any distribution.
-# n_rand -- Number of random samples generated from the fitted distribution, to find the
-#           derived statistics (e.g., mean, standard deviation)
-# best   -- Which information criterion to use for selecting model? Current options are
-#           Akaike Information Criterion (AIC) or Schwarz "Bayesian" information criterion 
-#           (BIC)
+# x           -- A numeric vector containing at least 'xmin' finite values.
+# unif_buffer -- Fractional buffer for fitting uniform distribution to prevent infinite values.
+# nx_min      -- Minimum number of valid points to consider fitting any distribution.
+# n_rand      -- Number of random samples generated from the fitted distribution, to find the
+#                derived statistics (e.g., mean, standard deviation)
+# best        -- Which information criterion to use for selecting model? Current options are
+#                Akaike Information Criterion (AIC) or Schwarz "Bayesian" information criterion 
+#               (BIC)
 #------------------------------------------------------------------------------------------#
 FindBestDistr <<- function( x
+                          , unif_buffer = 0.01
                           , nx_min  = 10L
                           , n_rand  = 1000L
                           , best    = c("AIC","BIC")
@@ -85,9 +87,9 @@ FindBestDistr <<- function( x
    ans$xUpr      = max(xfit)
    this_loglik   = - nxfit * log(ans$xUpr - ans$xLwr)
    ans$Distr     = "uniform"
-   ans$First     = ans$xLwr
+   ans$First     = ans$xLwr - (ans$xUpr - ans$xLwr)*unif_buffer
    ans$SE_First  = NA_real_
-   ans$Second    = ans$xUpr
+   ans$Second    = ans$xUpr + (ans$xUpr - ans$xLwr)*unif_buffer
    ans$SE_Second = NA_real_
    ans$Third     = NA_real_
    ans$SE_Third  = NA_real_
