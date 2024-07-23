@@ -3684,11 +3684,10 @@ TRY_FixTrait_OrigValue_Str <<- function( TraitID,Type,TraitOrig,UnitOrig,NameOri
 
 
 
-   }else if(TraitID %in% c(191L,710L,1097L)){
+   }else if(TraitID %in% c(191L,710L)){
       #---~---
       #   Leaf water content apoplastic
       #   Leaf water content at turgor loss point
-      #   Wood (sapwood) water content
       #---~---
 
       #--- Make sure all data have the same units (%).

@@ -17,7 +17,8 @@ country,1412,Country,character,FALSE,empty,0,1,1,FALSE,FALSE,NA
 doi,4244,Reference DOI,character,FALSE,empty,0,1,1,FALSE,FALSE,NA
 doi_aux,4246,Reference DOI,character,FALSE,empty,0,1,1,FALSE,FALSE,doi
 ecos_root_depth,7042,Ecosystem rooting depth,numeric,FALSE,m,0,1,1,FALSE,FALSE,NA
-experiment,308,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,NA
+experiment,327,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,NA
+experiment_1,308,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,experiment
 experiment_2,238,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,experiment
 experiment_3,490,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,experiment
 experiment_4,4695,Experimental treatment,character,FALSE,empty,0,1,1,FALSE,FALSE,experiment

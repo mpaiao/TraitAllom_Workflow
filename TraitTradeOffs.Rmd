@@ -53,6 +53,7 @@ Set paths and file names for input and output.
 -   **home_path**. The user home path.
 -   **main_path**. Main working directory
 -   **util_path**. The path with the additional utility scripts (the full path of `RUtils`).
+-   **list_path**. Path where the lists of traits and ancillary data to be loaded are stored.
 -   **summ_path**. Path for summaries by species, genus and cluster.
 -   **plot_path**. The main output path for the simulation plots.
 -   **rdata_path**. Output path for R objects (so we can use it for comparisons.)
@@ -63,6 +64,7 @@ Set paths and file names for input and output.
 home_path       = path.expand("~")
 main_path       = file.path(home_path,"Data","TraitAllom_Workflow")
 util_path       = file.path(main_path,"RUtils")
+list_path       = file.path(main_path,"InputLists")
 summ_path       = file.path(main_path,"TaxonSummary")
 plot_path       = file.path(main_path,"Figures")
 rdata_path      = file.path(main_path,"RData")
@@ -268,11 +270,22 @@ n_mcarlo_cluster = 100L
 method_gap_maxSE = c("firstSEmax","Tibs2001SEmax","globalSEmax","firstmax", "globalmax")[5L]
 
 # Method to be used for selecting the optimum number of clusters.
-cluster_method = c("sil","gap","fix")[2L]
+cluster_method = c("sil","gap","fix")[3L]
 
 # Minimum number of valid points for running a PCA.
 n_pca_min = 500L
 ```
+
+
+In some cases, the user may need to overwrite the original settings (e.g., to update which traits to use for imputation, cluster analysis, and which ones to filter for plasticity). This is typically not recommended as the results may become less reproducible.  If the user wants to overwrite some settings, set variables `update_trait_file` and `update_ancil_file` with the full path to trait list and ancillary list (variables `trait_file` and `ancil_file` in `TidyTraitAllomDB.Rmd`. Otherwise, set `update_trait_file` and `update_ancil_file` with `NA_character_`).
+
+**Important**. Loading these files will **NOT** update all variable settings, only the ones relevant for this script. Notably, this will not update units because this would require running `TidyTraitAllomDB.Rmd` again.
+
+```{r, label='update-files',message=FALSE,results='hide',warning=FALSE}
+update_ancil_file = c(NA_character_,file.path(list_path,"TRY_AncillaryList.csv"))[2L] # List of ancillary variable settings
+update_trait_file = c(NA_character_,file.path(list_path,"TRY_TraitList.csv"    ))[2L] # List of TRY trait settings
+```
+
 
 The following tibble object sets colours and shapes for categorical traits that will be used for analysis. Only the classes included in this list will be displayed. This tibble should contain the following columns:
 
@@ -428,6 +441,115 @@ if (file.exists(rdata_TidyTRY)){
    stop(" RData object not found.")
 }#end if (file.exists(rdata_TidyTRY))
 ```
+
+
+If needed, update columns in `try_trait` and `try_ancil` with new information. We only update the columns relevant to this script.
+
+```{r, label='update-trait-ancil',message=FALSE,results='hide',warning=FALSE}
+# First, remove supporting traits because they are not used in this analysis. 
+#They may have been introduced when TidyTraitAllomDB.Rmd is run only partially.
+
+if (! is.na(update_trait_file)){
+   update_trait_base = basename(update_trait_file)
+   cat0(" + Update settings for \"try_trait\" using columns from file ",update_trait_base,".")
+
+   # Read trait file.
+   new_try_trait   = read_csv(file=update_trait_file,col_types="ciccccclclllllllcc")
+
+
+   # Replace generic vulnerability curve variable with the specific ones used in this workflow:
+   if ("xylem_pxx" %in% new_try_trait$Name){
+      cat0("   - Split xylem potential at various declines in hydraulic conductivity.")
+      new_try_xylem  = new_try_trait %>% filter(grepl(pattern="xylem_pxx",x=Name))
+      new_xylem_vars = strsplit(x=new_try_xylem$Supporting,split=";")[[1]]
+      new_xylem_pval = as.integer(gsub(pattern="^xylem_p",replacement="",x=new_xylem_vars))
+      new_try_xylem  = 
+         new_try_xylem[rep(1,times=length(new_xylem_pval)),,drop=FALSE] %>%
+         mutate( Name = new_xylem_vars
+               , Desc = mapply(FUN=gsub,replacement=new_xylem_pval,x=Desc,MoreArgs=list(pattern="xx"))
+               , Supporting = NA_character_
+               )#end mutate
+      new_try_trait = bind_rows(new_try_trait,new_try_xylem) %>%
+         arrange(Name) %>%
+         filter(! (Name %in% "xylem_pxx"))
+   }#end if ("xylem_pxx" %in% new_try_trait$Name)
+
+   # Replace generic leaf texture variable with the specific ones used in this workflow:
+   if ("leaf_texture" %in% new_try_trait$Name){
+      new_try_ltext  = new_try_trait %>% filter(grepl(pattern="leaf_texture",x=Name))
+      new_ltext_vars = strsplit(x=new_try_ltext$Supporting,split=";")[[1]]
+      new_ltext_prss = ! grepl(pattern="_f_",x=new_ltext_vars)
+      new_ltext_desc = rep(NA_character_,times=length(new_ltext_vars))
+      new_ltext_desc[new_ltext_vars %in% "leaf_f_tear" ] = "Leaf tensile strength"
+      new_ltext_desc[new_ltext_vars %in% "leaf_f_punct"] = "Leaf puncturability strength"
+      new_ltext_desc[new_ltext_vars %in% "leaf_t_tear" ] = "Leaf tensile toughness"
+      new_ltext_desc[new_ltext_vars %in% "leaf_t_punct"] = "Leaf puncturability toughness"
+      new_try_ltext  =
+         new_try_ltext[rep(1,times=length(new_ltext_vars)),,drop=FALSE] %>%
+            mutate( Name       = new_ltext_vars
+                  , Desc       = new_ltext_desc
+                  , Unit       = ifelse( test = new_ltext_prss
+                                       , yes  = ifelse( test = Unit %in% c("nomm")
+                                                      , yes  = "nomm2"
+                                                      , no   = ifelse( test = Unit %in% "knom" 
+                                                                     , yes  = "mnom2"
+                                                                     , no   = stop("Invalid units for leaf texture!")
+                                                                     )#end ifelse
+                                                      )#end ifelse
+                                       , no   = Unit
+                                       )#end ifelse
+                  , Supporting = NA_character_
+                  )#end mutate
+      new_try_trait = bind_rows(new_try_trait,new_try_ltext) %>%
+         arrange(Name) %>%
+         filter(! (Name %in% "leaf_texture"))
+   }#end if ("xylem_pxx" %in% names(try_trait))
+
+   # Update the list of traits and ancillary data
+   if ("Supporting" %in% names(new_try_trait)){
+      new_try_trait = new_try_trait %>% filter(is.na(Supporting)) %>% select( ! Supporting)
+   }#end if ("Supporting" %in% names(try_trait)){
+
+   # Match the data.
+   cat0("   - Map new data onto the existing database.")
+   idx_trait  = match(try_trait$Name,new_try_trait$Name)
+
+   # Update relevant columns.
+   cat0("   - Update data for columns needed in this script.")
+   try_trait$LightPlastic = new_try_trait$LightPlastic[idx_trait]
+   try_trait$Impute       = new_try_trait$Impute      [idx_trait]
+   try_trait$Cluster      = new_try_trait$Cluster     [idx_trait]
+   try_trait$SMA          = new_try_trait$SMA         [idx_trait]
+   try_trait$Allom        = new_try_trait$Allom       [idx_trait]
+   try_trait$Photo        = new_try_trait$Photo       [idx_trait]
+   try_trait$Trans        = new_try_trait$Trans       [idx_trait]
+}#end if (! is.na(update_trait_file))
+
+
+if (! is.na(update_ancil_file)){
+   update_ancil_base = basename(update_ancil_file)
+   cat0(" + Update settings for \"try_ancil\" using columns from file ",update_ancil_base,".")
+
+   # Read ancillary file.
+   new_try_ancil   = read_csv(file=update_ancil_file,col_types="cicclccccllc")
+
+   # Update the list of ancillary data
+   if ("Supporting" %in% names(new_try_ancil)){
+      new_try_ancil = new_try_ancil %>% filter(is.na(Supporting)) %>% select( ! Supporting)
+   }#end if ("Supporting" %in% names(new_try_ancil)){
+
+
+   # Match the data.
+   cat0("   - Map new data onto the existing database.")
+   idx_ancil  = match(try_ancil$Name,new_try_ancil$Name)
+
+   # Update relevant columns.
+   cat0("   - Update data for columns needed in this script.")
+   try_ancil$Impute       = new_try_ancil$Impute      [idx_ancil]
+   try_ancil$Cluster      = new_try_ancil$Cluster     [idx_ancil]
+}#end if (! is.na(update_ancil_file))
+```
+
 
 Define which variables are used for the X axis
 
