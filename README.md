@@ -12,4 +12,4 @@ For additional details on these scripts (the "knitted" R Markdown), check the [d
 
 **Important notes**.
 
-* These scripts are (permanently?) under development.  Contributions, suggestions, and pull requests with bug fixes are always welcome!
+* These scripts are (permanently?) under development.  Contributions, suggestions, and pull requests with bug fixes or new features are always welcome!
